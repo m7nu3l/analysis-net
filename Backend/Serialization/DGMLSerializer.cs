@@ -99,7 +99,7 @@ namespace Backend.Serialization
 			{
 				case CFGNodeKind.Entry: result = "entry"; break;
 				case CFGNodeKind.Exit: result = "exit"; break;
-				default: result = string.Join(Environment.NewLine, node.Instructions); break;
+				default: result = node.Id+Environment.NewLine+ string.Join(Environment.NewLine, node.Instructions); break;
 			}
 
 			return result;
@@ -222,7 +222,8 @@ namespace Backend.Serialization
 			switch (node.Kind)
 			{
 				case PTGNodeKind.Null: result = "null"; break;
-				default: result = node.Type.ToString(); break;
+				default: result = String.Format("{0:X4}:{1}",node.Offset, node.Type); break;
+                     
 			}
 
 			return result;
@@ -376,11 +377,152 @@ namespace Backend.Serialization
 			}
 		}
 
-		#endregion
+        #endregion
 
-		#region Private Methods
 
-		private static string GetLabel(IEnumerable<IFieldReference> fields)
+        #region Graph
+
+        public static string Serialize<N,F>(Graph<N,F> g)
+        {
+            using (var stringWriter = new StringWriter())
+            using (var xmlWriter = new XmlTextWriter(stringWriter))
+            {
+                xmlWriter.Formatting = Formatting.Indented;
+                xmlWriter.WriteStartElement("DirectedGraph");
+                xmlWriter.WriteAttributeString("xmlns", "http://schemas.microsoft.com/vs/2009/dgml");
+                xmlWriter.WriteStartElement("Nodes");
+
+                foreach (var node in g.Nodes)
+                {
+                    var label = node.ToString();
+
+                    xmlWriter.WriteStartElement("Node");
+                    xmlWriter.WriteAttributeString("Label", label);
+                    xmlWriter.WriteAttributeString("Shape", "None");
+                    xmlWriter.WriteEndElement();
+                }
+
+                xmlWriter.WriteEndElement();
+                xmlWriter.WriteStartElement("Links");
+
+                foreach (var node in g.Nodes)
+                {
+                    var sourceId = node.ToString();
+
+                    foreach (var suc in node.Successors)
+                    {
+                        var targetId = suc.ToString();
+
+                        xmlWriter.WriteStartElement("Link");
+                        xmlWriter.WriteAttributeString("Source", sourceId);
+                        xmlWriter.WriteAttributeString("Target", targetId);
+                        xmlWriter.WriteEndElement();
+                    }
+                }
+
+                xmlWriter.WriteEndElement();
+                xmlWriter.WriteStartElement("Styles");
+                xmlWriter.WriteStartElement("Style");
+                xmlWriter.WriteAttributeString("TargetType", "Node");
+
+                xmlWriter.WriteStartElement("Setter");
+                xmlWriter.WriteAttributeString("Property", "FontFamily");
+                xmlWriter.WriteAttributeString("Value", "Consolas");
+                xmlWriter.WriteEndElement();
+
+                xmlWriter.WriteStartElement("Setter");
+                xmlWriter.WriteAttributeString("Property", "NodeRadius");
+                xmlWriter.WriteAttributeString("Value", "5");
+                xmlWriter.WriteEndElement();
+
+                xmlWriter.WriteStartElement("Setter");
+                xmlWriter.WriteAttributeString("Property", "MinWidth");
+                xmlWriter.WriteAttributeString("Value", "0");
+                xmlWriter.WriteEndElement();
+
+                xmlWriter.WriteEndElement();
+                xmlWriter.WriteEndElement();
+                xmlWriter.WriteEndElement();
+                xmlWriter.Flush();
+                return stringWriter.ToString();
+            }
+        }
+
+        public static string Serialize(InstructionDependencyGraph graph)
+        {
+            using (var stringWriter = new StringWriter())
+            using (var xmlWriter = new XmlTextWriter(stringWriter))
+            {
+                xmlWriter.Formatting = Formatting.Indented;
+                xmlWriter.WriteStartElement("DirectedGraph");
+                xmlWriter.WriteAttributeString("xmlns", "http://schemas.microsoft.com/vs/2009/dgml");
+                xmlWriter.WriteStartElement("Nodes");
+
+                foreach (var node in graph.Nodes)
+                {
+                    var nodeId = string.Format("L_{0:X4}", node);  // node.ToString();
+
+                    var label = graph.Instruction(node);
+
+                    xmlWriter.WriteStartElement("Node");
+                    xmlWriter.WriteAttributeString("Id", nodeId);
+
+                    xmlWriter.WriteAttributeString("Label", label);
+                    xmlWriter.WriteAttributeString("Shape", "None");
+                    xmlWriter.WriteEndElement();
+                }
+
+                xmlWriter.WriteEndElement();
+                xmlWriter.WriteStartElement("Links");
+
+                foreach (var node in graph.Nodes)
+                {
+                    var sourceId = string.Format("L_{0:X4}", node);   // node.ToString();
+
+                    foreach (var suc in graph.Successors(node))
+                    {
+                        var targetId = string.Format("L_{0:X4}", suc);  // suc.ToString();
+
+                        xmlWriter.WriteStartElement("Link");
+                        xmlWriter.WriteAttributeString("Source", sourceId);
+                        xmlWriter.WriteAttributeString("Target", targetId);
+                        xmlWriter.WriteEndElement();
+                    }
+                }
+
+                xmlWriter.WriteEndElement();
+                xmlWriter.WriteStartElement("Styles");
+                xmlWriter.WriteStartElement("Style");
+                xmlWriter.WriteAttributeString("TargetType", "Node");
+
+                xmlWriter.WriteStartElement("Setter");
+                xmlWriter.WriteAttributeString("Property", "FontFamily");
+                xmlWriter.WriteAttributeString("Value", "Consolas");
+                xmlWriter.WriteEndElement();
+
+                xmlWriter.WriteStartElement("Setter");
+                xmlWriter.WriteAttributeString("Property", "NodeRadius");
+                xmlWriter.WriteAttributeString("Value", "5");
+                xmlWriter.WriteEndElement();
+
+                xmlWriter.WriteStartElement("Setter");
+                xmlWriter.WriteAttributeString("Property", "MinWidth");
+                xmlWriter.WriteAttributeString("Value", "0");
+                xmlWriter.WriteEndElement();
+
+                xmlWriter.WriteEndElement();
+                xmlWriter.WriteEndElement();
+                xmlWriter.WriteEndElement();
+                xmlWriter.Flush();
+                return stringWriter.ToString();
+            }
+        }
+
+        #endregion
+
+        #region Private Methods
+
+        private static string GetLabel(IEnumerable<IFieldReference> fields)
 		{
 			var result = new StringBuilder();
 

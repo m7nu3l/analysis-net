@@ -1,6 +1,4 @@
-﻿// Copyright (c) Edgardo Zoppi.  All Rights Reserved.  Licensed under the MIT License.  See License.txt in the project root for license information.
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -10,136 +8,718 @@ using Model.Types;
 using Backend.Analyses;
 using Backend.Serialization;
 using Backend.Transformations;
-using Backend.Utils;
-using Model.ThreeAddressCode.Values;
 using Backend.Model;
+using Backend.Utils;
+using Model.ThreeAddressCode.Instructions;
+using Model.ThreeAddressCode.Values;
+using Model.ThreeAddressCode.Visitor;
+using Model.ThreeAddressCode.Expressions;
 
 namespace Console
 {
-	class Program
-	{
-		private Host host;
+    //public interface IDependencyGraph
+    //{
+    //    string AddVertex(DependencyNode vertex, ISet<string> edges);
+    //    ISet<string> Slice();
 
-		public Program(Host host)
-		{
-			this.host = host;
-		}
-		
-		public void VisitMethods()
-		{
-			var methods = host.Assemblies.SelectMany(a => a.RootNamespace.GetAllTypes())
-										 .SelectMany(t => t.Members.OfType<MethodDefinition>())
-										 .Where(md => md.Body != null);
+    //    void PrintGraph(string writeToFile);
+    //}
+    class DependencyInfo
+    {
+        public PTGNode SymbolicObject { get; private set; }
+        public string Traceable { get; private set; }
 
-			foreach (var method in methods)
-			{
-				VisitMethod(method);
-			}
-		}
+        public DependencyInfo(PTGNode symObj, string traceable)
+        {
+            SymbolicObject = symObj;
+            Traceable = traceable;
+        }
 
-		private void VisitMethod(MethodDefinition method)
-		{
-			System.Console.WriteLine(method.Name);
 
-			var methodBodyBytecode = method.Body;
-			var disassembler = new Disassembler(method);
-			var methodBody = disassembler.Execute();			
-			method.Body = methodBody;
+        public override bool Equals(object obj)
+        {
+            var oth = obj as DependencyInfo;
+            return oth.SymbolicObject.Equals(SymbolicObject)
+                && oth.Traceable.Equals(Traceable);
+        }
+        public override int GetHashCode()
+        {
+            return SymbolicObject.GetHashCode() + Traceable.GetHashCode();
+        }
+        public override string ToString()
+        {
+            return String.Format("{0}:{1}.{2}", SymbolicObject.Offset, SymbolicObject.Type, Traceable);
+        }
+    }
 
-			var cfAnalysis = new ControlFlowAnalysis(method.Body);
-			var cfg = cfAnalysis.GenerateNormalControlFlow();
+    class DependencyGraph // : IDependencyGraph
+    {
+        Graph<DependencyInfo, string> graph = new Graph<DependencyInfo, string>();
+        public void AddVertex(DependencyInfo vertex)
+        {
+            graph.AddNode(vertex);
+        }
 
-			var domAnalysis = new DominanceAnalysis(cfg);
-			domAnalysis.Analyze();
-			domAnalysis.GenerateDominanceTree();
+        public void ConnectVertex(DependencyInfo src, DependencyInfo dst)
+        {
+            graph.ConnectNodes(src, dst);
+        }
 
-			var loopAnalysis = new NaturalLoopAnalysis(cfg);
-			loopAnalysis.Analyze();
+        public void PrintGraph(string writeToFile)
+        {
+            throw new NotImplementedException();
+        }
+        public override string ToString()
+        {
+            var result = "";
+            foreach (var n in graph.Nodes)
+            {
+                result += String.Format("{0}->{1}\n", n.Data, n.Successors.Select(n2 => n2.Data).ToArray());
+            }
+            return result;
+        }
+    }
 
-			var domFrontierAnalysis = new DominanceFrontierAnalysis(cfg);
-			domFrontierAnalysis.Analyze();
 
-			var splitter = new WebAnalysis(cfg);
-			splitter.Analyze();
-			splitter.Transform();
+    class DependencyAnalysis
+    {
+        private class DependencyAnalyzer : InstructionVisitor
+        {
+            private CFGNode cfgNode;
+            private PointsToGraph ptg;
+            private DependencyAnalysis depAnalysis;
+            public DependencyAnalyzer(CFGNode cfgNode, PointsToGraph ptg, DependencyAnalysis depAnalysis)
+            {
+                this.cfgNode = cfgNode;
+                this.ptg = ptg;
 
-			methodBody.UpdateVariables();
+                this.depAnalysis = depAnalysis;
+            }
+            public override void Visit(StoreInstruction instruction)
+            {
+                var store = instruction as StoreInstruction;
+                if (store.Result is InstanceFieldAccess)
+                {
+                    var fieldAccess = store.Result as InstanceFieldAccess;
+                    var access = fieldAccess.FieldName;
 
-			var typeAnalysis = new TypeInferenceAnalysis(cfg);
-			typeAnalysis.Analyze();
+                    var lasDefs = depAnalysis.LastDefGet(store.Operand);
+                    depAnalysis.SetDataDependency((int)instruction.Offset, lasDefs);
+                    depAnalysis.LastDefSet(fieldAccess.Instance, fieldAccess.Field, (int)instruction.Offset, ptg);
+                }
+            }
+            public override void Visit(LoadInstruction instruction)
+            {
+                var load = instruction as LoadInstruction;
+                if (load.Operand is Constant)
+                {
+                }
+                else if (load.Operand is IVariable)
+                {
+                    var variable = load.Operand as IVariable;
+                    var lastDefs = depAnalysis.LastDefGet(variable);
+                    depAnalysis.SetDataDependency((int)load.Offset, lastDefs);
+                }
 
-			var forwardCopyAnalysis = new ForwardCopyPropagationAnalysis(cfg);
-			forwardCopyAnalysis.Analyze();
-			forwardCopyAnalysis.Transform(methodBody);
+                else if (load.Operand is InstanceFieldAccess)
+                {
+                    var fieldAccess = load.Operand as InstanceFieldAccess;
+                    var lastDefs = depAnalysis.LastDefGet(fieldAccess.Instance, fieldAccess.Field, ptg);
+                    depAnalysis.SetDataDependency((int)load.Offset, lastDefs);
+                }
+                depAnalysis.LastDefSet(load.Result, (int)load.Offset);
+            }
+            public override void Visit(BinaryInstruction instruction)
+            {
+                base.Visit(instruction);
+            }
+            public override void Visit(MethodCallInstruction instruction)
+            {
+                var methodCall = instruction;
+                if (methodCall.Method.Name.Equals(".ctor") && methodCall.HasResult)
+                {
+                    var variable = methodCall.Arguments[0] as IVariable;
+                    var lastDefs = depAnalysis.LastDefGet(variable);
+                    depAnalysis.SetDataDependency((int)methodCall.Offset, lastDefs);
+                    depAnalysis.LastDefSet(methodCall.Result, (int)methodCall.Offset);
+                }
+                else
+                {
+                    MyDefault(instruction);
+                    // base.Visit(instruction);
+                }
+            }
 
-			var backwardCopyAnalysis = new BackwardCopyPropagationAnalysis(cfg);
-			backwardCopyAnalysis.Analyze();
-			backwardCopyAnalysis.Transform(methodBody);
 
-			//var pointsTo = new PointsToAnalysis(cfg);
-			//var result = pointsTo.Analyze();
+            public override void Visit(CreateObjectInstruction instruction)
+            {
+                MyDefault(instruction);
+                //base.Visit(instruction);
+            }
+            public override void Visit(ConvertInstruction instruction)
+            {
+                MyDefault(instruction);
+            }
+            public void MyDefault(Instruction instruction)
+            {
+                var uses = instruction.UsedVariables;
+                var defs = instruction.ModifiedVariables;
+                foreach (var def in defs)
+                {
+                    foreach (var use in uses)
+                    {
+                        if (use is IVariable)
+                        {
+                            var variable = use as IVariable;
+                            var lastDefs = depAnalysis.LastDefGet(variable);
+                            depAnalysis.SetDataDependency((int)instruction.Offset, lastDefs);
+                        }
+                        else
+                        { }
 
-			var ssa = new StaticSingleAssignment(methodBody, cfg);
-			ssa.Transform();
+                    }
+                    depAnalysis.LastDefSet(def, (int)instruction.Offset);
+                }
 
-			methodBody.UpdateVariables();
+            }
+        }
 
-			//var dot = DOTSerializer.Serialize(cfg);
-			var dgml = DGMLSerializer.Serialize(cfg);
 
-			//dgml = DGMLSerializer.Serialize(host, typeDefinition);
-		}
+        private void SetDataDependency(int offset, IEnumerable<int> locations)
+        {
+            foreach (var loc in locations)
+            {
+                depGraph.ConnectVertex(offset, loc);
+            }
+        }
 
-		static void Main(string[] args)
-		{
-			const string root = @"..\..\..";
-			//const string root = @"C:"; // casa
-			//const string root = @"C:\Users\Edgar\Projects"; // facu
+        private void LastDefSet(IVariable v, int location)
+        {
+            ICollection<int> lastDefs = InternalGetLastDefs(v);
+            lastDefs.Add(location);
+        }
+        private void LastDefSet(IVariable v, IEnumerable<int> locations)
+        {
+            ICollection<int> lastDefs = InternalGetLastDefs(v);
+            lastDefs.AddRange(locations);
+        }
 
-			const string input = root + @"\Test\bin\Debug\Test.dll";
+        private ICollection<int> LastDefGet(IVariable v)
+        {
+            ICollection<int> lastDefs = InternalGetLastDefs(v);
+            return lastDefs;
+        }
 
-			//using (var host = new PeReader.DefaultHost())
-			//using (var assembly = new Assembly(host))
-			//{
-			//	assembly.Load(input);
+        private ICollection<int> InternalGetLastDefs(IVariable v)
+        {
+            ICollection<int> lastDefs = new HashSet<int>();
+            if (LastDefsVar.ContainsKey(v))
+            {
+                lastDefs = LastDefsVar[v];
+            }
+            else
+            {
+                LastDefsVar[v] = lastDefs;
+            }
 
-			//	Types.Initialize(host);
+            return lastDefs;
+        }
 
-			//	//var extractor = new TypesExtractor(host);
-			//	//extractor.Extract(assembly.Module);
+        private void LastDefSet(PTGNode ptgNode, IFieldReference f, int location)
+        {
+            ICollection<int> lastDefs = InternalGetLastDefs(ptgNode, f);
+            lastDefs.Add(location);
+        }
+        private void LastDefSet(PTGNode ptgNode, IFieldReference f, IEnumerable<int> locations)
+        {
+            ICollection<int> lastDefs = InternalGetLastDefs(ptgNode, f);
+            lastDefs.AddRange(locations);
 
-			//	var visitor = new MethodVisitor(host, assembly.PdbReader);
-			//	visitor.Rewrite(assembly.Module);
-			//}
+        }
+        private ICollection<int> LastDefGet(PTGNode ptgNode, IFieldReference f)
+        {
+            ICollection<int> lastDefs = InternalGetLastDefs(ptgNode, f);
+            return lastDefs;
+        }
 
-			var host = new Host();
-			//host.Assemblies.Add(assembly);
+        private ICollection<int> InternalGetLastDefs(PTGNode ptgNode, IFieldReference f)
+        {
+            IDictionary<IFieldReference, ICollection<int>> lastDefsDict = new Dictionary<IFieldReference, ICollection<int>>();
+            ICollection<int> lastDefs = new HashSet<int>();
+            if (LastDefsPtg.ContainsKey(ptgNode))
+            {
+                lastDefsDict = LastDefsPtg[ptgNode];
+            }
+            else
+            {
+                LastDefsPtg[ptgNode] = lastDefsDict;
+            }
+            if (lastDefsDict.ContainsKey(f))
+            {
+                lastDefs = lastDefsDict[f];
+            }
+            else
+            {
+                lastDefsDict[f] = lastDefs;
+            }
 
-			var loader = new Loader(host);
-			loader.LoadAssembly(input);
-			//loader.LoadCoreAssembly();
+            return lastDefs;
+        }
 
-			var type = new BasicType("Examples")
-			{
-				Assembly = new AssemblyReference("Test"),
-				Namespace = "Test"
-			};
+        private ICollection<int> LastDefGet(IVariable variable, IFieldReference field, PointsToGraph ptg)
+        {
+            var query = ptg.GetTargets(variable).SelectMany(ptgNode => LastDefGet(ptgNode, field));
+            var result = new HashSet<int>();
+            result.AddRange(query);
+            return result;
+        }
+        private void LastDefSet(IVariable variable, IFieldReference field, int location, PointsToGraph ptg)
+        {
+            var query = ptg.GetTargets(variable);
+            foreach (var ptgNode in query)
+            {
+                LastDefSet(ptgNode, field, location);
+            }
+        }
 
-			var typeDefinition = host.ResolveReference(type);
 
-			var method = new MethodReference("ExampleLoopEnumerator", null)
-			{
-				ContainingType = type,
-				ReturnType = PlatformTypes.Void
-			};
+        private ControlFlowGraph cfg;
+        // private PointsToAnalysis ptAnalysis;
+        private InstructionDependencyGraph depGraph;
 
-			var methodDefinition = host.ResolveReference(method) as MethodDefinition;
+        IDictionary<IVariable, ICollection<int>> LastDefsVar = new Dictionary<IVariable, ICollection<int>>();
+        IDictionary<PTGNode, IDictionary<IFieldReference, ICollection<int>>>
+            LastDefsPtg = new Dictionary<PTGNode, IDictionary<IFieldReference, ICollection<int>>>();
+        private DataFlowAnalysisResult<PointsToGraph>[] result;
+        private MethodDefinition method;
 
-			var program = new Program(host);
-			program.VisitMethods();
+        private IDictionary<IVariable, IExpression> equalities;
 
-			System.Console.WriteLine("Done!");
-			System.Console.ReadKey();
-		}
-	}
+
+        //public DependencyAnalysis(ControlFlowGraph cfg, PointsToAnalysis ptAnalysis)
+        //{
+        //    this.cfg = cfg;
+        //    this.ptAnalysis = ptAnalysis;
+        //    this.depGraph = new DependencyGraph();
+        //}
+
+        public DependencyAnalysis(MethodDefinition method, ControlFlowGraph cfg, DataFlowAnalysisResult<PointsToGraph>[] result)
+        {
+            this.method = method;
+            this.cfg = cfg;
+            this.result = result;
+            this.depGraph = new InstructionDependencyGraph(cfg);
+
+            this.equalities = new Dictionary<IVariable, IExpression>();
+        }
+
+        public void Analyze()
+        {
+            foreach (var p in this.method.Body.Parameters)
+            {
+                LastDefSet(p, -1);
+            }
+            var sorted_nodes = cfg.ForwardOrder;
+
+            for (var i = 0; i < sorted_nodes.Length; ++i)
+            {
+                var cfgNode = sorted_nodes[i];
+                var ptg = result[cfgNode.Id].Output;
+                foreach (var instruction in cfgNode.Instructions)
+                {
+                    var inferer = new DependencyAnalyzer(cfgNode, ptg, this);
+
+                    var uses = instruction.UsedVariables;
+                    var defs = instruction.ModifiedVariables;
+                    inferer.Visit(cfgNode);
+                }
+            }
+            System.Console.WriteLine("Finish Dep analysis");
+            System.Console.WriteLine(depGraph);
+            var depGraphDGML = DGMLSerializer.Serialize(depGraph);
+            var cfgGraphDGML = DGMLSerializer.Serialize(cfg);
+            var ptgExit = result[cfg.Exit.Id].Output;
+            //ptgExit.RemoveTemporalVariables();
+            //ptgExit.RemoveDerivedVariables();
+
+            var ptgDGML = DGMLSerializer.Serialize(ptgExit);
+            this.PropagateExpressions(cfg);
+            if (method.Name == "MoveNext")
+            {
+                this.AnalyzeScopeMethods(cfg, result);
+            }
+        }
+
+        void AnalyzeScopeMethods(ControlFlowGraph cfg, DataFlowAnalysisResult<PointsToGraph>[] ptgs)
+        {
+
+            var iteratorAnalysis = new IteratorStateAnalysis(cfg, ptgs, this.equalities);
+            var result = iteratorAnalysis.Analyze();
+            foreach (var node in cfg.ForwardOrder)
+            {
+
+                System.Console.Out.WriteLine("At {0} Before {1}, After {2}", node.Id, result[node.Id].Input, result[node.Id].Output);
+                System.Console.Out.WriteLine(String.Join(Environment.NewLine, node.Instructions));
+            }
+
+            var dependencyAnalysis = new IteratorDependencyAnalysis(cfg, ptgs, this.equalities);
+            var resultDepAnalysis = dependencyAnalysis.Analyze();
+
+            IDictionary<IVariable, IExpression> schemaMap = new Dictionary<IVariable, IExpression>();
+            IDictionary<IVariable, string> columnMap = new Dictionary<IVariable, string>();
+            // Maybe a map for IEpression to IVariable?
+            IVariable row = null;
+            IVariable rowEnum = null;
+            int state = 0;
+            foreach (var node in cfg.ForwardOrder)
+            {
+                foreach (var instruction in node.Instructions)
+                {
+                    // check if the statement modify the iterator state 
+                    state = AnalyzeIteratorState(state, instruction);
+
+                    if (instruction is MethodCallInstruction)
+                    {
+                        var methodCallStmt = instruction as MethodCallInstruction;
+                        var methodInvoked = methodCallStmt.Method;
+                        var bindingVar = methodCallStmt.Result;
+                        if (methodInvoked.Name == "get_Schema" && methodInvoked.ContainingType.Name == "RowSet")
+                        {
+                            var arg = methodCallStmt.Arguments[0];
+                            var inputTable = equalities[arg];
+                            schemaMap[bindingVar] = inputTable;
+                        }
+                        if (methodInvoked.Name == "get_Rows" && methodInvoked.ContainingType.Name == "RowSet")
+                        {
+                            var arg = methodCallStmt.Arguments[0];
+                            var inputTable = equalities[arg];
+                            row = bindingVar;
+                            schemaMap[bindingVar] = inputTable;
+                        }
+                        if (methodInvoked.Name == "GetEnumerator" && methodInvoked.Name == "GetEnumerator")
+                        {
+                            var arg = methodCallStmt.Arguments[0];
+                            var enumerator = equalities[arg];
+                            if (arg == row)
+                            {
+                                rowEnum = methodCallStmt.Result;
+                            }
+                        }
+                        if (methodInvoked.Name == "IndexOf" && methodInvoked.ContainingType.Name == "Schema")
+                        {
+                            var column = equalities[methodCallStmt.Arguments[1]];
+                            var previousBinding = methodCallStmt.Arguments[0];
+                            var inputTable = schemaMap[previousBinding];
+                            columnMap[bindingVar] = inputTable + ":" + column;
+                            // Y have the bidingVar that refer to the column, now I can find the "field"
+                        }
+
+                    }
+                    if (instruction is LoadInstruction)
+                    {
+                        var loadStmt = instruction as LoadInstruction;
+                        if (loadStmt.Operand is InstanceFieldAccess)
+                        {
+                            var field = (loadStmt.Operand as InstanceFieldAccess).Field;
+                            if (field.Name[0] == '<' && field.Name.Contains(">"))
+                            {
+
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        private bool CheckIterationStateModification(IInstruction instruction, ref int state)
+        {
+            bool res = false;
+            if (instruction is StoreInstruction)
+            {
+                var storeStmt = instruction as StoreInstruction;
+                if (storeStmt.Result is InstanceFieldAccess)
+                {
+                    var access = storeStmt.Result as InstanceFieldAccess;
+                    if (access.Field.Name == "<>1__state")
+                    {
+                        res = true;
+                        state = int.Parse(this.equalities[storeStmt.Operand].ToString());
+
+                    }
+                }
+            }
+            return res;  
+        }
+        private int AnalyzeIteratorState(int state, IInstruction instruction)
+        {
+            // Need to add logic to determine the state
+            // 
+            var isIterator = CheckIterationStateModification(instruction, ref state);
+
+            return state;
+        }
+
+        private void PropagateExpressions(ControlFlowGraph cfg)
+        {
+            foreach (var node in cfg.ForwardOrder)
+            {
+                this.PropagateExpressions(node);
+            }
+        }
+
+        private void PropagateExpressions(CFGNode node)
+        {
+            foreach (var instruction in node.Instructions)
+            {
+                this.PropagateExpressions(instruction);
+            }
+        }
+
+        private void PropagateExpressions(IInstruction instruction)
+        {
+            var definition = instruction as DefinitionInstruction;
+
+            if (definition != null && definition.HasResult)
+            {
+                var expr = definition.ToExpression().ReplaceVariables(equalities);
+                equalities.Add(definition.Result, expr);
+            }
+        }
+    }
+
+    class Program
+    {
+        private Host host;
+
+        public Program(Host host)
+        {
+            this.host = host;
+        }
+
+        public void VisitMethods()
+        {
+            var methods = host.Assemblies.SelectMany(a => a.RootNamespace.GetAllTypes())
+                                         .SelectMany(t => t.Members.OfType<MethodDefinition>())
+                                         .Where(md => md.Body != null);
+
+            foreach (var method in methods)
+            {
+                VisitMethod(method);
+            }
+        }
+
+        private void VisitMethod(MethodDefinition method)
+        {
+
+            System.Console.WriteLine(method.Name);
+            //if (!method.ContainingType.Name.Equals("SampleReducer") || !method.Name.Equals("Reduce"))
+            //    return;
+            if (method.ContainingType.ContainingType == null) return;
+            if (!method.ContainingType.ContainingType.Name.Equals("SampleReducer2") || !method.ContainingType.Name.Equals("<Reduce>d__1") || !method.Name.Equals("MoveNext"))
+                return;
+
+            Backend.Model.ControlFlowGraph cfg = DoAnalysisPhases(method);
+
+            var pointsTo = new PointsToAnalysis(cfg, method);
+            var result = pointsTo.Analyze();
+
+            var dependencyAnalysis = new DependencyAnalysis(method, cfg, result);
+            dependencyAnalysis.Analyze();
+
+            //var dependencyGraph = new DependencyGraph();
+
+            //foreach (var cfgNode in cfg.ForwardOrder)
+            //{
+            //    var ptg = result[cfgNode.Id].Output;
+            //    foreach (var instruction in cfgNode.Instructions)
+            //    {
+            //        var uses = instruction.UsedVariables;
+            //        var defs = instruction.ModifiedVariables;
+            //        var access = "";
+            //        //if (instruction is StoreInstruction)
+            //        //{
+            //        //    var store = instruction as StoreInstruction;
+            //        //    if (store.Result is InstanceFieldAccess)
+            //        //    {
+            //        //        var fieldAccess = store.Result as InstanceFieldAccess;
+            //        //        access = fieldAccess.FieldName;
+            //        //        defs.Add(store.Operand);
+            //        //        LastDefSet(store.Operand, fieldAccess.Field, cfgNode.Id, ptg);
+            //        //    }
+
+            //        //}
+            //        //else
+            //        //{
+
+            //        //}
+            //        //// TODO: Complete
+            //        foreach (var def in defs)
+            //        {
+            //            var v = def.Variables.Single();
+            //            if (ptg.Variables.Contains(v))
+            //            {
+            //                var ptgNodes = ptg.GetTargets(v);
+            //                foreach (var ptgNode in ptgNodes)
+            //                {
+            //                    var depNode = new DependencyInfo(ptgNode, access);
+            //                    dependencyGraph.AddVertex(depNode);
+            //                    var useAccess = "";
+            //                    if (instruction is LoadInstruction)
+            //                    {
+            //                        var load = instruction as LoadInstruction;
+            //                        if (load.Operand is InstanceFieldAccess)
+            //                        {
+            //                            var fieldAccess = load.Operand as InstanceFieldAccess;
+            //                            useAccess = fieldAccess.FieldName;
+            //                            uses.Add(load.Result);
+            //                        }
+            //                    }
+
+            //                    foreach (var use in uses)
+            //                    {
+            //                        var v2 = use.Variables.Single();
+            //                        if (ptg.Variables.Contains(v2))
+            //                        {
+            //                            var ptgUseNodes = ptg.GetTargets(v2);
+            //                            foreach (var ptgNode2 in ptgUseNodes)
+            //                            {
+            //                                var useNode = new DependencyInfo(ptgNode2, useAccess);
+            //                                dependencyGraph.ConnectVertex(depNode, useNode);
+            //                            }
+            //                        }
+            //                    }
+            //                }
+            //            }
+            //        }
+            //   }
+            //}
+            //System.Console.WriteLine(dependencyGraph);
+
+            var dgml = DGMLSerializer.Serialize(cfg);
+
+            //dgml = DGMLSerializer.Serialize(host, typeDefinition);
+        }
+
+        private static Backend.Model.ControlFlowGraph DoAnalysisPhases(MethodDefinition method)
+        {
+            var disassembler = new Disassembler(method);
+            var methodBody = disassembler.Execute();
+            method.Body = methodBody;
+
+            var cfAnalysis = new ControlFlowAnalysis(method.Body);
+            var cfg = cfAnalysis.GenerateNormalControlFlow();
+
+            var domAnalysis = new DominanceAnalysis(cfg);
+            domAnalysis.Analyze();
+            domAnalysis.GenerateDominanceTree();
+
+            var loopAnalysis = new NaturalLoopAnalysis(cfg);
+            loopAnalysis.Analyze();
+
+            var domFrontierAnalysis = new DominanceFrontierAnalysis(cfg);
+            domFrontierAnalysis.Analyze();
+
+            var splitter = new WebAnalysis(cfg);
+            splitter.Analyze();
+            splitter.Transform();
+
+            methodBody.UpdateVariables();
+
+            var analysis = new TypeInferenceAnalysis(cfg);
+            analysis.Analyze();
+
+            var copyProgapagtion = new ForwardCopyPropagationAnalysis(cfg);
+            copyProgapagtion.Analyze();
+            copyProgapagtion.Transform(methodBody);
+
+            var backwardCopyProgapagtion = new BackwardCopyPropagationAnalysis(cfg);
+            backwardCopyProgapagtion.Analyze();
+            backwardCopyProgapagtion.Transform(methodBody);
+
+            var ssa = new StaticSingleAssignment(methodBody, cfg);
+            ssa.Transform();
+            methodBody.UpdateVariables();
+
+            return cfg;
+        }
+
+
+        static void Main(string[] args)
+        {
+            const string root = @"C:\Users\t-diga\Source\Repos\ScopeExamples\ILAnalyzer\"; // @"..\..\..";
+            //const string root = @"C:"; // casa
+            //const string root = @"C:\Users\Edgar\Projects"; // facu
+
+            const string input = root + @"\bin\Debug\ILAnalyzer.exe";
+
+            // const string input = root + @"\Test\bin\Debug\Test.dll";
+            //const string input = root + @"\Test projects\SharpCompress\bin\SharpCompress.dll"; // total  | ok  | unk 
+            //const string input = root + @"\Test projects\FtpLib\bin\Debug\ftplib.dll"; // total 4 | ok 0 | unk 4
+            //const string input = root + @"\Test projects\Json\Src\Newtonsoft.Json\bin\Debug\Net45\Newtonsoft.Json.dll"; // total 250 | ok 75 | unk 175
+            //const string input = root + @"\Jackalope\DevMark\Data\Tests\Olden\BH\BH\bin\Debug\BH.exe"; // total 37 | ok 33 | unk 4
+            //const string input = root + @"\Jackalope\DevMark\Data\Tests\Olden\BiSort\BiSort\bin\Debug\BiSort.exe"; // total 3 | ok 0 | unk 3
+            //const string input = root + @"\Jackalope\DevMark\Data\Tests\Olden\Em3d\Em3d\bin\Debug\Em3d.exe"; // total 18 | ok 14 | unk 4
+            //const string input = root + @"\Jackalope\DevMark\Data\Tests\Olden\Health\Health\bin\Debug\Health.exe"; // total 11 | ok 6 | unk 5
+            //const string input = root + @"\Jackalope\DevMark\Data\Tests\Olden\Perimeter\Perimeter\bin\Debug\Perimeter.exe"; // total 1 | ok 0 | unk 1
+            //const string input = root + @"\Jackalope\DevMark\Data\Tests\Olden\Power\Power\bin\Debug\Power.exe"; // total 18 | ok 15 | unk 3
+            //const string input = root + @"\Jackalope\DevMark\Data\Tests\Olden\TSP\TSP\bin\Debug\TSP.exe"; // total 7 | ok 0 | unk 7
+            //const string input = root + @"\Jackalope\DevMark\Data\Tests\Large\luindex\bin\NLucene.exe"; // total 146 | ok 73 | unk 73
+            //const string input = root + @"\Jackalope\DevMark\Data\Tests\Large\lusearch\bin\NLucene2.exe"; // total 188 | ok 85 | unk 103
+            //const string input = root + @"\Jackalope\DevMark\Data\Tests\Spec\SpecRaytracer\SpecRaytracer\bin\Debug\SpecRaytracer.exe"; // total 35 | ok 25 | unk 10
+            //const string input = root + @"\Jackalope\DevMark\Data\Tests\Spec\DB\DB\bin\Debug\DB.exe"; // total 17 | ok 9 | unk 8
+            //const string input = root + @"\Jackalope\DevMark\Data\Tests\Simple\DelegateTests\DelegateTests\bin\Debug\DelegateTests.exe"; // total 3 | ok 3 | unk 0
+            //const string input = root + @"\Jackalope\DevMark\Data\Tests\Simple\FilterMarkSumExample\FilterMarkSumExample\bin\Debug\FilterMarkSumExample.exe"; // total 5 | ok 4 | unk 1
+            //const string input = root + @"\Jackalope\DevMark\Data\Tests\Simple\LibQuantum\LibQuantum\bin\Debug\LibQuantum.exe"; // total 54 | ok 34 | unk 20
+            //const string input = root + @"\Jackalope\DevMark\Data\Tests\Simple\MRaytracer\MRaytracer\bin\Debug\MRaytracer.exe"; // total 5 | ok 5 | unk 0
+            //const string input = root + @"\Jackalope\DevMark\Data\Tests\Simple\RList\RList\bin\Debug\RList.exe"; // total 3 | ok 1 | unk 2
+            //const string input = root + @"\Jackalope\DevMark\Data\Tests\Simple\SetAndDict\SetAndDict\bin\Debug\SetAndDict.exe"; // total 16 | ok 14 | unk 2
+            //const string input = root + @"\Jackalope\DevMark\Data\Tests\Simple\TList\TList\bin\Debug\TList.exe"; // total 10 | ok 1 | unk 9
+            //const string input = root + @"\Jackalope\DevMark\Data\Tests\Simple\Tree\Tree\bin\Debug\Tree.exe"; // total 0 | ok 0 | unk 0
+
+            //using (var host = new PeReader.DefaultHost())
+            //using (var assembly = new Assembly(host))
+            //{
+            //	assembly.Load(input);
+
+            //	Types.Initialize(host);
+
+            //	//var extractor = new TypesExtractor(host);
+            //	//extractor.Extract(assembly.Module);
+
+            //	var visitor = new MethodVisitor(host, assembly.PdbReader);
+            //	visitor.Rewrite(assembly.Module);
+
+            //	DisplayLoopsInfo(visitor.TotalLoops, visitor.RecognizedLoops);
+            //}
+
+            var host = new Host();
+            //host.Assemblies.Add(assembly);
+
+            var loader = new Loader(host);
+            loader.LoadAssembly(input);
+            
+            // loader.LoadCoreAssembly();
+            /*
+            var type = new BasicType("Examples")
+            {
+                Assembly = new AssemblyReference("Test"),
+                Namespace = "Test"
+            };
+
+            var typeDefinition = host.ResolveReference(type);
+
+            var method = new MethodReference("ExampleLoopEnumerator", null)
+            {
+                ContainingType = type,
+                ReturnType = PlatformTypes.Void
+            };
+
+            var methodDefinition = host.ResolveReference(method) as MethodDefinition;
+            */
+            var program = new Program(host);
+            program.VisitMethods();
+          
+            System.Console.WriteLine("Done!");
+            System.Console.ReadKey();
+        }
+    }
 }
