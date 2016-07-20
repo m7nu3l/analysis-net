@@ -195,44 +195,52 @@ namespace Backend.Utils
 			return result;
 		}
 
-		public static bool IsTemporal(this IVariable variable)
-		{
-			while (variable is DerivedVariable)
-			{
-				var derived = variable as DerivedVariable;
-				variable = derived.Original;
-			}
+        public static bool IsTemporal(this IVariable variable)
+        {
+            while (variable is DerivedVariable)
+            {
+                var derived = variable as DerivedVariable;
+                variable = derived.Original;
+            }
 
-			var result = variable is TemporalVariable;
-			return result;
-		}
+            var result = variable is TemporalVariable;
+            return result;
+        }
 
-		public static bool IsCopy(this IInstruction instruction, out IVariable left, out IVariable right)
-		{
-			var result = false;
-			left = null;
-			right = null;
+        public static bool IsCopy(this IInstruction instruction, out IVariable left, out IVariable right)
+        {
+            var result = false;
+            left = null;
+            right = null;
 
-			if (instruction is LoadInstruction)
-			{
-				var load = instruction as LoadInstruction;
+            if (instruction is LoadInstruction)
+            {
+                var load = instruction as LoadInstruction;
 
-				if (load.Operand is IVariable)
-				{
-					left = load.Result;
-					right = load.Operand as IVariable;
-					result = true;
-				}
-			}
+                if (load.Operand is IVariable)
+                {
+                    left = load.Result;
+                    right = load.Operand as IVariable;
+                    result = true;
+                }
+            }
 
-			return result;
-		}
+            return result;
+        }
 
-		public static IExpression ReplaceVariables<T>(this IExpression expr, IDictionary<IVariable, T> equalities) where T : IExpression
+        public static IExpression ReplaceVariables<T>(this IExpression expr, IDictionary<IVariable, T> equalities) where T : IExpression
 		{
 			foreach (var variable in expr.Variables)
 			{
-				if (variable.IsTemporal())
+				var isTemporal = variable is TemporalVariable;
+
+				if (variable is DerivedVariable)
+				{
+					var derived = variable as DerivedVariable;
+					isTemporal = derived.Original is TemporalVariable;
+				}
+
+				if (isTemporal)
 				{
 					var hasValue = equalities.ContainsKey(variable);
 
@@ -264,7 +272,37 @@ namespace Backend.Utils
 			}
 		}
 
-		public static bool IsPure(this IMethodReference method)
+        public static void RemoveDerivedVariables(this PointsToGraph ptg)
+        {
+            var temporals = ptg.Variables.OfType<DerivedVariable>().ToArray();
+
+            foreach (var temporal in temporals)
+            {
+                ptg.Remove(temporal);
+            }
+        }
+
+        #region MayAlias Analysis
+        public static bool MayAlias(this PointsToGraph ptg, IVariable v1, IVariable v2)
+        {
+            return ptg.GetTargets(v1).Intersect(ptg.GetTargets(v2)).Any();
+        }
+
+        public static bool MayAlias(this PointsToGraph ptg, IVariable v1, IVariable v2, IFieldReference f)
+        {
+            var query = ptg.GetTargets(v2, f);
+
+            return ptg.GetTargets(v1).Intersect(query).Any();
+        }
+
+        public static bool MayAlias(this PointsToGraph ptg, IVariable v1, IFieldReference f, IVariable v2)
+        {
+            var query = ptg.GetTargets(v1, f);
+            return ptg.GetTargets(v2).Intersect(query).Any();
+        }
+        #endregion
+
+        public static bool IsPure(this IMethodReference method)
 		{
 			var result = method.Attributes.Any(a => a.Type.Equals(PlatformTypes.PureAttribute));
 

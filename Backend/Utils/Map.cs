@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Backend.Model;
 using Model;
 
 namespace Backend.Utils
@@ -48,7 +49,16 @@ namespace Backend.Utils
 
 	public class MapSet<TKey, TValue> : Map<TKey, TValue, HashSet<TValue>>
 	{
-		public bool MapEquals(MapSet<TKey, TValue> other)
+        public MapSet(): base()
+        {
+        }
+
+        public MapSet(MapSet<TKey, TValue> map)
+        {
+            this.AddRange(map);
+        }
+
+        public bool MapEquals(MapSet<TKey, TValue> other)
 		{
 			Func<ISet<TValue>, ISet<TValue>, bool> setEquals = (a, b) => a.SetEquals(b);
 			return this.DictionaryEquals(other, setEquals);

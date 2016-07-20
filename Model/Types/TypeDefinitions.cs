@@ -186,7 +186,17 @@ namespace Model.Types
 			this.Attributes = new HashSet<CustomAttribute>();
 		}
 
-		public override string ToString()
+        public override bool Equals(object obj)
+        {
+            var oth = obj as FieldReference;
+            return oth.Name.Equals(Name) && oth.Type.Equals(Type) && oth.ContainingType.Equals(ContainingType);
+        }
+        public override int GetHashCode()
+        {
+            return Name.GetHashCode() ^ Type.GetHashCode() ^ ContainingType.GetHashCode();
+        }
+
+        public override string ToString()
 		{
 			var modifier = this.IsStatic ? "static " : string.Empty;
 			return string.Format("{0}{1} {2}", modifier, this.Type, this.Name);

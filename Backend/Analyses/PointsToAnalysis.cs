@@ -10,21 +10,95 @@ using System.Text;
 using Model.Types;
 using Model;
 using Backend.Model;
+using Model.ThreeAddressCode.Visitor;
 
 namespace Backend.Analyses
 {
-	// May Points-To Analysis
+    // May Points-To Analysis
     public class PointsToAnalysis : ForwardDataFlowAnalysis<PointsToGraph>
     {
-        private int nextPTGNodeId;
-		private PointsToGraph initialGraph;
-		private IDictionary<uint, int> nodeIdAtOffset;
+        class PTAVisitor : InstructionVisitor
+        {
+            private PointsToGraph ptg;
+            private PointsToAnalysis ptAnalysis;
+            internal PTAVisitor(PointsToGraph ptgNode, PointsToAnalysis ptAnalysis)
+            {
+                this.ptg = ptgNode;
+                this.ptAnalysis = ptAnalysis;
+            }
+            public override void Visit(LoadInstruction instruction)
+            {
+                var offset = instruction.Offset;
+                var load = instruction as LoadInstruction;
 
-		public PointsToAnalysis(ControlFlowGraph cfg)
+                if (load.Operand is Constant)
+                {
+                    var constant = load.Operand as Constant;
+
+                    if (constant.Value == null)
+                    {
+                        ptAnalysis.ProcessNull(ptg, load.Result);
+                    }
+                }
+                if (load.Operand is IVariable)
+                {
+                    var variable = load.Operand as IVariable;
+                    ptAnalysis.ProcessCopy(ptg, load.Result, variable);
+                }
+                else if (load.Operand is InstanceFieldAccess)
+                {
+                    var access = load.Operand as InstanceFieldAccess;
+                    ptAnalysis.ProcessLoad(ptg, offset, load.Result, access);
+                }
+            }
+            public override void Visit(StoreInstruction instruction)
+            {
+                var store = instruction;
+                if (store.Result is InstanceFieldAccess)
+                {
+                    var access = store.Result as InstanceFieldAccess;
+                    ptAnalysis.ProcessStore(ptg, access, store.Operand);
+                }
+            }
+            public override void Visit(CreateObjectInstruction instruction)
+            {
+                if (instruction is CreateObjectInstruction)
+                {
+                    var allocation = instruction as CreateObjectInstruction;
+                    ptAnalysis.ProcessObjectAllocation(ptg, allocation.Offset, allocation.Result);
+                }
+            }
+            public override void Visit(CreateArrayInstruction instruction)
+            {
+                var allocation = instruction;
+                ptAnalysis.ProcessArrayAllocation(ptg, allocation.Offset, allocation.Result);
+            }
+            public override void Visit(ConvertInstruction instruction)
+            {
+                var convertion = instruction as ConvertInstruction;
+                ptAnalysis.ProcessCopy(ptg, convertion.Result, convertion.Operand);
+            }
+            public override void Visit(MethodCallInstruction instruction)
+            {
+                var methodCall = instruction as MethodCallInstruction;
+                //if (methodCall.Method.Name.Equals(".ctor") && methodCall.HasResult)
+                //{
+                //    ptAnalysis.ProcessCopy(ptg, methodCall.Result, methodCall.Arguments[0]);
+                //}
+            }
+
+        }
+
+        //private int nextPTGNodeId;
+		private PointsToGraph initialGraph;
+        private MethodDefinition method;
+
+		public PointsToAnalysis(ControlFlowGraph cfg, MethodDefinition method)
 			: base(cfg)
 		{
-            this.nextPTGNodeId = 1;
-			this.nodeIdAtOffset = new Dictionary<uint, int>();
+            this.method = method;
+            //this.nextPTGNodeId = 1;
+			//
 			this.CreateInitialGraph();
 		}
 
@@ -49,69 +123,29 @@ namespace Backend.Analyses
         {
             var ptg = input.Clone();
 
-            foreach (var instruction in node.Instructions)
-            {
-				this.Flow(ptg, instruction);
-            }
+            var ptaVisitor = new PTAVisitor(ptg, this);
+            ptaVisitor.Visit(node);
+
+            //foreach (var instruction in node.Instructions)
+            //{
+            //    this.Flow(ptg, instruction as Instruction);
+            //}
 
             return ptg;
         }
 
-		private void Flow(PointsToGraph ptg, IInstruction instruction)
-		{
-			var offset = instruction.Offset;
-
-			if (instruction is CreateObjectInstruction)
-			{
-				var allocation = instruction as CreateObjectInstruction;
-				this.ProcessObjectAllocation(ptg, offset, allocation.Result);
-			}
-			else if (instruction is CreateArrayInstruction)
-			{
-				var allocation = instruction as CreateArrayInstruction;
-				this.ProcessArrayAllocation(ptg, offset, allocation.Result);
-			}
-			else if (instruction is LoadInstruction)
-			{
-				var load = instruction as LoadInstruction;
-
-				if (load.Operand is Constant)
-				{
-					var constant = load.Operand as Constant;
-
-					if (constant.Value == null)
-					{
-						this.ProcessNull(ptg, load.Result);
-					}
-				}
-				if (load.Operand is IVariable)
-				{
-					var variable = load.Operand as IVariable;
-					this.ProcessCopy(ptg, load.Result, variable);
-				}
-				else if (load.Operand is InstanceFieldAccess)
-				{
-					var access = load.Operand as InstanceFieldAccess;
-					this.ProcessLoad(ptg, offset, load.Result, access);
-				}
-			}
-			else if (instruction is StoreInstruction)
-			{
-				var store = instruction as StoreInstruction;
-
-				if (store.Result is InstanceFieldAccess)
-				{
-					var access = store.Result as InstanceFieldAccess;
-					this.ProcessStore(ptg, access, store.Operand);
-				}
-			}
-		}
+        //private void Flow(PointsToGraph ptg, Instruction instruction)
+        //{
+        //    var ptaVisitor = new PTAVisitor(ptg, this);
+        //    ptaVisitor.Visit(instruction);
+        //}
 
 		private void CreateInitialGraph()
 		{
 			var ptg = new PointsToGraph();
 			var variables = cfg.GetVariables();
 
+            int counter = -1;
 			foreach (var variable in variables)
 			{
 				if (variable.Type.TypeKind == TypeKind.ValueType) continue;
@@ -120,9 +154,12 @@ namespace Backend.Analyses
 				{
 					var isThisParameter = variable.Name == "this";
 					var kind = isThisParameter ? PTGNodeKind.Object : PTGNodeKind.Unknown;
-					var node = new PTGNode(nextPTGNodeId++, variable.Type, 0, kind);
+                    // var node = new PTGNode(nextPTGNodeId++, variable.Type, 0, kind);
+                    //var node = ptg.GetNode(0, variable.Type, kind);
+                    // ptg.Add(node);
 
-					ptg.Add(node);
+                    var node = new ParameterNode(counter--, variable.Name);
+                    ptg.Add(node);
 					ptg.PointsTo(variable, node);
 				}
 				else
@@ -181,17 +218,21 @@ namespace Backend.Analyses
 
             ptg.RemoveEdges(dst);
 			var nodes = ptg.GetTargets(access.Instance);
-
             foreach (var node in nodes)
             {
                 var hasField = node.Targets.ContainsKey(access.Field);
 
                 if (!hasField)
 				{
-					var target = this.GetNode(ptg, offset, dst.Type, PTGNodeKind.Unknown);
-
-					ptg.PointsTo(node, access.Field, target);
-				}
+                    
+                    // ptg.PointsTo(node, access.Field, ptg.Null);
+                    if (MayAliasParameter(ptg, node))
+                    {
+                        // Preventive assignement of a new Node unknown (should be only for parameters)
+                        var target = this.GetNode(ptg, offset, dst.Type, PTGNodeKind.Unknown);
+                        ptg.PointsTo(node, access.Field, target);
+                    }
+                }
 
                 var targets = node.Targets[access.Field];
 
@@ -200,6 +241,13 @@ namespace Backend.Analyses
                     ptg.PointsTo(dst, target);
                 }
             }
+        }
+        private bool MayAliasParameter(PointsToGraph ptg, PTGNode n)
+        {
+            var result = method.Body.Parameters.Intersect(n.Variables).Any();
+            // This version does not need the inverted mapping of nodes-> variables (which may be expensive to maintain)
+            // var result = method.Body.Parameters.Any(p =>ptg.GetTargets(p).Contains(n));
+            return result;
         }
 
         private void ProcessStore(PointsToGraph ptg, InstanceFieldAccess access, IVariable src)
@@ -219,22 +267,22 @@ namespace Backend.Analyses
 		private PTGNode GetNode(PointsToGraph ptg, uint offset, IType type, PTGNodeKind kind = PTGNodeKind.Object)
 		{
 			PTGNode node;
+            node = ptg.GetNode(offset, type, kind);
+            //if (nodeIdAtOffset.ContainsKey(offset))
+            //{
+            //	var nodeId = nodeIdAtOffset[offset];
+            //	node = ptg.GetNode(nodeId);
+            //}
+            //else
+            //{
+            //	var nodeId = nextPTGNodeId++;
+            //	node = new PTGNode(nodeId, type, offset, kind);
 
-			if (nodeIdAtOffset.ContainsKey(offset))
-			{
-				var nodeId = nodeIdAtOffset[offset];
-				node = ptg.GetNode(nodeId);
-			}
-			else
-			{
-				var nodeId = nextPTGNodeId++;
-				node = new PTGNode(nodeId, type, offset, kind);
+            //	ptg.Add(node);
+            //	nodeIdAtOffset.Add(offset, nodeId);
+            //}
 
-				ptg.Add(node);
-				nodeIdAtOffset.Add(offset, nodeId);
-			}
-
-			return node;
+            return node;
 		}
     }
 }

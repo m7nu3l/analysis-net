@@ -42,6 +42,7 @@
   <ItemGroup>
     <Compile Include="Analyses\ControlFlowAnalysis.cs" />
     <Compile Include="Analyses\BackwardCopyPropagationAnalysis.cs" />
+    <Compile Include="Analyses\IteratorAnalysis.cs" />
     <Compile Include="Model\ControlFlowGraph.cs" />
     <Compile Include="Analyses\ForwardCopyPropagationAnalysis.cs" />
     <Compile Include="Analyses\DataFlowAnalysis.cs" />
@@ -50,6 +51,7 @@
     <Compile Include="Analyses\NaturalLoopAnalysis.cs" />
     <Compile Include="Analyses\PointsToAnalysis.cs" />
     <Compile Include="Analyses\ReachingDefinitionsAnalysis.cs" />
+    <Compile Include="Model\Graph.cs" />
     <Compile Include="Model\PointsToGraph.cs" />
     <Compile Include="Transformations\Disassembler.cs" />
     <Compile Include="Transformations\StaticSingleAssignment.cs" />
