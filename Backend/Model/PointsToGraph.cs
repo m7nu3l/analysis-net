@@ -20,7 +20,8 @@ namespace Backend.Model
     {
         Null,
         Object,
-		Unknown
+		Unknown,
+        Parameter
     }
 
     public class PTGNode
@@ -64,7 +65,7 @@ namespace Backend.Model
 			var other = obj as PTGNode;
 
 			return other != null &&
-				this.Id == other.Id &&
+				//this.Id == other.Id &&
 				this.Kind == other.Kind &&
 				this.Offset == other.Offset &&
 				object.Equals(this.Type, other.Type);
@@ -72,8 +73,9 @@ namespace Backend.Model
 
 		public override int GetHashCode()
 		{
-			return this.Id.GetHashCode();
-		}
+            //return this.Id.GetHashCode();
+            return this.Id.GetHashCode() + this.Kind.GetHashCode();
+        }
 
 		public override string ToString()
 		{
@@ -94,20 +96,64 @@ namespace Backend.Model
 		}
     }
 
+    public class NullNode : PTGNode
+    {
+        public NullNode() : base(0, PTGNodeKind.Null)
+        {
+        }
+        public override bool Equals(object obj)
+        {
+            var oth = obj as NullNode;
+            return oth!=null;
+        }
+        public override int GetHashCode()
+        {
+            return 0;
+        }
+        public override string ToString()
+        {
+            return "Null";
+        }
+    }
+
+    public class ParameterNode : PTGNode
+    {
+        public  string Parameter { get; private set;  }
+        public ParameterNode(int id, string parameter, PTGNodeKind kind = PTGNodeKind.Null) : base(id, PTGNodeKind.Parameter)
+        {
+            this.Parameter = parameter;
+        }
+        public override bool Equals(object obj)
+        {
+            var oth = obj as ParameterNode;
+            return oth != null && oth.Parameter.Equals(Parameter) && base.Equals(oth);
+        }
+        public override int GetHashCode()
+        {
+            return this.Parameter.GetHashCode() + base.GetHashCode();
+        }
+    }
     public class PointsToGraph
     {
 		private MapSet<IVariable, PTGNode> variables;
 		private IDictionary<int, PTGNode> nodes;
 
+        private IDictionary<uint, int> nodeIdAtOffset;
+        private int nextPTGNodeId;
+
         public PTGNode Null { get; private set; }
 
         public PointsToGraph()
         {
-            this.Null = new PTGNode(0, PTGNodeKind.Null);
+            this.Null = new NullNode();
             this.variables = new MapSet<IVariable, PTGNode>();            
 			this.nodes = new Dictionary<int, PTGNode>();
+            this.Add(this.Null);
 
-			this.Add(this.Null);
+            this.nodeIdAtOffset = new Dictionary<uint, int>();
+            nextPTGNodeId=1;
+
+            
         }
 
         public IEnumerable<IVariable> Variables
@@ -201,9 +247,32 @@ namespace Backend.Model
 			nodes.Add(node.Id, node);
 		}
 
-		public PTGNode GetNode(int id)
+		public PTGNode GetNode(uint offset, IType type, PTGNodeKind kind = PTGNodeKind.Object)
 		{
-			return nodes[id];
+
+            if(nodes.ContainsKey((int)offset))
+            {
+                return nodes[(int)offset];
+            }
+
+            var node = new PTGNode((int)offset, type, offset, kind);
+            this.Add(node);
+            return node;
+
+            //if (nodeIdAtOffset.ContainsKey(offset))
+            //{
+            //    var nodeId = nodeIdAtOffset[offset];
+            //    return nodes[nodeId];
+            //}
+            //else
+            //{
+            //    var nodeId = ++nextPTGNodeId;
+            //    var node = new PTGNode(nodeId, type, offset, kind);
+            //    this.Add(node);
+            //    nodeIdAtOffset.Add(offset, nodeId);
+            //    return node;
+            //}
+            // return nodes[id];
 		}
 
 		public ISet<PTGNode> GetTargets(IVariable variable)
@@ -242,6 +311,15 @@ namespace Backend.Model
             target.Sources.Add(field, source);
         }
 
+        public ISet<PTGNode> GetTargets(IVariable variable, IFieldReference field)
+        {
+            var result = new HashSet<PTGNode>();
+            foreach(var ptg in variables[variable])
+            {
+                result.AddRange(ptg.Targets[field]);
+            }
+            return result;
+        }
         public void RemoveEdges(IVariable variable)
         {
 			var hasVariable = this.Contains(variable);

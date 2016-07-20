@@ -534,7 +534,7 @@ namespace Model.ThreeAddressCode.Values
 		public override bool Equals(object obj)
 		{
 			if (object.ReferenceEquals(this, obj)) return true;
-			var other = obj as IVariable;
+			var other = obj as StaticFieldAccess;
 
 			return other != null &&
 				this.Name.Equals(other.Name);
@@ -609,7 +609,7 @@ namespace Model.ThreeAddressCode.Values
 		public override bool Equals(object obj)
 		{
 			if (object.ReferenceEquals(this, obj)) return true;
-			var other = obj as IVariable;
+			var other = obj as InstanceFieldAccess;
 
 			return other != null &&
 				this.Name.Equals(other.Name);
@@ -682,7 +682,7 @@ namespace Model.ThreeAddressCode.Values
 		public override bool Equals(object obj)
 		{
 			if (object.ReferenceEquals(this, obj)) return true;
-			var other = obj as IVariable;
+			var other = obj as ArrayLengthAccess;
 
 			return other != null &&
 				this.Name.Equals(other.Name);
@@ -785,7 +785,8 @@ namespace Model.ThreeAddressCode.Values
 		{
 			get
 			{
-				var pointerType = this.Reference.Type as PointerType;
+                var pointerType = new PointerType(this.Reference.Type);
+				//var pointerType = this.Reference.Type as PointerType;
 				return pointerType.TargetType;
 			}
 		}
