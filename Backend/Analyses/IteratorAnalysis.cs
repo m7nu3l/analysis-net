@@ -174,7 +174,7 @@ namespace Backend.Analyses
         }
         public override string ToString()
         {
-            return base.ToString()+"["+Field.ToString()+"]";
+            return base.ToString() + "[" + Field.ToString() + "]";
         }
     }
 
@@ -184,26 +184,28 @@ namespace Backend.Analyses
         public MapSet<string, string> A3 { get; set; }
         public MapSet<IVariable, string> A4 { get; set; }
 
-        public MapSet<PTGNode, string> Escaping { get; set;  }
+        public MapSet<PTGNode, string> Escaping { get; set; }
 
         public MapSet<PTGNode, string> Variables { get; set; }
         public MapSet<Location, string> Clousures { get; set; }
-        public MapSet<PTGNode, string> Output{ get; set;  }
-        public  DependencyDomain()
+        public MapSet<PTGNode, string> Output { get; set; }
+        public DependencyDomain()
         {
             A2 = new MapSet<IVariable, string>();
             A3 = new MapSet<string, string>();
             A4 = new MapSet<IVariable, string>();
+            // This is A3 in the paper
+            Clousures = new MapSet<Location, string>();
 
             Escaping = new MapSet<PTGNode, string>();
-            Clousures = new MapSet<Location, string>();
             Variables = new MapSet<PTGNode, string>();
             Output = new MapSet<PTGNode, string>();
+
         }
 
-    public override bool Equals(object obj)
+        public override bool Equals(object obj)
         {
-            var oth= obj as DependencyDomain;
+            var oth = obj as DependencyDomain;
             return oth.Escaping.MapEquals(Escaping)
                 && oth.Clousures.MapEquals(Clousures)
                 && oth.Variables.MapEquals(Variables)
@@ -212,7 +214,7 @@ namespace Backend.Analyses
         }
         public override int GetHashCode()
         {
-            return Escaping.GetHashCode() 
+            return Escaping.GetHashCode()
                 + Variables.GetHashCode()
                 + Clousures.GetHashCode()
                 + A4.GetHashCode()
@@ -221,10 +223,10 @@ namespace Backend.Analyses
         public DependencyDomain Clone()
         {
             var result = new DependencyDomain();
-            result.Escaping = new MapSet<PTGNode,string>(this.Escaping);
+            result.Escaping = new MapSet<PTGNode, string>(this.Escaping);
             result.Clousures = new MapSet<Location, string>(this.Clousures);
             result.Variables = new MapSet<PTGNode, string>(this.Variables);
-            result.Output= new MapSet<PTGNode, string>(this.Output);
+            result.Output = new MapSet<PTGNode, string>(this.Output);
 
             result.A2 = new MapSet<IVariable, string>(this.A2);
             result.A3 = new MapSet<string, string>(this.A3);
@@ -299,8 +301,34 @@ namespace Backend.Analyses
             // TODO: FIX!!
             return this.Equals(right);
         }
+        public override string ToString()
+        {
+            var result = "";
+            result += "A2\n";
+            foreach(var var in this.A2.Keys)
+            {
+                result += String.Format("{0}:{1}\n", var, ToString(A2[var]));
+            }
+            result += "A3\n";
+            foreach (var var in this.Clousures.Keys)
+            {
+                result += String.Format("{0}:{1}\n", var, ToString(Clousures[var]));
+            }
+            result += "A4\n";
+            foreach (var var in this.A4.Keys)
+            {
+                result += String.Format("{0}:{1}\n", var, ToString(A4[var]));
+            }
+
+            return result;
+        }
+        private string ToString(ISet<string> set)
+        {
+            var result = String.Join(",", set);
+            return result;
+        }
     }
-    public class IteratorDependencyAnalysis: ForwardDataFlowAnalysis<DependencyDomain>
+    public class IteratorDependencyAnalysis : ForwardDataFlowAnalysis<DependencyDomain>
     {
         internal class ScopeInfo
         {
@@ -325,7 +353,7 @@ namespace Backend.Analyses
             private IteratorDependencyAnalysis iteratorDependencyAnalysis;
             private DependencyDomain oldInput;
             private ScopeInfo scopeData;
-            internal DependencyDomain State { get; private set;  }
+            internal DependencyDomain State { get; private set; }
             private PointsToGraph ptg;
 
             public MoveNextVisitor(IteratorDependencyAnalysis iteratorDependencyAnalysis, IDictionary<IVariable, IExpression> equalities, ScopeInfo scopeData, PointsToGraph ptg, DependencyDomain oldInput)
@@ -399,9 +427,9 @@ namespace Backend.Analyses
                         //{
                         //    union1.UnionWith(this.State.A3[fieldAccess.FieldName]);
                         //}
-                        
+
                         // this is a[loc(o.f)]
-                        foreach(var ptgNode in ptg.GetTargets(o))
+                        foreach (var ptgNode in ptg.GetTargets(o))
                         {
                             var loc = new Location(ptgNode, field);
                             if (this.State.Clousures.ContainsKey(loc))
@@ -419,13 +447,10 @@ namespace Backend.Analyses
                         //    this.scopeData.schemaMap[loadStmt.Result] = inputTable;
                         //    // union1.Add(inputTable.ToString());
                         //}
+                    }
 
-                        this.State.A2[loadStmt.Result] = union1;
-                    }
-                    else
-                    {
-                        this.State.A2[loadStmt.Result] = union1;
-                    }
+                    this.State.A2[loadStmt.Result] = union1;
+
                     // TODO: Filter for columns only
                     if (scopeData.columnFIeldMap.ContainsKey(fieldAccess.Field))
                     {
@@ -453,7 +478,7 @@ namespace Backend.Analyses
                         // It should be this.f or N.f
                         foreach (var ptgNode in ptg.GetTargets(o))
                         {
-                             this.State.Clousures[new Location(ptgNode,field)] = union;
+                            this.State.Clousures[new Location(ptgNode, field)] = union;
                         }
                     }
                     else
@@ -466,7 +491,9 @@ namespace Backend.Analyses
 
                     }
                 }
-                if(scopeData.columnMap.ContainsKey(instruction.Operand))
+                // This is to connect the column field with the literal
+                // Do I need this?
+                if (scopeData.columnMap.ContainsKey(instruction.Operand))
                 {
                     var columnLiteral = scopeData.columnMap[instruction.Operand];
                     scopeData.columnFIeldMap[fieldAccess.Field] = columnLiteral;
@@ -492,7 +519,7 @@ namespace Backend.Analyses
                 }
                 // callResult = arg.IndexOf(colunm)
                 // we recover the table from arg and associate the column number with the call result
-                if (methodInvoked.Name == "IndexOf" && methodInvoked.ContainingType.Name == "Schema")
+                else if (methodInvoked.Name == "IndexOf" && methodInvoked.ContainingType.Name == "Schema")
                 {
                     var column = equalities[methodCallStmt.Arguments[1]];
                     var arg = methodCallStmt.Arguments[0];
@@ -503,31 +530,36 @@ namespace Backend.Analyses
                     this.State.A2.Add(callResult, table + ":" + column);
                     // Y have the bidingVar that refer to the column, now I can find the "field"
                 }
-
-
                 // This is when you get rows
-                // a2 = a2[v := a[arg_0]] 
-                if (methodInvoked.Name == "get_Rows" && methodInvoked.ContainingType.Name == "RowSet")
+                // a2 = a2[v<- a[arg_0]] 
+                else if (methodInvoked.Name == "get_Rows" && methodInvoked.ContainingType.Name == "RowSet")
                 {
                     var arg = methodCallStmt.Arguments[0];
+
+                    var union = new HashSet<string>();
+                    if (this.State.A2.ContainsKey(arg))
+                    {
+                        union.UnionWith(this.State.A2[arg]);
+                    }
+                    this.State.A2.Add(methodCallStmt.Result, union); // a2[ v = a2[arg[0]]] 
 
                     // TODO: I don't know I need this
                     var inputTable = equalities[arg];
                     scopeData.row = callResult;
                     scopeData.schemaMap[callResult] = inputTable;
+                }
+                // This is when you get enumerator (same as get rows)
+                // a2 = a2[v <- a[arg_0]] 
+                else if (methodInvoked.Name == "GetEnumerator" && methodInvoked.ContainingType.FullName == "IEnumerable<Row>")
+                {
+                    var arg = methodCallStmt.Arguments[0];
 
                     var union = new HashSet<string>();
-                    if(this.State.A2.ContainsKey(arg))
+                    if (this.State.A2.ContainsKey(arg))
                     {
                         union.UnionWith(this.State.A2[arg]);
                     }
                     this.State.A2.Add(methodCallStmt.Result, union); // a2[ v = a2[arg[0]]] 
-                }
-                // This is when you get enumerator (same as get rows)
-                // a2 = a2[v := a[arg_0]] 
-                if (methodInvoked.Name == "GetEnumerator"  && methodInvoked.ContainingType.FullName == "IEnumerable<Row>")
-                {
-                    var arg = methodCallStmt.Arguments[0];
 
                     // TODO: Do I need this?
                     var rows = equalities[arg] as MethodCallExpression;
@@ -538,68 +570,90 @@ namespace Backend.Analyses
                     }
                     var access = scopeData.schemaMap[arg] as InstanceFieldAccess;
                     scopeData.schemaMap[methodCallStmt.Result] = inputTable;
-
-                    var union = new HashSet<string>();
-                    if (this.State.A2.ContainsKey(arg))
-                    {
-                        union.UnionWith(this.State.A2[arg]);
-                    }
-                    this.State.A2.Add(methodCallStmt.Result, union); // a2[ v = a2[arg[0]]] 
                 }
-                if (methodInvoked.Name == "get_Current" && methodInvoked.ContainingType.FullName == "IEnumerator<Row>")
+                // v = arg.Current
+                // a2 := a2[v <- Table(i)] if Table(i) in a2[arg]
+                else if (methodInvoked.Name == "get_Current" && methodInvoked.ContainingType.FullName == "IEnumerator<Row>")
                 {
                     var arg = methodCallStmt.Arguments[0];
                     if (this.State.A2.ContainsKey(arg))
                     {
-                        var inputTables = this.State.A2[arg];
-                        this.State.A2.Add(methodCallStmt.Result, inputTables);
+                        var tables = this.State.A2[arg];
+                        this.State.A2.Add(methodCallStmt.Result, tables);
                     }
                 }
-                if (methodInvoked.Name == "get_Item" && methodInvoked.ContainingType.FullName == "Row")
+                // v = arg.Current
+                // a2 := a2[v <- Table(i)] if Table(i) in a2[arg]
+                else if (methodInvoked.Name == "MoveNext" && methodInvoked.ContainingType.FullName == "IEnumerator")
+                {
+                    var arg = methodCallStmt.Arguments[0];
+                    if (this.State.A2.ContainsKey(arg))
+                    {
+                        var tables = this.State.A2[arg];
+                        foreach (var table in tables)
+                        {
+                            this.State.A2.Add(methodCallStmt.Result, table.ToString() + ":RC");
+                        }
+                    }
+                }
+                // v = arg.getItem(col)
+                // a2 := a2[v <- Col(i, col)] if Table(i) in a2[arg]
+                else if (methodInvoked.Name == "get_Item" && methodInvoked.ContainingType.FullName == "Row")
                 {
                     var arg = methodCallStmt.Arguments[0];
                     var col = methodCallStmt.Arguments[1];
                     var columnLiteral = scopeData.columnMap[col];
-                    var table = equalities[arg];
-                  
-                    scopeData.row = callResult;
-                    scopeData.schemaMap[callResult] = table;
-                  
-                    
 
                     if (this.State.A2.ContainsKey(arg))
                     {
                         var tables = this.State.A2[arg];
-
                         foreach (var table_i in tables)
                         {
                             this.State.A2.Add(methodCallStmt.Result, table_i + ":" + columnLiteral);
                         }
                     }
+                    // Do I still need this
+                    var table = equalities[arg];
+                    scopeData.row = callResult;
+                    scopeData.schemaMap[callResult] = table;
                 }
-                if (methodInvoked.Name == "Set" && methodInvoked.ContainingType.Name == "ColumnData")
+                // arg.Set(arg1)
+                // a4 := a4[arg0 <- a4[arg0] U a2[arg1]] 
+                else if (methodInvoked.Name == "Set" && methodInvoked.ContainingType.Name == "ColumnData")
                 {
                     var arg0 = methodCallStmt.Arguments[0];
-                    var arg1= methodCallStmt.Arguments[1];
+                    var arg1 = methodCallStmt.Arguments[1];
+
+
+                    if (this.State.A2.ContainsKey(arg1))
+                    {
+                        this.State.A4.Add(arg0, this.State.A2[arg1]);
+                    }
+
+                    //var table2 = scopeData.schemaMap[arg0];
+                    //var columns = this.State.A2[arg0];
 
                     // var table = this.equalities[arg0];
 
                     //scopeData.row = bindingVar;
                     //scopeData.schemaMap[bindingVar] = table;
-
-                    var table2= scopeData.schemaMap[arg0];
-                    var columns = this.State.A2[arg0];
-
-                    if (this.State.A2.ContainsKey(arg1))
-                    {
-
-                        this.State.A4.Add(arg0, this.State.A2[arg1] );
-                    }
                 }
+                // other methdos
+                else
+                {
+                    // Pure Methods
+                    foreach(var arg in methodCallStmt.Arguments)
+                    {
+                        if (State.A2.ContainsKey(arg))
+                        {
+                            var tables = this.State.A2[arg];
+                            this.State.A2.AddRange(methodCallStmt.Result, tables);
+                        }
 
-
+                    }
+                    // Unpure methods
+                }
             }
-
         }
 
 
@@ -607,7 +661,7 @@ namespace Backend.Analyses
         DataFlowAnalysisResult<PointsToGraph>[] ptgs;
         private ScopeInfo scopeData;
 
-        public IteratorDependencyAnalysis(ControlFlowGraph cfg, DataFlowAnalysisResult<PointsToGraph>[] ptgs, IDictionary<IVariable, IExpression> equalitiesMap) :base(cfg)
+        public IteratorDependencyAnalysis(ControlFlowGraph cfg, DataFlowAnalysisResult<PointsToGraph>[] ptgs, IDictionary<IVariable, IExpression> equalitiesMap) : base(cfg)
         {
             this.ptgs = ptgs;
             this.equalities = equalitiesMap;
@@ -616,12 +670,12 @@ namespace Backend.Analyses
 
         protected override DependencyDomain InitialValue(CFGNode node)
         {
-           var depValues = new DependencyDomain();
-           var currentPTG = ptgs[cfg.Exit.Id].Output;
-           var thisVar = currentPTG.Variables.Single(v => v.Name == "this"); 
-           foreach(var ptgNode in currentPTG.GetTargets(thisVar))
-           {
-                foreach(var target in ptgNode.Targets)
+            var depValues = new DependencyDomain();
+            var currentPTG = ptgs[cfg.Exit.Id].Output;
+            var thisVar = currentPTG.Variables.Single(v => v.Name == "this");
+            foreach (var ptgNode in currentPTG.GetTargets(thisVar))
+            {
+                foreach (var target in ptgNode.Targets)
                 {
                     if (target.Key.Type.ToString() == "RowSet" || target.Key.Type.ToString() == "Row")
                     {
@@ -630,9 +684,9 @@ namespace Backend.Analyses
                         depValues.Clousures.Add(new Location(ptgNode, target.Key), target.Key.Name);
                     }
                 }
-           }
+            }
 
-           return depValues;
+            return depValues;
         }
 
         protected override bool Compare(DependencyDomain left, DependencyDomain right)
