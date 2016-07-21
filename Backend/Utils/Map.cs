@@ -28,6 +28,13 @@ namespace Backend.Utils
 			var collection = this.AddKeyAndGetValues(key);
 			collection.AddRange(values);
 		}
+        public void UnionWith(Map<TKey, TValue, TCollection> oth)
+        {
+            foreach (var entry in oth)
+            {
+                this.AddRange(entry.Key, entry.Value);
+            }
+        }
 
 		private TCollection AddKeyAndGetValues(TKey key)
 		{
