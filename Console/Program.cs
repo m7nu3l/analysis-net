@@ -452,7 +452,7 @@ namespace Console
                     }
                 }
             }
-            return res;  
+            return res;
         }
         private int AnalyzeIteratorState(int state, IInstruction instruction)
         {
@@ -514,7 +514,7 @@ namespace Console
 
         private void VisitMethod(MethodDefinition method)
         {
-            
+
             //if (!method.ContainingType.Name.Equals("SampleReducer") || !method.Name.Equals("Reduce"))
             //    return;
             if (method.ContainingType.ContainingType == null) return;
@@ -666,7 +666,7 @@ namespace Console
 
             var loader = new Loader(host);
             loader.LoadAssembly(input);
-            
+
             // loader.LoadCoreAssembly();
             /*
             var type = new BasicType("Examples")
@@ -684,12 +684,27 @@ namespace Console
             };
 
             var methodDefinition = host.ResolveReference(method) as MethodDefinition;
+            
+            // Testing method calls inlining
+            var methodDefinition = host.ResolveReference(method) as MethodDefinition;
+            var methodCalls = methodDefinition.Body.Instructions.OfType<MethodCallInstruction>().ToList();
+
+            foreach (var methodCall in methodCalls)
+            {
+                var callee = host.ResolveReference(methodCall.Method) as MethodDefinition;
+                methodDefinition.Body.Inline(methodCall, callee.Body);
+            }
+
+            methodDefinition.Body.UpdateVariables();
+
+
             */
             var program = new Program(host);
             program.VisitMethods();
-          
+
             System.Console.WriteLine("Done!");
             System.Console.ReadKey();
         }
     }
+
 }
