@@ -514,13 +514,18 @@ namespace Console
 
         private void VisitMethod(MethodDefinition method)
         {
-
-            System.Console.WriteLine(method.Name);
+            
             //if (!method.ContainingType.Name.Equals("SampleReducer") || !method.Name.Equals("Reduce"))
             //    return;
             if (method.ContainingType.ContainingType == null) return;
+
             if (!method.ContainingType.ContainingType.Name.Equals("SampleReducer2") || !method.ContainingType.Name.Equals("<Reduce>d__1") || !method.Name.Equals("MoveNext"))
                 return;
+
+            //if (!method.ContainingType.ContainingType.Name.Equals("CVBaseDataSummaryReducer") || !method.ContainingType.Name.Equals("<Reduce>d__4") || !method.Name.Equals("MoveNext"))
+            //    return;
+
+            System.Console.WriteLine(method.Name);
 
             Backend.Model.ControlFlowGraph cfg = DoAnalysisPhases(method);
 
@@ -650,9 +655,12 @@ namespace Console
 
         static void Main(string[] args)
         {
+
             const string root = @"C:\Users\t-diga\Source\Repos\ScopeExamples\ILAnalyzer\"; // @"..\..\..";
             const string input = root + @"\bin\Debug\ILAnalyzer.exe";
 
+            //const string root = @"C:\Users\t-diga\Source\Repos\ScopeExamples\Metting\";
+            //const string input = root + @"\__ScopeCodeGen__.dll";
             var host = new Host();
             //host.Assemblies.Add(assembly);
 

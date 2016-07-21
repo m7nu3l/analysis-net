@@ -107,7 +107,7 @@ namespace Backend.Analyses
                     var access = storeStmt.Result as InstanceFieldAccess;
                     if (access.Field.Name == "<>1__state")
                     {
-                        State.IntState = (IteratorInternalState)int.Parse(this.equalities[storeStmt.Operand].ToString());
+                        State.IntState = (IteratorInternalState)int.Parse(this.equalities.GetValue(storeStmt.Operand).ToString());
                     }
                 }
             }
@@ -174,7 +174,7 @@ namespace Backend.Analyses
         }
         public override string ToString()
         {
-            return base.ToString() + "[" + Field.ToString() + "]";
+            return "[" + base.ToString() +"."+  Field.ToString() + "]";
         }
     }
 
@@ -242,57 +242,49 @@ namespace Backend.Analyses
             result.Variables = new MapSet<PTGNode, string>(this.Variables);
             result.Output = new MapSet<PTGNode, string>(this.Output);
 
-            foreach (var key in result.Escaping.Keys)
-            {
-                if (right.Escaping.ContainsKey(key))
-                {
-                    result.Escaping[key].UnionWith(right.Escaping[key]);
-                }
-            }
-            foreach (var key in result.Clousures.Keys)
-            {
-                if (right.Escaping.ContainsKey(key))
-                {
-                    result.Clousures[key].UnionWith(right.Clousures[key]);
-                }
-            }
-            foreach (var key in result.Variables.Keys)
-            {
-                if (right.Variables.ContainsKey(key))
-                {
-                    result.Variables[key].UnionWith(right.Variables[key]);
-                }
-            }
-            foreach (var key in result.Output.Keys)
-            {
-                if (right.Output.ContainsKey(key))
-                {
-                    result.Output[key].UnionWith(right.Output[key]);
-                }
-            }
+            result.A2 = new MapSet<IVariable, string>(this.A2);
+            result.A4 = new MapSet<IVariable, string>(this.A4);
+
+            result.A2.UnionWith(right.A2);
+            result.A3.UnionWith(right.A3);
+            result.A4.UnionWith(right.A4);
+            result.Clousures.UnionWith(right.Clousures);
+            result.Escaping.UnionWith(right.Escaping);
+            result.Variables.UnionWith(right.Variables);
+
+            //foreach (var entry in right.Escaping)
+            //{
+            //    result.Escaping.AddRange(entry.Key, entry.Value);
+            //}
+            //foreach (var entry in right.Variables)
+            //{
+            //    result.Variables.AddRange(entry.Key, entry.Value);
+            //}
+
+            //foreach (var entry in right.Output)
+            //{
+            //    result.Output.AddRange(entry.Key, entry.Value);
+            //}
+
+            //foreach (var entry in right.Clousures)
+            //{
+            //    result.Clousures.AddRange(entry.Key, entry.Value);
+            //}
 
 
-            foreach (var key in result.A2.Keys)
-            {
-                if (right.A2.ContainsKey(key))
-                {
-                    result.A2[key].UnionWith(right.A2[key]);
-                }
-            }
-            foreach (var key in result.A3.Keys)
-            {
-                if (right.A3.ContainsKey(key))
-                {
-                    result.A3[key].UnionWith(right.A3[key]);
-                }
-            }
-            foreach (var key in result.A4.Keys)
-            {
-                if (right.A4.ContainsKey(key))
-                {
-                    result.A4[key].UnionWith(right.A4[key]);
-                }
-            }
+            //foreach (var entry in right.A2)
+            //{
+            //    result.A2.AddRange(entry.Key, entry.Value);
+            //}
+
+            //foreach (var entry in right.A3)
+            //{
+            //    result.A3.AddRange(entry.Key,entry.Value);
+            //}
+            //foreach (var entry in right.A4)
+            //{
+            //    result.A4.AddRange(entry.Key, entry.Value);
+            //}
 
             return result;
         }
@@ -394,6 +386,11 @@ namespace Backend.Analyses
                 {
                     return true;
                 }
+                if (fieldAccess.Instance.Type.ToString().Contains("<Reduce>d__4") && !fieldAccess.FieldName.Contains("<>1__state"))
+                {
+                    return true;
+                }
+
 
                 return false;
             }
@@ -461,12 +458,17 @@ namespace Backend.Analyses
             public override void Visit(StoreInstruction instruction)
             {
                 var fieldAccess = instruction.Result as InstanceFieldAccess;
+                if(fieldAccess==null)
+                {
+                    // Is array! Skipping for now
+                    return;
+                }
                 var o = fieldAccess.Instance;
                 var field = fieldAccess.Field;
                 if (ISClousureField(fieldAccess))
                 {
                     var arg = instruction.Operand;
-                    var inputTable = equalities[arg];
+                    var inputTable = equalities.GetValue(arg);
 
                     // a3 := a2[loc(o.f):=a2[v]] 
                     if (this.State.A2.ContainsKey(instruction.Operand))
@@ -514,14 +516,14 @@ namespace Backend.Analyses
                 if (methodInvoked.Name == "get_Schema" && methodInvoked.ContainingType.Name == "RowSet")
                 {
                     var arg = methodCallStmt.Arguments[0];
-                    var table = equalities[arg];
+                    var table = equalities.GetValue(arg);
                     scopeData.schemaMap[callResult] = table;
                 }
                 // callResult = arg.IndexOf(colunm)
                 // we recover the table from arg and associate the column number with the call result
                 else if (methodInvoked.Name == "IndexOf" && methodInvoked.ContainingType.Name == "Schema")
                 {
-                    var column = equalities[methodCallStmt.Arguments[1]];
+                    var column = equalities.GetValue(methodCallStmt.Arguments[1]);
                     var arg = methodCallStmt.Arguments[0];
                     var table = scopeData.schemaMap[arg];
 
@@ -544,7 +546,7 @@ namespace Backend.Analyses
                     this.State.A2.Add(methodCallStmt.Result, union); // a2[ v = a2[arg[0]]] 
 
                     // TODO: I don't know I need this
-                    var inputTable = equalities[arg];
+                    var inputTable = equalities.GetValue(arg);
                     scopeData.row = callResult;
                     scopeData.schemaMap[callResult] = inputTable;
                 }
@@ -562,8 +564,8 @@ namespace Backend.Analyses
                     this.State.A2.Add(methodCallStmt.Result, union); // a2[ v = a2[arg[0]]] 
 
                     // TODO: Do I need this?
-                    var rows = equalities[arg] as MethodCallExpression;
-                    var inputTable = equalities[rows.Arguments[0]];
+                    var rows = equalities.GetValue(arg) as MethodCallExpression;
+                    var inputTable = equalities.GetValue(rows.Arguments[0]);
                     if (arg == scopeData.row)
                     {
                         scopeData.rowEnum = methodCallStmt.Result;
@@ -602,7 +604,17 @@ namespace Backend.Analyses
                 {
                     var arg = methodCallStmt.Arguments[0];
                     var col = methodCallStmt.Arguments[1];
-                    var columnLiteral = scopeData.columnMap[col];
+                    var columnLiteral = ""; 
+                    if (col.Type.ToString() == "String")
+                    {
+                        columnLiteral = this.equalities.GetValue(col).ToString();
+                    }
+                    else
+                    {
+                        columnLiteral = scopeData.columnMap[col];
+                    }
+
+                    
 
                     if (this.State.A2.ContainsKey(arg))
                     {
@@ -613,7 +625,7 @@ namespace Backend.Analyses
                         }
                     }
                     // Do I still need this
-                    var table = equalities[arg];
+                    var table = equalities.GetValue(arg);
                     scopeData.row = callResult;
                     scopeData.schemaMap[callResult] = table;
                 }
@@ -642,14 +654,17 @@ namespace Backend.Analyses
                 else
                 {
                     // Pure Methods
-                    foreach(var arg in methodCallStmt.Arguments)
+                    foreach(var result in methodCallStmt.ModifiedVariables)
                     {
-                        if (State.A2.ContainsKey(arg))
+                        foreach (var arg in methodCallStmt.Arguments)
                         {
-                            var tables = this.State.A2[arg];
-                            this.State.A2.AddRange(methodCallStmt.Result, tables);
-                        }
+                            if (State.A2.ContainsKey(arg))
+                            {
+                                var tables = this.State.A2[arg];
+                                this.State.A2.AddRange(result, tables);
+                            }
 
+                        }
                     }
                     // Unpure methods
                 }
