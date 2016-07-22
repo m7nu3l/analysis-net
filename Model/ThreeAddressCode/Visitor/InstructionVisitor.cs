@@ -21,7 +21,7 @@ namespace Model.ThreeAddressCode.Visitor
 
         public virtual void Default(Instruction instruction) { }
         public virtual void Visit(Instruction instruction) { } // Default(instruction); }
-		public virtual void Visit(DefinitionInstruction instruction) { Default(instruction); }
+        public virtual void Visit(DefinitionInstruction instruction) { } // { Default(instruction); }
 		public virtual void Visit(BinaryInstruction instruction) { Default(instruction); }
 		public virtual void Visit(UnaryInstruction instruction) { Default(instruction); }
 		public virtual void Visit(LoadInstruction instruction) { Default(instruction); }
@@ -35,7 +35,7 @@ namespace Model.ThreeAddressCode.Visitor
 		public virtual void Visit(ConvertInstruction instruction) { Default(instruction); }
 		public virtual void Visit(ReturnInstruction instruction) { Default(instruction); }
 		public virtual void Visit(ThrowInstruction instruction) { Default(instruction); }
-		public virtual void Visit(BranchInstruction instruction) { Default(instruction); }
+        public virtual void Visit(BranchInstruction instruction) { } // { Default(instruction); }
 		public virtual void Visit(ExceptionalBranchInstruction instruction) { Default(instruction); }
 		public virtual void Visit(UnconditionalBranchInstruction instruction) { Default(instruction); }
 		public virtual void Visit(ConditionalBranchInstruction instruction) { Default(instruction); }
