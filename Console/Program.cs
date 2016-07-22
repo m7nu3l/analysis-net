@@ -339,14 +339,15 @@ namespace Console
             var depGraphDGML = DGMLSerializer.Serialize(depGraph);
             var cfgGraphDGML = DGMLSerializer.Serialize(cfg);
             var ptgExit = result[cfg.Exit.Id].Output;
-            //ptgExit.RemoveTemporalVariables();
-            //ptgExit.RemoveDerivedVariables();
-
-            var ptgDGML = DGMLSerializer.Serialize(ptgExit);
+            
             this.PropagateExpressions(cfg);
             if (method.Name == "MoveNext")
             {
                 this.AnalyzeScopeMethods(cfg, result);
+                ptgExit.RemoveTemporalVariables();
+                ptgExit.RemoveDerivedVariables();
+
+                var ptgDGML = DGMLSerializer.Serialize(ptgExit);
             }
         }
 

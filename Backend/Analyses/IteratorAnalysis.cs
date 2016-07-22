@@ -180,22 +180,21 @@ namespace Backend.Analyses
 
     public class DependencyDomain
     {
-        public MapSet<IVariable, string> A2 { get; set; }
-        public MapSet<string, string> A3 { get; set; }
-        public MapSet<IVariable, string> A4 { get; set; }
+        public MapSet<IVariable, string> A2_Variables { get; set; }
+        public MapSet<Location, string> A3_Clousures { get; set; }
+
+        public MapSet<IVariable, string> A4_Ouput { get; set; }
 
         public MapSet<PTGNode, string> Escaping { get; set; }
 
         public MapSet<PTGNode, string> Variables { get; set; }
-        public MapSet<Location, string> Clousures { get; set; }
+
         public MapSet<PTGNode, string> Output { get; set; }
         public DependencyDomain()
         {
-            A2 = new MapSet<IVariable, string>();
-            A3 = new MapSet<string, string>();
-            A4 = new MapSet<IVariable, string>();
-            // This is A3 in the paper
-            Clousures = new MapSet<Location, string>();
+            A2_Variables = new MapSet<IVariable, string>();
+            A3_Clousures = new MapSet<Location, string>();
+            A4_Ouput = new MapSet<IVariable, string>();
 
             Escaping = new MapSet<PTGNode, string>();
             Variables = new MapSet<PTGNode, string>();
@@ -207,30 +206,25 @@ namespace Backend.Analyses
         {
             var oth = obj as DependencyDomain;
             return oth.Escaping.MapEquals(Escaping)
-                && oth.Clousures.MapEquals(Clousures)
-                && oth.Variables.MapEquals(Variables)
-                && oth.A4.MapEquals(A4)
-                && oth.A2.MapEquals(A2) && oth.A3.MapEquals(A3);
+                && oth.A2_Variables.MapEquals(A2_Variables)
+                && oth.A3_Clousures.MapEquals(A3_Clousures)
+                && oth.A4_Ouput.MapEquals(A4_Ouput);
         }
         public override int GetHashCode()
         {
             return Escaping.GetHashCode()
-                + Variables.GetHashCode()
-                + Clousures.GetHashCode()
-                + A4.GetHashCode()
-                + A2.GetHashCode() + A3.GetHashCode();
+                + A2_Variables.GetHashCode()
+                + A3_Clousures.GetHashCode()
+                + A4_Ouput.GetHashCode();
+                
         }
         public DependencyDomain Clone()
         {
             var result = new DependencyDomain();
             result.Escaping = new MapSet<PTGNode, string>(this.Escaping);
-            result.Clousures = new MapSet<Location, string>(this.Clousures);
-            result.Variables = new MapSet<PTGNode, string>(this.Variables);
-            result.Output = new MapSet<PTGNode, string>(this.Output);
-
-            result.A2 = new MapSet<IVariable, string>(this.A2);
-            result.A3 = new MapSet<string, string>(this.A3);
-            result.A4 = new MapSet<IVariable, string>(this.A4);
+            result.A2_Variables = new MapSet<IVariable, string>(this.A2_Variables);
+            result.A3_Clousures = new MapSet<Location, string>(this.A3_Clousures);
+            result.A4_Ouput = new MapSet<IVariable, string>(this.A4_Ouput);
             return result;
         }
 
@@ -238,53 +232,16 @@ namespace Backend.Analyses
         {
             var result = new DependencyDomain();
             result.Escaping = new MapSet<PTGNode, string>(this.Escaping);
-            result.Clousures = new MapSet<Location, string>(this.Clousures);
-            result.Variables = new MapSet<PTGNode, string>(this.Variables);
-            result.Output = new MapSet<PTGNode, string>(this.Output);
+           
+            result.A2_Variables = new MapSet<IVariable, string>(this.A2_Variables);
+            result.A3_Clousures = new MapSet<Location, string>(this.A3_Clousures);
+            result.A4_Ouput = new MapSet<IVariable, string>(this.A4_Ouput);
 
-            result.A2 = new MapSet<IVariable, string>(this.A2);
-            result.A4 = new MapSet<IVariable, string>(this.A4);
-
-            result.A2.UnionWith(right.A2);
-            result.A3.UnionWith(right.A3);
-            result.A4.UnionWith(right.A4);
-            result.Clousures.UnionWith(right.Clousures);
             result.Escaping.UnionWith(right.Escaping);
-            result.Variables.UnionWith(right.Variables);
 
-            //foreach (var entry in right.Escaping)
-            //{
-            //    result.Escaping.AddRange(entry.Key, entry.Value);
-            //}
-            //foreach (var entry in right.Variables)
-            //{
-            //    result.Variables.AddRange(entry.Key, entry.Value);
-            //}
-
-            //foreach (var entry in right.Output)
-            //{
-            //    result.Output.AddRange(entry.Key, entry.Value);
-            //}
-
-            //foreach (var entry in right.Clousures)
-            //{
-            //    result.Clousures.AddRange(entry.Key, entry.Value);
-            //}
-
-
-            //foreach (var entry in right.A2)
-            //{
-            //    result.A2.AddRange(entry.Key, entry.Value);
-            //}
-
-            //foreach (var entry in right.A3)
-            //{
-            //    result.A3.AddRange(entry.Key,entry.Value);
-            //}
-            //foreach (var entry in right.A4)
-            //{
-            //    result.A4.AddRange(entry.Key, entry.Value);
-            //}
+            result.A2_Variables.UnionWith(right.A2_Variables);
+            result.A3_Clousures.UnionWith(right.A3_Clousures);
+            result.A4_Ouput.UnionWith(right.A4_Ouput);
 
             return result;
         }
@@ -297,19 +254,20 @@ namespace Backend.Analyses
         {
             var result = "";
             result += "A2\n";
-            foreach(var var in this.A2.Keys)
+            foreach(var var in this.A2_Variables.Keys)
             {
-                result += String.Format("{0}:{1}\n", var, ToString(A2[var]));
+                result += String.Format("{0}:{1}\n", var, ToString(A2_Variables[var]));
             }
             result += "A3\n";
-            foreach (var var in this.Clousures.Keys)
+            foreach (var var in this.A3_Clousures.Keys)
             {
-                result += String.Format("{0}:{1}\n", var, ToString(Clousures[var]));
+                result += String.Format("{0}:{1}\n", var, ToString(A3_Clousures[var]));
             }
             result += "A4\n";
-            foreach (var var in this.A4.Keys)
+            foreach (var var in this.A4_Ouput.Keys)
             {
-                result += String.Format("{0}:{1}\n", var, ToString(A4[var]));
+                result += String.Format("({0}){1}= dep({2})\n", var, ToString(A2_Variables[var]), ToString(A4_Ouput[var]));
+                //result += String.Format("{0}:{1}\n", var, ToString(A4_Ouput[var]));
             }
 
             return result;
@@ -412,9 +370,9 @@ namespace Backend.Analyses
 
                     var union1 = new HashSet<string>();
                     // a2:= [v <- a2[o] U a3[loc(o.f)] if loc(o.f) is CF
-                    if (this.State.A2.ContainsKey(o))
+                    if (this.State.A2_Variables.ContainsKey(o))
                     {
-                        union1.UnionWith(this.State.A2[o]);
+                        union1.UnionWith(this.State.A2_Variables[o]);
                     }
 
                     if (ISClousureField(fieldAccess))
@@ -429,9 +387,9 @@ namespace Backend.Analyses
                         foreach (var ptgNode in ptg.GetTargets(o))
                         {
                             var loc = new Location(ptgNode, field);
-                            if (this.State.Clousures.ContainsKey(loc))
+                            if (this.State.A3_Clousures.ContainsKey(loc))
                             {
-                                union1.UnionWith(this.State.Clousures[loc]);
+                                union1.UnionWith(this.State.A3_Clousures[loc]);
                             }
                         }
 
@@ -446,7 +404,7 @@ namespace Backend.Analyses
                         //}
                     }
 
-                    this.State.A2[loadStmt.Result] = union1;
+                    this.State.A2_Variables[loadStmt.Result] = union1;
 
                     // TODO: Filter for columns only
                     if (scopeData.columnFIeldMap.ContainsKey(fieldAccess.Field))
@@ -471,16 +429,16 @@ namespace Backend.Analyses
                     var inputTable = equalities.GetValue(arg);
 
                     // a3 := a2[loc(o.f):=a2[v]] 
-                    if (this.State.A2.ContainsKey(instruction.Operand))
+                    if (this.State.A2_Variables.ContainsKey(instruction.Operand))
                     {
                         // union = a2[v] 
-                        var union = new HashSet<string>(this.State.A2[instruction.Operand]);
+                        var union = new HashSet<string>(this.State.A2_Variables[instruction.Operand]);
                         // fieldAccess.FieldName = loc.f 
                         // Delete: this.State.A3[fieldAccess.FieldName] = union;
                         // It should be this.f or N.f
                         foreach (var ptgNode in ptg.GetTargets(o))
                         {
-                            this.State.Clousures[new Location(ptgNode, field)] = union;
+                            this.State.A3_Clousures[new Location(ptgNode, field)] = union;
                         }
                     }
                     else
@@ -488,7 +446,7 @@ namespace Backend.Analyses
                         // Delete: this.State.A3[fieldAccess.FieldName] = new HashSet<string>();
                         foreach (var ptgNode in ptg.GetTargets(o))
                         {
-                            this.State.Clousures[new Location(ptgNode, field)] = new HashSet<string>();
+                            this.State.A3_Clousures[new Location(ptgNode, field)] = new HashSet<string>();
                         }
 
                     }
@@ -529,7 +487,7 @@ namespace Backend.Analyses
 
                     scopeData.columnMap[callResult] = column.ToString();
 
-                    this.State.A2.Add(callResult, table + ":" + column);
+                    this.State.A2_Variables.Add(callResult, table + ":" + column);
                     // Y have the bidingVar that refer to the column, now I can find the "field"
                 }
                 // This is when you get rows
@@ -539,11 +497,11 @@ namespace Backend.Analyses
                     var arg = methodCallStmt.Arguments[0];
 
                     var union = new HashSet<string>();
-                    if (this.State.A2.ContainsKey(arg))
+                    if (this.State.A2_Variables.ContainsKey(arg))
                     {
-                        union.UnionWith(this.State.A2[arg]);
+                        union.UnionWith(this.State.A2_Variables[arg]);
                     }
-                    this.State.A2.Add(methodCallStmt.Result, union); // a2[ v = a2[arg[0]]] 
+                    this.State.A2_Variables.Add(methodCallStmt.Result, union); // a2[ v = a2[arg[0]]] 
 
                     // TODO: I don't know I need this
                     var inputTable = equalities.GetValue(arg);
@@ -557,11 +515,11 @@ namespace Backend.Analyses
                     var arg = methodCallStmt.Arguments[0];
 
                     var union = new HashSet<string>();
-                    if (this.State.A2.ContainsKey(arg))
+                    if (this.State.A2_Variables.ContainsKey(arg))
                     {
-                        union.UnionWith(this.State.A2[arg]);
+                        union.UnionWith(this.State.A2_Variables[arg]);
                     }
-                    this.State.A2.Add(methodCallStmt.Result, union); // a2[ v = a2[arg[0]]] 
+                    this.State.A2_Variables.Add(methodCallStmt.Result, union); // a2[ v = a2[arg[0]]] 
 
                     // TODO: Do I need this?
                     var rows = equalities.GetValue(arg) as MethodCallExpression;
@@ -578,10 +536,10 @@ namespace Backend.Analyses
                 else if (methodInvoked.Name == "get_Current" && methodInvoked.ContainingType.FullName == "IEnumerator<Row>")
                 {
                     var arg = methodCallStmt.Arguments[0];
-                    if (this.State.A2.ContainsKey(arg))
+                    if (this.State.A2_Variables.ContainsKey(arg))
                     {
-                        var tables = this.State.A2[arg];
-                        this.State.A2.Add(methodCallStmt.Result, tables);
+                        var tables = this.State.A2_Variables[arg];
+                        this.State.A2_Variables.Add(methodCallStmt.Result, tables);
                     }
                 }
                 // v = arg.Current
@@ -589,12 +547,12 @@ namespace Backend.Analyses
                 else if (methodInvoked.Name == "MoveNext" && methodInvoked.ContainingType.FullName == "IEnumerator")
                 {
                     var arg = methodCallStmt.Arguments[0];
-                    if (this.State.A2.ContainsKey(arg))
+                    if (this.State.A2_Variables.ContainsKey(arg))
                     {
-                        var tables = this.State.A2[arg];
+                        var tables = this.State.A2_Variables[arg];
                         foreach (var table in tables)
                         {
-                            this.State.A2.Add(methodCallStmt.Result, table.ToString() + ":RC");
+                            this.State.A2_Variables.Add(methodCallStmt.Result, table.ToString() + ":RC");
                         }
                     }
                 }
@@ -616,12 +574,12 @@ namespace Backend.Analyses
 
                     
 
-                    if (this.State.A2.ContainsKey(arg))
+                    if (this.State.A2_Variables.ContainsKey(arg))
                     {
-                        var tables = this.State.A2[arg];
+                        var tables = this.State.A2_Variables[arg];
                         foreach (var table_i in tables)
                         {
-                            this.State.A2.Add(methodCallStmt.Result, table_i + ":" + columnLiteral);
+                            this.State.A2_Variables.Add(methodCallStmt.Result, table_i + ":" + columnLiteral);
                         }
                     }
                     // Do I still need this
@@ -637,9 +595,9 @@ namespace Backend.Analyses
                     var arg1 = methodCallStmt.Arguments[1];
 
 
-                    if (this.State.A2.ContainsKey(arg1))
+                    if (this.State.A2_Variables.ContainsKey(arg1))
                     {
-                        this.State.A4.Add(arg0, this.State.A2[arg1]);
+                        this.State.A4_Ouput.Add(arg0, this.State.A2_Variables[arg1]);
                     }
 
                     //var table2 = scopeData.schemaMap[arg0];
@@ -658,16 +616,33 @@ namespace Backend.Analyses
                     {
                         foreach (var arg in methodCallStmt.Arguments)
                         {
-                            if (State.A2.ContainsKey(arg))
+                            if (State.A2_Variables.ContainsKey(arg))
                             {
-                                var tables = this.State.A2[arg];
-                                this.State.A2.AddRange(result, tables);
+                                var tables = this.State.A2_Variables[arg];
+                                this.State.A2_Variables.AddRange(result, tables);
                             }
 
                         }
                     }
                     // Unpure methods
                 }
+            }
+            public override void Default(Instruction instruction)
+            {
+                foreach (var result in instruction.ModifiedVariables)
+                {
+                    foreach (var arg in instruction.UsedVariables)
+                    {
+                        if (State.A2_Variables.ContainsKey(arg))
+                        {
+                            var tables = this.State.A2_Variables[arg];
+                            this.State.A2_Variables.AddRange(result, tables);
+                        }
+
+                    }
+                }
+
+                // base.Default(instruction);
             }
         }
 
@@ -694,9 +669,7 @@ namespace Backend.Analyses
                 {
                     if (target.Key.Type.ToString() == "RowSet" || target.Key.Type.ToString() == "Row")
                     {
-                        depValues.A3.Add(target.Key.Name, target.Key.Name);
-
-                        depValues.Clousures.Add(new Location(ptgNode, target.Key), target.Key.Name);
+                        depValues.A3_Clousures.Add(new Location(ptgNode, target.Key), target.Key.Name);
                     }
                 }
             }
