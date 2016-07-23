@@ -319,32 +319,40 @@ namespace Backend.Utils
 			// TODO: Fix local variables (and parameters) name clashing
 			// TODO: Fix instruction labels clashing
 
-			var index = callerBody.Instructions.IndexOf(methodCall);
-			callerBody.Instructions.RemoveAt(index);
+			var nextInstructionIndex = callerBody.Instructions.IndexOf(methodCall);
+			callerBody.Instructions.RemoveAt(nextInstructionIndex);
 
 			IInstruction nextInstruction = null;
+            uint nextInstructionOffset = 0;
 
-			if (callerBody.Instructions.Count > index)
+			if (callerBody.Instructions.Count > nextInstructionIndex)
 			{
 				// The caller method has more instructions after the method call
-				nextInstruction = callerBody.Instructions[index];
-			}			
+				nextInstruction = callerBody.Instructions[nextInstructionIndex];
+                nextInstructionOffset = nextInstruction.Offset;
 
-			for (var i = 0; i < calleeBody.Parameters.Count; ++i, ++index)
+            }			
+
+			for (var i = 0; i < calleeBody.Parameters.Count; ++i, ++nextInstructionIndex)
 			{
 				var parameter = calleeBody.Parameters[i];
+                if(parameter.Name=="this")
+                {
+                    continue;
+                }
 				var argument = methodCall.Arguments[i];
 				var copy = new LoadInstruction(methodCall.Offset, parameter, argument);
 
-				callerBody.Instructions.Insert(index, copy);
+				callerBody.Instructions.Insert(nextInstructionIndex, copy);
 			}
 
 			var lastCalleeInstructionIndex = calleeBody.Instructions.Count - 1;
 
+
 			for (var i = 0; i < calleeBody.Instructions.Count; ++i)
 			{
 				var instruction = calleeBody.Instructions[i];
-
+                
 				if (instruction is ReturnInstruction)
 				{
 					var ret = instruction as ReturnInstruction;
@@ -352,27 +360,45 @@ namespace Backend.Utils
 					if (ret.HasOperand && methodCall.HasResult)
 					{
 						// Copy the return value of the callee to the result variable of the method call
-						var copy = new LoadInstruction(ret.Offset, methodCall.Result, ret.Operand);
+						var copy = new LoadInstruction(methodCall.Offset + ret.Offset/*ret.Offset+ nextInstructionOffset*/, methodCall.Result, ret.Operand);
 
-						callerBody.Instructions.Insert(index, copy);
-						index++;
+						callerBody.Instructions.Insert(nextInstructionIndex, copy);
+						nextInstructionIndex++;
 					}
 
 					if (nextInstruction != null && i < lastCalleeInstructionIndex)
 					{
 						// Jump to the instruction after the method call
-						var branch = new UnconditionalBranchInstruction(ret.Offset, nextInstruction.Offset);
+						var branch = new UnconditionalBranchInstruction(methodCall.Offset + ret.Offset /*ret.Offset+ nextInstructionOffset*/, nextInstruction.Offset + nextInstructionOffset);
 
-						callerBody.Instructions.Insert(index, branch);
-						index++;
+						callerBody.Instructions.Insert(nextInstructionIndex, branch);
+						nextInstructionIndex++;
 					}
 				}
 				else
 				{
-					callerBody.Instructions.Insert(index, instruction);
-					index++;
+                    instruction.Offset += nextInstructionOffset;
+                    instruction.Label = string.Format("L_{0:X4}", instruction.Offset);
+                    if (instruction is BranchInstruction)
+                    {
+                        var branch = instruction as BranchInstruction;
+                        var labelOffset = int.Parse(branch.Target.Substring(2), System.Globalization.NumberStyles.HexNumber);
+                        branch.Target = string.Format("L_{0:X4}", labelOffset+ methodCall.Offset /*nextInstructionOffset*/);
+                    }
+
+                    callerBody.Instructions.Insert(nextInstructionIndex, instruction);
+					nextInstructionIndex++;
 				}
+
 			}
-		}
-	}
+            // TODO: Diego: If I add this I broke the CFG analysis
+            //for (int i = nextInstructionIndex; i < callerBody.Instructions.Count; i++)
+            //{
+            //    var ins = callerBody.Instructions[i];
+            //    ins.Offset += methodCall.Offset; //  nextInstructionOffset;
+            //    ins.Label = string.Format("L_{0:X4}", ins.Offset);
+            //}
+        }
+
+    }
 }
