@@ -89,12 +89,12 @@ namespace Backend.Analyses
     public class IteratorStateAnalysis : ForwardDataFlowAnalysis<IteratorState>
     {
 
-        internal class MoveNextVisitor : InstructionVisitor
+        internal class MoveNextVisitorForItStateAnalysis : InstructionVisitor
         {
             internal IteratorState State { get; }
             private IDictionary<IVariable, IExpression> equalities;
 
-            internal MoveNextVisitor(IteratorStateAnalysis itAnalysis, IDictionary<IVariable, IExpression> equalitiesMap, IteratorState state)
+            internal MoveNextVisitorForItStateAnalysis(IteratorStateAnalysis itAnalysis, IDictionary<IVariable, IExpression> equalitiesMap, IteratorState state)
             {
                 this.State = state;
                 this.equalities = equalitiesMap;
@@ -130,7 +130,7 @@ namespace Backend.Analyses
         protected override IteratorState Flow(CFGNode node, IteratorState input)
         {
             var oldInput = input.Clone();
-            var visitor = new MoveNextVisitor(this, this.equalities, oldInput);
+            var visitor = new MoveNextVisitorForItStateAnalysis(this, this.equalities, oldInput);
             visitor.Visit(node);
             return visitor.State;
         }
@@ -146,11 +146,79 @@ namespace Backend.Analyses
         }
     }
 
-    public class Traceable
+
+    public abstract class Traceable
     {
-        string node;
-        string column;
+        public string TableName { get; set; }
+        public Traceable(string name)
+        {
+            this.TableName = name;
+        }
+
+        public override bool Equals(object obj)
+        {
+            var oth = obj as Traceable;
+            return oth!= null && oth.TableName.Equals(this.TableName);
+        }
+        public override int GetHashCode()
+        {
+            return TableName.GetHashCode();
+        }
+        public override string ToString()
+        {
+            return TableName;
+        }
+
     }
+    public class TraceableTable: Traceable
+    {
+        public TraceableTable(string name): base(name)
+        {
+            this.TableName = name;
+        }
+        public override string ToString()
+        {
+            return String.Format("Table({0})", TableName);
+        }
+
+    }
+    public class TraceableColumn: Traceable
+    {
+        public string Column { get; private set; }
+        public TraceableColumn(string name, string column): base(name)
+        {
+            this.Column = column;
+        }
+        public override string ToString()
+        {
+            return String.Format("Col({0},{1})",TableName, Column);
+        }
+        public override bool Equals(object obj)
+        {
+            var oth = obj as TraceableColumn;
+            return oth != null && oth.Column.Equals(this.Column) && base.Equals(oth);
+        }
+        public override int GetHashCode()
+        {
+            return base.GetHashCode()+Column.GetHashCode();
+        }
+    }
+
+    public class TraceableCounter : Traceable
+    {
+        public TraceableCounter(string name) : base(name)
+        {
+        }
+        public override string ToString()
+        {
+            return String.Format("RC({0})" , TableName);
+        }
+        public override int GetHashCode()
+        {
+            return 1 + base.GetHashCode();
+        }
+    }
+
 
     public class Location : PTGNode
     {
@@ -180,38 +248,39 @@ namespace Backend.Analyses
 
     public class DependencyDomain
     {
-        public MapSet<IVariable, string> A2_Variables { get; set; }
-        public MapSet<Location, string> A3_Clousures { get; set; }
+        public MapSet<IVariable, Traceable> A2_Variables { get; set; }
+        public MapSet<Location, Traceable> A3_Clousures { get; set; }
 
-        public MapSet<IVariable, string> A4_Ouput { get; set; }
+        public MapSet<IVariable, Traceable> A4_Ouput { get; set; }
 
-        public MapSet<PTGNode, string> Escaping { get; set; }
+        public MapSet<PTGNode, Traceable> Escaping { get; set; }
 
-        public MapSet<PTGNode, string> Variables { get; set; }
+        public ISet<IVariable> ControlVariables { get; set; }
 
-        public MapSet<PTGNode, string> Output { get; set; }
         public DependencyDomain()
         {
-            A2_Variables = new MapSet<IVariable, string>();
-            A3_Clousures = new MapSet<Location, string>();
-            A4_Ouput = new MapSet<IVariable, string>();
+            A2_Variables = new MapSet<IVariable, Traceable>();
+            A3_Clousures = new MapSet<Location, Traceable>();
+            A4_Ouput = new MapSet<IVariable, Traceable>();
 
-            Escaping = new MapSet<PTGNode, string>();
-            Variables = new MapSet<PTGNode, string>();
-            Output = new MapSet<PTGNode, string>();
+            Escaping = new MapSet<PTGNode, Traceable>();
 
+            ControlVariables = new HashSet<IVariable>();
         }
 
         public override bool Equals(object obj)
         {
+            // Add ControlVariables
             var oth = obj as DependencyDomain;
             return oth.Escaping.MapEquals(Escaping)
                 && oth.A2_Variables.MapEquals(A2_Variables)
                 && oth.A3_Clousures.MapEquals(A3_Clousures)
                 && oth.A4_Ouput.MapEquals(A4_Ouput);
+
         }
         public override int GetHashCode()
         {
+            // Add ControlVariables
             return Escaping.GetHashCode()
                 + A2_Variables.GetHashCode()
                 + A3_Clousures.GetHashCode()
@@ -221,27 +290,32 @@ namespace Backend.Analyses
         public DependencyDomain Clone()
         {
             var result = new DependencyDomain();
-            result.Escaping = new MapSet<PTGNode, string>(this.Escaping);
-            result.A2_Variables = new MapSet<IVariable, string>(this.A2_Variables);
-            result.A3_Clousures = new MapSet<Location, string>(this.A3_Clousures);
-            result.A4_Ouput = new MapSet<IVariable, string>(this.A4_Ouput);
+            result.Escaping = new MapSet<PTGNode, Traceable>(this.Escaping);
+            result.A2_Variables = new MapSet<IVariable, Traceable>(this.A2_Variables);
+            result.A3_Clousures = new MapSet<Location, Traceable>(this.A3_Clousures);
+            result.A4_Ouput = new MapSet<IVariable, Traceable>(this.A4_Ouput);
+            result.ControlVariables = new HashSet<IVariable>(this.ControlVariables);
             return result;
         }
 
         public DependencyDomain Join(DependencyDomain right)
         {
             var result = new DependencyDomain();
-            result.Escaping = new MapSet<PTGNode, string>(this.Escaping);
+            result.Escaping = new MapSet<PTGNode, Traceable>(this.Escaping);
            
-            result.A2_Variables = new MapSet<IVariable, string>(this.A2_Variables);
-            result.A3_Clousures = new MapSet<Location, string>(this.A3_Clousures);
-            result.A4_Ouput = new MapSet<IVariable, string>(this.A4_Ouput);
+            result.A2_Variables = new MapSet<IVariable, Traceable>(this.A2_Variables);
+            result.A3_Clousures = new MapSet<Location, Traceable>(this.A3_Clousures);
+            result.A4_Ouput = new MapSet<IVariable, Traceable>(this.A4_Ouput);
+
+            result.ControlVariables = new HashSet<IVariable>();
 
             result.Escaping.UnionWith(right.Escaping);
 
             result.A2_Variables.UnionWith(right.A2_Variables);
             result.A3_Clousures.UnionWith(right.A3_Clousures);
             result.A4_Ouput.UnionWith(right.A4_Ouput);
+
+            result.ControlVariables.UnionWith(right.ControlVariables);
 
             return result;
         }
@@ -272,9 +346,9 @@ namespace Backend.Analyses
 
             return result;
         }
-        private string ToString(ISet<string> set)
+        private string ToString(ISet<Traceable> set)
         {
-            var result = String.Join(",", set);
+            var result = String.Join(",", set.Select(e => e.ToString()));
             return result;
         }
     }
@@ -297,7 +371,7 @@ namespace Backend.Analyses
                 rowEnum = null;
             }
         }
-        internal class MoveNextVisitor : InstructionVisitor
+        internal class MoveNextVisitorForDependencyAnalysis : InstructionVisitor
         {
             private IDictionary<IVariable, IExpression> equalities;
             private IteratorDependencyAnalysis iteratorDependencyAnalysis;
@@ -305,8 +379,10 @@ namespace Backend.Analyses
             private ScopeInfo scopeData;
             internal DependencyDomain State { get; private set; }
             private PointsToGraph ptg;
+            private CFGNode cfgNode;
 
-            public MoveNextVisitor(IteratorDependencyAnalysis iteratorDependencyAnalysis, IDictionary<IVariable, IExpression> equalities, ScopeInfo scopeData, PointsToGraph ptg, DependencyDomain oldInput)
+            public MoveNextVisitorForDependencyAnalysis(IteratorDependencyAnalysis iteratorDependencyAnalysis, CFGNode cfgNode,  IDictionary<IVariable, IExpression> equalities, 
+                                   ScopeInfo scopeData, PointsToGraph ptg, DependencyDomain oldInput)
             {
                 this.iteratorDependencyAnalysis = iteratorDependencyAnalysis;
                 this.equalities = equalities;
@@ -314,6 +390,7 @@ namespace Backend.Analyses
                 this.oldInput = oldInput;
                 this.State = oldInput;
                 this.ptg = ptg;
+                this.cfgNode = cfgNode;
             }
 
             private bool ISClousureField(InstanceFieldAccess fieldAccess)
@@ -340,11 +417,7 @@ namespace Backend.Analyses
                     return true;
                 }
 
-                if (fieldAccess.Instance.Type.ToString().Contains("<Reduce>d__1") && !fieldAccess.FieldName.Contains("<>1__state"))
-                {
-                    return true;
-                }
-                if (fieldAccess.Instance.Type.ToString().Contains("<Reduce>d__4") && !fieldAccess.FieldName.Contains("<>1__state"))
+                if (fieldAccess.Instance.Type.ToString().Contains("<Reduce>d__") && !fieldAccess.FieldName.Contains("<>1__state"))
                 {
                     return true;
                 }
@@ -368,7 +441,7 @@ namespace Backend.Analyses
 
                     }
 
-                    var union1 = new HashSet<string>();
+                    var union1 = new HashSet<Traceable>();
                     // a2:= [v <- a2[o] U a3[loc(o.f)] if loc(o.f) is CF
                     if (this.State.A2_Variables.ContainsKey(o))
                     {
@@ -432,7 +505,7 @@ namespace Backend.Analyses
                     if (this.State.A2_Variables.ContainsKey(instruction.Operand))
                     {
                         // union = a2[v] 
-                        var union = new HashSet<string>(this.State.A2_Variables[instruction.Operand]);
+                        var union = new HashSet<Traceable>(this.State.A2_Variables[instruction.Operand]);
                         // fieldAccess.FieldName = loc.f 
                         // Delete: this.State.A3[fieldAccess.FieldName] = union;
                         // It should be this.f or N.f
@@ -446,7 +519,7 @@ namespace Backend.Analyses
                         // Delete: this.State.A3[fieldAccess.FieldName] = new HashSet<string>();
                         foreach (var ptgNode in ptg.GetTargets(o))
                         {
-                            this.State.A3_Clousures[new Location(ptgNode, field)] = new HashSet<string>();
+                            this.State.A3_Clousures[new Location(ptgNode, field)] = new HashSet<Traceable>();
                         }
 
                     }
@@ -459,6 +532,10 @@ namespace Backend.Analyses
                     scopeData.columnFIeldMap[fieldAccess.Field] = columnLiteral;
                 }
 
+            }
+            public override void Visit(ConditionalBranchInstruction instruction)
+            {
+                this.State.ControlVariables.UnionWith(instruction.UsedVariables);
             }
             public override void Visit(MethodCallInstruction instruction)
             {
@@ -485,9 +562,10 @@ namespace Backend.Analyses
                     var arg = methodCallStmt.Arguments[0];
                     var table = scopeData.schemaMap[arg];
 
-                    scopeData.columnMap[callResult] = column.ToString();
+                    var columnLiteral = column.ToString();
 
-                    this.State.A2_Variables.Add(callResult, table + ":" + column);
+                    scopeData.columnMap[callResult] = columnLiteral;
+                    this.State.A2_Variables.Add(callResult, new TraceableColumn(table.ToString(), columnLiteral));
                     // Y have the bidingVar that refer to the column, now I can find the "field"
                 }
                 // This is when you get rows
@@ -496,7 +574,7 @@ namespace Backend.Analyses
                 {
                     var arg = methodCallStmt.Arguments[0];
 
-                    var union = new HashSet<string>();
+                    var union = new HashSet<Traceable>();
                     if (this.State.A2_Variables.ContainsKey(arg))
                     {
                         union.UnionWith(this.State.A2_Variables[arg]);
@@ -514,7 +592,7 @@ namespace Backend.Analyses
                 {
                     var arg = methodCallStmt.Arguments[0];
 
-                    var union = new HashSet<string>();
+                    var union = new HashSet<Traceable>();
                     if (this.State.A2_Variables.ContainsKey(arg))
                     {
                         union.UnionWith(this.State.A2_Variables[arg]);
@@ -552,7 +630,7 @@ namespace Backend.Analyses
                         var tables = this.State.A2_Variables[arg];
                         foreach (var table in tables)
                         {
-                            this.State.A2_Variables.Add(methodCallStmt.Result, table.ToString() + ":RC");
+                            this.State.A2_Variables.Add(methodCallStmt.Result, new TraceableCounter(table.TableName));
                         }
                     }
                 }
@@ -579,7 +657,7 @@ namespace Backend.Analyses
                         var tables = this.State.A2_Variables[arg];
                         foreach (var table_i in tables)
                         {
-                            this.State.A2_Variables.Add(methodCallStmt.Result, table_i + ":" + columnLiteral);
+                            this.State.A2_Variables.Add(methodCallStmt.Result, new TraceableColumn(table_i.TableName, columnLiteral));
                         }
                     }
                     // Do I still need this
@@ -600,13 +678,10 @@ namespace Backend.Analyses
                         this.State.A4_Ouput.Add(arg0, this.State.A2_Variables[arg1]);
                     }
 
-                    //var table2 = scopeData.schemaMap[arg0];
-                    //var columns = this.State.A2[arg0];
-
-                    // var table = this.equalities[arg0];
-
-                    //scopeData.row = bindingVar;
-                    //scopeData.schemaMap[bindingVar] = table;
+                    //
+                    var traceables = this.State.ControlVariables.SelectMany(controlVar => oldInput.A2_Variables.ContainsKey(controlVar)? 
+                                                                 oldInput.A2_Variables[controlVar]: new HashSet<Traceable>());
+                    this.State.A4_Ouput.AddRange(arg0, traceables);
                 }
                 // other methdos
                 else
@@ -669,7 +744,7 @@ namespace Backend.Analyses
                 {
                     if (target.Key.Type.ToString() == "RowSet" || target.Key.Type.ToString() == "Row")
                     {
-                        depValues.A3_Clousures.Add(new Location(ptgNode, target.Key), target.Key.Name);
+                        depValues.A3_Clousures.Add(new Location(ptgNode, target.Key), new TraceableTable(target.Key.Name));
                     }
                 }
             }
@@ -691,7 +766,20 @@ namespace Backend.Analyses
         {
             var oldInput = input.Clone();
             var currentPTG = ptgs[node.Id].Output;
-            var visitor = new MoveNextVisitor(this, this.equalities, this.scopeData, currentPTG, oldInput);
+            // var dominatorState = this.Result[node.ImmediateDominator.Id].Output;
+
+            //var traceables = dominatorState.ControlVariables.SelectMany(controlVar => oldInput.A2_Variables.ContainsKey(controlVar)? 
+            //                                                                    oldInput.A2_Variables[controlVar]: new HashSet<Traceable>());
+
+            //if (traceables.Any())
+            //{
+            //    foreach (var v in oldInput.A2_Variables.Keys)
+            //    {
+            //        oldInput.A2_Variables.AddRange(v, traceables);
+            //    }
+            //}
+
+            var visitor = new MoveNextVisitorForDependencyAnalysis(this, node, this.equalities, this.scopeData, currentPTG, oldInput);
             visitor.Visit(node);
             return visitor.State;
         }

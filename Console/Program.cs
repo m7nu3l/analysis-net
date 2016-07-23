@@ -520,7 +520,7 @@ namespace Console
             //    return;
             if (method.ContainingType.ContainingType == null) return;
 
-            if (!method.ContainingType.ContainingType.Name.Equals("SampleReducer2") || !method.ContainingType.Name.Equals("<Reduce>d__1") || !method.Name.Equals("MoveNext"))
+            if (!method.ContainingType.ContainingType.Name.Equals("SampleReducer2") || !method.ContainingType.Name.Equals("<Reduce>d__2") || !method.Name.Equals("MoveNext"))
                 return;
 
             //if (!method.ContainingType.ContainingType.Name.Equals("CVBaseDataSummaryReducer") || !method.ContainingType.Name.Equals("<Reduce>d__4") || !method.Name.Equals("MoveNext"))
@@ -528,7 +528,7 @@ namespace Console
 
             System.Console.WriteLine(method.Name);
 
-            Backend.Model.ControlFlowGraph cfg = DoAnalysisPhases(method);
+            Backend.Model.ControlFlowGraph cfg = DoAnalysisPhases(method, host);
 
             var pointsTo = new PointsToAnalysis(cfg, method);
             var result = pointsTo.Analyze();
@@ -536,6 +536,13 @@ namespace Console
             var dependencyAnalysis = new DependencyAnalysis(method, cfg, result);
             dependencyAnalysis.Analyze();
 
+            var dgml = DGMLSerializer.Serialize(cfg);
+
+            //dgml = DGMLSerializer.Serialize(host, typeDefinition);
+        }
+
+        private void ComputeDependencyGraph(ControlFlowAnalysis cfg)
+        {
             //var dependencyGraph = new DependencyGraph();
 
             //foreach (var cfgNode in cfg.ForwardOrder)
@@ -604,20 +611,37 @@ namespace Console
             //   }
             //}
             //System.Console.WriteLine(dependencyGraph);
-
-            var dgml = DGMLSerializer.Serialize(cfg);
-
-            //dgml = DGMLSerializer.Serialize(host, typeDefinition);
         }
 
-        private static Backend.Model.ControlFlowGraph DoAnalysisPhases(MethodDefinition method)
+        private static Backend.Model.ControlFlowGraph DoAnalysisPhases(MethodDefinition method, Host host)
         {
             var disassembler = new Disassembler(method);
             var methodBody = disassembler.Execute();
             method.Body = methodBody;
 
+            var methodCalls = methodBody.Instructions.OfType<MethodCallInstruction>().ToList();
+            foreach (var methodCall in methodCalls)
+            {
+                var calleeM = host.ResolveReference(methodCall.Method);
+                var callee = calleeM as MethodDefinition;
+                if (callee != null)
+                {
+                    // var calleeCFG = DoAnalysisPhases(callee, host);
+                    var disassemblerCallee = new Disassembler(callee);
+                    var methodBodyCallee = disassemblerCallee.Execute();
+                    callee.Body = methodBodyCallee;
+                    methodBody.Inline(methodCall, callee.Body);
+                }
+            }
+
+            methodBody.UpdateVariables();
+
+            method.Body = methodBody;
+
+
             var cfAnalysis = new ControlFlowAnalysis(method.Body);
             var cfg = cfAnalysis.GenerateNormalControlFlow();
+
 
             var domAnalysis = new DominanceAnalysis(cfg);
             domAnalysis.Analyze();
@@ -650,6 +674,8 @@ namespace Console
             ssa.Transform();
             methodBody.UpdateVariables();
 
+            // I will do some inlining
+            var dgml = DGMLSerializer.Serialize(cfg);
             return cfg;
         }
 
