@@ -245,6 +245,62 @@ namespace Backend.Analyses
             return "[" + base.ToString() +"."+  Field.ToString() + "]";
         }
     }
+    public interface ISymbolicValue
+    {
+        string Name { get; }
+    }
+    public class EscalarVariable: ISymbolicValue
+    {
+        private IVariable variable;
+        public EscalarVariable(IVariable variable)
+        {
+            this.variable = variable;
+        }
+
+        public string Name
+        {
+            get
+            {
+                return variable.Name;
+            }
+        }
+        public override bool Equals(object obj)
+        {
+            var oth = obj as EscalarVariable;
+            return oth!=null && variable.Equals(oth.variable);
+        }
+        public override int GetHashCode()
+        {
+            return variable.GetHashCode();
+        }
+    }
+    public class AbstractObject : ISymbolicValue
+    {
+        // private IVariable variable;
+        private PTGNode ptgNode;
+        public AbstractObject(PTGNode ptgNode)
+        {
+            //this.variable = variable;
+
+        }
+        public string Name
+        {
+            get
+            {
+                return String.Join(",", ptgNode.Variables);
+
+            }
+        }
+        public override bool Equals(object obj)
+        {
+            var oth = obj as AbstractObject;
+            return oth!=null && oth.ptgNode.Equals(this.ptgNode);
+        }
+        public override int GetHashCode()
+        {
+            return ptgNode.GetHashCode();
+        }
+    }
 
     public class DependencyDomain
     {
@@ -380,6 +436,7 @@ namespace Backend.Analyses
             internal DependencyDomain State { get; private set; }
             private PointsToGraph ptg;
             private CFGNode cfgNode;
+            
 
             public MoveNextVisitorForDependencyAnalysis(IteratorDependencyAnalysis iteratorDependencyAnalysis, CFGNode cfgNode,  IDictionary<IVariable, IExpression> equalities, 
                                    ScopeInfo scopeData, PointsToGraph ptg, DependencyDomain oldInput)
@@ -426,8 +483,43 @@ namespace Backend.Analyses
                 return false;
             }
 
+            private ISet<ISymbolicValue> GetSymbolicValues(IVariable v)
+            {
+                if(v.Type.TypeKind == TypeKind.ValueType)
+                {
+                    return new HashSet<ISymbolicValue>() { new EscalarVariable(v) } ;
+                }
+                var res = new HashSet<ISymbolicValue>();
+                if(ptg.Contains(v))
+                {
+                    res.UnionWith(ptg.GetTargets(v).Select( ptg => new AbstractObject(ptg) ));
+                }
+                return res;
+            }
+            private ISet<PTGNode> GetPtgNodes(IVariable v)
+            {
+                var res = new HashSet<PTGNode>();
+                if (ptg.Contains(v))
+                {
+                    res.UnionWith(ptg.GetTargets(v));
+                }
+                return res;
+            }
+
+            private ISet<IVariable> GetAliases(IVariable v)
+            {
+                var res = new HashSet<IVariable>() { v } ;
+                foreach (var ptgNode in GetPtgNodes(v))
+                {
+                    res.UnionWith(ptgNode.Variables);
+                }
+                return res;
+            }
+
             public override void Visit(LoadInstruction instruction)
             {
+               //  v = o.f   (v is instruction.Result, o.f is instruction.Operand)
+
                 var loadStmt = instruction;
                 if (loadStmt.Operand is InstanceFieldAccess)
                 {
@@ -443,18 +535,13 @@ namespace Backend.Analyses
 
                     var union1 = new HashSet<Traceable>();
                     // a2:= [v <- a2[o] U a3[loc(o.f)] if loc(o.f) is CF
-                    if (this.State.A2_Variables.ContainsKey(o))
-                    {
-                        union1.UnionWith(this.State.A2_Variables[o]);
-                    }
+
+                    // TODO: Check this. I think it is too conservative to add a2[o]
+                    // this is a2[o]
+                    union1 = GetTraceablesFromA2_Variables(o);                    
 
                     if (ISClousureField(fieldAccess))
                     {
-                        // Delete: 
-                        //if (this.State.A3.ContainsKey(fieldAccess.FieldName))
-                        //{
-                        //    union1.UnionWith(this.State.A3[fieldAccess.FieldName]);
-                        //}
 
                         // this is a[loc(o.f)]
                         foreach (var ptgNode in ptg.GetTargets(o))
@@ -488,6 +575,7 @@ namespace Backend.Analyses
             }
             public override void Visit(StoreInstruction instruction)
             {
+                //  o.f = v  (v is instruction.Operand, o.f is instruction.Result)
                 var fieldAccess = instruction.Result as InstanceFieldAccess;
                 if(fieldAccess==null)
                 {
@@ -501,27 +589,12 @@ namespace Backend.Analyses
                     var arg = instruction.Operand;
                     var inputTable = equalities.GetValue(arg);
 
-                    // a3 := a2[loc(o.f):=a2[v]] 
-                    if (this.State.A2_Variables.ContainsKey(instruction.Operand))
+                    // a3 := a3[loc(o.f) <- a2[v]] 
+                    // union = a2[v]
+                    var union = GetTraceablesFromA2_Variables(instruction.Operand); 
+                    foreach (var ptgNode in ptg.GetTargets(o))
                     {
-                        // union = a2[v] 
-                        var union = new HashSet<Traceable>(this.State.A2_Variables[instruction.Operand]);
-                        // fieldAccess.FieldName = loc.f 
-                        // Delete: this.State.A3[fieldAccess.FieldName] = union;
-                        // It should be this.f or N.f
-                        foreach (var ptgNode in ptg.GetTargets(o))
-                        {
-                            this.State.A3_Clousures[new Location(ptgNode, field)] = union;
-                        }
-                    }
-                    else
-                    {
-                        // Delete: this.State.A3[fieldAccess.FieldName] = new HashSet<string>();
-                        foreach (var ptgNode in ptg.GetTargets(o))
-                        {
-                            this.State.A3_Clousures[new Location(ptgNode, field)] = new HashSet<Traceable>();
-                        }
-
+                        this.State.A3_Clousures[new Location(ptgNode, field)] = union;
                     }
                 }
                 // This is to connect the column field with the literal
@@ -545,40 +618,16 @@ namespace Backend.Analyses
 
 
                 // We are analyzing instructions of the form this.table.Schema.IndexOf("columnLiteral")
-                // 
-                // this is callResult = arg.Schema(...)
-                // we associate arg the table and callResult with the schema
-                if (methodInvoked.Name == "get_Schema" && methodInvoked.ContainingType.Name == "RowSet")
-                {
-                    var arg = methodCallStmt.Arguments[0];
-                    var table = equalities.GetValue(arg);
-                    scopeData.schemaMap[callResult] = table;
-                }
-                // callResult = arg.IndexOf(colunm)
-                // we recover the table from arg and associate the column number with the call result
-                else if (methodInvoked.Name == "IndexOf" && methodInvoked.ContainingType.Name == "Schema")
-                {
-                    var column = equalities.GetValue(methodCallStmt.Arguments[1]);
-                    var arg = methodCallStmt.Arguments[0];
-                    var table = scopeData.schemaMap[arg];
+                // to maintain a mapping between column numbers and literals 
+                AnalyzeSchemaRelatedMethod(methodCallStmt, methodInvoked, callResult);
 
-                    var columnLiteral = column.ToString();
-
-                    scopeData.columnMap[callResult] = columnLiteral;
-                    this.State.A2_Variables.Add(callResult, new TraceableColumn(table.ToString(), columnLiteral));
-                    // Y have the bidingVar that refer to the column, now I can find the "field"
-                }
                 // This is when you get rows
                 // a2 = a2[v<- a[arg_0]] 
-                else if (methodInvoked.Name == "get_Rows" && methodInvoked.ContainingType.Name == "RowSet")
+                if (methodInvoked.Name == "get_Rows" && methodInvoked.ContainingType.Name == "RowSet")
                 {
                     var arg = methodCallStmt.Arguments[0];
 
-                    var union = new HashSet<Traceable>();
-                    if (this.State.A2_Variables.ContainsKey(arg))
-                    {
-                        union.UnionWith(this.State.A2_Variables[arg]);
-                    }
+                    HashSet<Traceable> union = GetTraceablesFromA2_Variables(arg);
                     this.State.A2_Variables.Add(methodCallStmt.Result, union); // a2[ v = a2[arg[0]]] 
 
                     // TODO: I don't know I need this
@@ -591,13 +640,10 @@ namespace Backend.Analyses
                 else if (methodInvoked.Name == "GetEnumerator" && methodInvoked.ContainingType.FullName == "IEnumerable<Row>")
                 {
                     var arg = methodCallStmt.Arguments[0];
-
-                    var union = new HashSet<Traceable>();
-                    if (this.State.A2_Variables.ContainsKey(arg))
-                    {
-                        union.UnionWith(this.State.A2_Variables[arg]);
-                    }
-                    this.State.A2_Variables.Add(methodCallStmt.Result, union); // a2[ v = a2[arg[0]]] 
+                    
+                    // a2[ v = a2[arg[0]]] 
+                    HashSet<Traceable> union = GetTraceablesFromA2_Variables(arg);
+                    this.State.A2_Variables.Add(methodCallStmt.Result, union); 
 
                     // TODO: Do I need this?
                     var rows = equalities.GetValue(arg) as MethodCallExpression;
@@ -614,21 +660,18 @@ namespace Backend.Analyses
                 else if (methodInvoked.Name == "get_Current" && methodInvoked.ContainingType.FullName == "IEnumerator<Row>")
                 {
                     var arg = methodCallStmt.Arguments[0];
-                    if (this.State.A2_Variables.ContainsKey(arg))
-                    {
-                        var tables = this.State.A2_Variables[arg];
-                        this.State.A2_Variables.Add(methodCallStmt.Result, tables);
-                    }
+                    HashSet<Traceable> tables = GetTraceablesFromA2_Variables(arg);
+                    this.State.A2_Variables.Add(methodCallStmt.Result, tables);
                 }
                 // v = arg.Current
                 // a2 := a2[v <- Table(i)] if Table(i) in a2[arg]
                 else if (methodInvoked.Name == "MoveNext" && methodInvoked.ContainingType.FullName == "IEnumerator")
                 {
                     var arg = methodCallStmt.Arguments[0];
-                    if (this.State.A2_Variables.ContainsKey(arg))
+                    HashSet<Traceable> tables = GetTraceablesFromA2_Variables(arg);
+                    foreach (var table in tables)
                     {
-                        var tables = this.State.A2_Variables[arg];
-                        foreach (var table in tables)
+                        if (table is TraceableTable)
                         {
                             this.State.A2_Variables.Add(methodCallStmt.Result, new TraceableCounter(table.TableName));
                         }
@@ -640,22 +683,13 @@ namespace Backend.Analyses
                 {
                     var arg = methodCallStmt.Arguments[0];
                     var col = methodCallStmt.Arguments[1];
-                    var columnLiteral = ""; 
-                    if (col.Type.ToString() == "String")
-                    {
-                        columnLiteral = this.equalities.GetValue(col).ToString();
-                    }
-                    else
-                    {
-                        columnLiteral = scopeData.columnMap[col];
-                    }
+                    string columnLiteral = ObtainColumnLiteral(col);
 
-                    
+                    HashSet<Traceable> tables = GetTraceablesFromA2_Variables(arg);
 
-                    if (this.State.A2_Variables.ContainsKey(arg))
+                    foreach (var table_i in tables)
                     {
-                        var tables = this.State.A2_Variables[arg];
-                        foreach (var table_i in tables)
+                        if (table_i is TraceableTable)
                         {
                             this.State.A2_Variables.Add(methodCallStmt.Result, new TraceableColumn(table_i.TableName, columnLiteral));
                         }
@@ -673,21 +707,18 @@ namespace Backend.Analyses
                     var arg1 = methodCallStmt.Arguments[1];
 
 
-                    if (this.State.A2_Variables.ContainsKey(arg1))
-                    {
-                        this.State.A4_Ouput.Add(arg0, this.State.A2_Variables[arg1]);
-                    }
+                    var tables = GetTraceablesFromA2_Variables(arg1);
+                    this.State.A4_Ouput.Add(arg0, tables);
 
                     //
-                    var traceables = this.State.ControlVariables.SelectMany(controlVar => oldInput.A2_Variables.ContainsKey(controlVar)? 
-                                                                 oldInput.A2_Variables[controlVar]: new HashSet<Traceable>());
+                    var traceables = this.State.ControlVariables.SelectMany(controlVar => GetTraceablesFromA2_Variables(controlVar));
                     this.State.A4_Ouput.AddRange(arg0, traceables);
                 }
                 // other methdos
                 else
                 {
                     // Pure Methods
-                    foreach(var result in methodCallStmt.ModifiedVariables)
+                    foreach (var result in methodCallStmt.ModifiedVariables)
                     {
                         foreach (var arg in methodCallStmt.Arguments)
                         {
@@ -702,18 +733,77 @@ namespace Backend.Analyses
                     // Unpure methods
                 }
             }
+
+            private string ObtainColumnLiteral(IVariable col)
+            {
+                var columnLiteral = "";
+                if (col.Type.ToString() == "String")
+                {
+                    var columnValue = this.equalities.GetValue(col);
+                    if (columnValue is Constant)
+                    {
+                        columnLiteral = columnValue.ToString();
+                    }
+                    else
+                    {
+                        columnLiteral = "_TOP_";
+                    }
+                }
+                else
+                {
+                    columnLiteral = scopeData.columnMap[col];
+                }
+
+                return columnLiteral;
+            }
+
+            private void AnalyzeSchemaRelatedMethod(MethodCallInstruction methodCallStmt, IMethodReference methodInvoked, IVariable callResult)
+            {
+                // this is callResult = arg.Schema(...)
+                // we associate arg the table and callResult with the schema
+                if (methodInvoked.Name == "get_Schema"
+                    && (methodInvoked.ContainingType.Name == "RowSet" || methodInvoked.ContainingType.Name == "Row")) 
+                {
+                    var arg = methodCallStmt.Arguments[0];
+                    var table = equalities.GetValue(arg);
+                    scopeData.schemaMap[callResult] = table;
+                }
+                // callResult = arg.IndexOf(colunm)
+                // we recover the table from arg and associate the column number with the call result
+                else if (methodInvoked.Name == "IndexOf" && methodInvoked.ContainingType.Name == "Schema")
+                {
+                    var arg = methodCallStmt.Arguments[0];
+                    var table = scopeData.schemaMap[arg];
+                    string columnLiteral = ObtainColumnLiteral(methodCallStmt.Arguments[1]);
+
+                    scopeData.columnMap[callResult] = columnLiteral;
+                    this.State.A2_Variables.Add(callResult, new TraceableColumn(table.ToString(), columnLiteral));
+                    // Y have the bidingVar that refer to the column, now I can find the "field"
+                }
+            }
+
+            private HashSet<Traceable> GetTraceablesFromA2_Variables(IVariable arg)
+            {
+                var union = new HashSet<Traceable>();
+                foreach (var argAlias in GetAliases(arg))
+                {
+                    if (this.State.A2_Variables.ContainsKey(argAlias))
+                    {
+                        union.UnionWith(this.State.A2_Variables[argAlias]);
+                    }
+                }
+
+                return union;
+            }
+
             public override void Default(Instruction instruction)
             {
                 foreach (var result in instruction.ModifiedVariables)
                 {
                     foreach (var arg in instruction.UsedVariables)
                     {
-                        if (State.A2_Variables.ContainsKey(arg))
-                        {
-                            var tables = this.State.A2_Variables[arg];
-                            this.State.A2_Variables.AddRange(result, tables);
-                        }
-
+                        var tables = GetTraceablesFromA2_Variables(arg);
+                        this.State.A2_Variables.AddRange(result, tables);
                     }
                 }
 

@@ -371,70 +371,6 @@ namespace Console
                 System.Console.Out.WriteLine("At {0}\nBefore {1}\nAfter {2}\n", node.Id, resultDepAnalysis[node.Id].Input, resultDepAnalysis[node.Id].Output);
                 //System.Console.Out.WriteLine(String.Join(Environment.NewLine, node.Instructions));
             }
-            IDictionary<IVariable, IExpression> schemaMap = new Dictionary<IVariable, IExpression>();
-            IDictionary<IVariable, string> columnMap = new Dictionary<IVariable, string>();
-            // Maybe a map for IEpression to IVariable?
-            IVariable row = null;
-            IVariable rowEnum = null;
-            int state = 0;
-            foreach (var node in cfg.ForwardOrder)
-            {
-                foreach (var instruction in node.Instructions)
-                {
-                    // check if the statement modify the iterator state 
-                    state = AnalyzeIteratorState(state, instruction);
-
-                    if (instruction is MethodCallInstruction)
-                    {
-                        var methodCallStmt = instruction as MethodCallInstruction;
-                        var methodInvoked = methodCallStmt.Method;
-                        var bindingVar = methodCallStmt.Result;
-                        if (methodInvoked.Name == "get_Schema" && methodInvoked.ContainingType.Name == "RowSet")
-                        {
-                            var arg = methodCallStmt.Arguments[0];
-                            var inputTable = equalities[arg];
-                            schemaMap[bindingVar] = inputTable;
-                        }
-                        if (methodInvoked.Name == "get_Rows" && methodInvoked.ContainingType.Name == "RowSet")
-                        {
-                            var arg = methodCallStmt.Arguments[0];
-                            var inputTable = equalities[arg];
-                            row = bindingVar;
-                            schemaMap[bindingVar] = inputTable;
-                        }
-                        if (methodInvoked.Name == "GetEnumerator" && methodInvoked.Name == "GetEnumerator")
-                        {
-                            var arg = methodCallStmt.Arguments[0];
-                            var enumerator = equalities[arg];
-                            if (arg == row)
-                            {
-                                rowEnum = methodCallStmt.Result;
-                            }
-                        }
-                        if (methodInvoked.Name == "IndexOf" && methodInvoked.ContainingType.Name == "Schema")
-                        {
-                            var column = equalities[methodCallStmt.Arguments[1]];
-                            var previousBinding = methodCallStmt.Arguments[0];
-                            var inputTable = schemaMap[previousBinding];
-                            columnMap[bindingVar] = inputTable + ":" + column;
-                            // Y have the bidingVar that refer to the column, now I can find the "field"
-                        }
-
-                    }
-                    if (instruction is LoadInstruction)
-                    {
-                        var loadStmt = instruction as LoadInstruction;
-                        if (loadStmt.Operand is InstanceFieldAccess)
-                        {
-                            var field = (loadStmt.Operand as InstanceFieldAccess).Field;
-                            if (field.Name[0] == '<' && field.Name.Contains(">"))
-                            {
-
-                            }
-                        }
-                    }
-                }
-            }
         }
         private bool CheckIterationStateModification(IInstruction instruction, ref int state)
         {
@@ -520,7 +456,7 @@ namespace Console
             //    return;
             if (method.ContainingType.ContainingType == null) return;
 
-            if (!method.ContainingType.ContainingType.Name.Equals("SampleReducer2") || !method.ContainingType.Name.Equals("<Reduce>d__2") || !method.Name.Equals("MoveNext"))
+            if (!method.ContainingType.ContainingType.Name.Equals("SampleReducer2") || !method.ContainingType.Name.Contains("<Reduce>d__") || !method.Name.Equals("MoveNext"))
                 return;
 
             //if (!method.ContainingType.ContainingType.Name.Equals("CVBaseDataSummaryReducer") || !method.ContainingType.Name.Equals("<Reduce>d__4") || !method.Name.Equals("MoveNext"))
