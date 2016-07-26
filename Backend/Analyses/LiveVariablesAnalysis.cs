@@ -45,7 +45,7 @@ namespace Backend.Analyses
 
 		protected override bool Compare(ISet<IVariable> left, ISet<IVariable> right)
 		{
-			return left.Equals(right);
+			return left.SetEquals(right);
 		}
 
 		protected override ISet<IVariable> Join(ISet<IVariable> left, ISet<IVariable> right)
