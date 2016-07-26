@@ -374,6 +374,8 @@ namespace Model.Types
 		public IList<TypeVariable> GenericParameters { get; private set; }
 		public IList<MethodParameter> Parameters { get; private set; }
 		public bool IsStatic { get; set; }
+		public bool IsAbstract { get; set; }
+		public bool IsVirtual { get; set; }
 		public bool IsConstructor { get; set; }
 		public MethodBody Body { get; set; }
 
@@ -434,6 +436,16 @@ namespace Model.Types
 			if (this.IsStatic)
 			{
 				result.Append("static ");
+			}
+
+			if (this.IsAbstract)
+			{
+				result.Append("abstract ");
+			}
+
+			if (this.IsVirtual)
+			{
+				result.Append("virtual ");
 			}
 
 			result.AppendFormat("{0} {1}::{2}", this.ReturnType, this.ContainingType.FullName, this.Name);
