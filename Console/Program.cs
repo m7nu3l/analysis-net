@@ -81,14 +81,14 @@ namespace Console
     }
 
 
-    class DependencyAnalysis
+    class AlternativeDependencyAnalysis
     {
-        private class DependencyAnalyzer : InstructionVisitor
+        private class AlternativeDependencyAnalyzer : InstructionVisitor
         {
             private CFGNode cfgNode;
             private PointsToGraph ptg;
-            private DependencyAnalysis depAnalysis;
-            public DependencyAnalyzer(CFGNode cfgNode, PointsToGraph ptg, DependencyAnalysis depAnalysis)
+            private AlternativeDependencyAnalysis depAnalysis;
+            public AlternativeDependencyAnalyzer(CFGNode cfgNode, PointsToGraph ptg, AlternativeDependencyAnalysis depAnalysis)
             {
                 this.cfgNode = cfgNode;
                 this.ptg = ptg;
@@ -303,7 +303,7 @@ namespace Console
         //    this.depGraph = new DependencyGraph();
         //}
 
-        public DependencyAnalysis(MethodDefinition method, ControlFlowGraph cfg, DataFlowAnalysisResult<PointsToGraph>[] result)
+        public AlternativeDependencyAnalysis(MethodDefinition method, ControlFlowGraph cfg, DataFlowAnalysisResult<PointsToGraph>[] result)
         {
             this.method = method;
             this.cfg = cfg;
@@ -321,22 +321,23 @@ namespace Console
             }
             var sorted_nodes = cfg.ForwardOrder;
 
-            for (var i = 0; i < sorted_nodes.Length; ++i)
-            {
-                var cfgNode = sorted_nodes[i];
-                var ptg = result[cfgNode.Id].Output;
-                foreach (var instruction in cfgNode.Instructions)
-                {
-                    var inferer = new DependencyAnalyzer(cfgNode, ptg, this);
+            //for (var i = 0; i < sorted_nodes.Length; ++i)
+            //{
+            //    var cfgNode = sorted_nodes[i];
+            //    var ptg = result[cfgNode.Id].Output;
+            //    foreach (var instruction in cfgNode.Instructions)
+            //    {
+            //        var inferer = new AlternativeDependencyAnalyzer(cfgNode, ptg, this);
 
-                    var uses = instruction.UsedVariables;
-                    var defs = instruction.ModifiedVariables;
-                    inferer.Visit(cfgNode);
-                }
-            }
-            System.Console.WriteLine("Finish Dep analysis");
-            System.Console.WriteLine(depGraph);
-            var depGraphDGML = DGMLSerializer.Serialize(depGraph);
+            //        var uses = instruction.UsedVariables;
+            //        var defs = instruction.ModifiedVariables;
+            //        inferer.Visit(cfgNode);
+            //    }
+            //}
+            //System.Console.WriteLine("Finish Dep analysis");
+            //System.Console.WriteLine(depGraph);
+            //var depGraphDGML = DGMLSerializer.Serialize(depGraph);
+
             var cfgGraphDGML = DGMLSerializer.Serialize(cfg);
             var ptgExit = result[cfg.Exit.Id].Output;
             
@@ -432,6 +433,10 @@ namespace Console
     {
         private Host host;
 
+        public object ContainingClassUnderAnalysis { get; private set; }
+        public string ClassUnderAnalysis { get; private set; }
+        public object MethodUnderAnalysis { get; private set; }
+
         public Program(Host host)
         {
             this.host = host;
@@ -451,16 +456,11 @@ namespace Console
 
         private void VisitMethod(MethodDefinition method)
         {
-
-            //if (!method.ContainingType.Name.Equals("SampleReducer") || !method.Name.Equals("Reduce"))
-            //    return;
             if (method.ContainingType.ContainingType == null) return;
 
-            if (!method.ContainingType.ContainingType.Name.Equals("SampleReducer2") || !method.ContainingType.Name.Contains("<Reduce>d__") || !method.Name.Equals("MoveNext"))
+            if (!method.ContainingType.ContainingType.Name.Equals(this.ContainingClassUnderAnalysis) 
+                || !method.ContainingType.Name.Contains(this.ClassUnderAnalysis) || !method.Name.Equals(this.MethodUnderAnalysis))
                 return;
-
-            //if (!method.ContainingType.ContainingType.Name.Equals("CVBaseDataSummaryReducer") || !method.ContainingType.Name.Equals("<Reduce>d__4") || !method.Name.Equals("MoveNext"))
-            //    return;
 
             System.Console.WriteLine(method.Name);
 
@@ -469,7 +469,7 @@ namespace Console
             var pointsTo = new PointsToAnalysis(cfg, method);
             var result = pointsTo.Analyze();
 
-            var dependencyAnalysis = new DependencyAnalysis(method, cfg, result);
+            var dependencyAnalysis = new AlternativeDependencyAnalysis(method, cfg, result);
             dependencyAnalysis.Analyze();
 
             var dgml = DGMLSerializer.Serialize(cfg);
@@ -606,9 +606,13 @@ namespace Console
             backwardCopyProgapagtion.Analyze();
             backwardCopyProgapagtion.Transform(methodBody);
 
+
             var ssa = new StaticSingleAssignment(methodBody, cfg);
             ssa.Transform();
             methodBody.UpdateVariables();
+
+            var liveVariables = new LiveVariablesAnalysis(cfg);
+            var result = liveVariables.Analyze();
 
             // I will do some inlining
             var dgml = DGMLSerializer.Serialize(cfg);
@@ -619,54 +623,33 @@ namespace Console
         static void Main(string[] args)
         {
 
-            const string root = @"C:\Users\t-diga\Source\Repos\ScopeExamples\ILAnalyzer\"; // @"..\..\..";
-            const string input = root + @"\bin\Debug\ILAnalyzer.exe";
+            //const string root = @"C:\Users\t-diga\Source\Repos\ScopeExamples\ILAnalyzer\"; // @"..\..\..";
+            //const string input = root + @"\bin\Debug\ILAnalyzer.exe";
 
-            //const string root = @"C:\Users\t-diga\Source\Repos\ScopeExamples\Metting\";
-            //const string input = root + @"\__ScopeCodeGen__.dll";
+            const string root = @"c:\users\t-diga\source\repos\scopeexamples\metting\";
+            const string input = root + @"\__scopecodegen__.dll";
+
             var host = new Host();
             //host.Assemblies.Add(assembly);
 
             var loader = new Loader(host);
             loader.LoadAssembly(input);
 
-            // loader.LoadCoreAssembly();
-            /*
-            var type = new BasicType("Examples")
-            {
-                Assembly = new AssemblyReference("Test"),
-                Namespace = "Test"
-            };
-
-            var typeDefinition = host.ResolveReference(type);
-
-            var method = new MethodReference("ExampleLoopEnumerator", null)
-            {
-                ContainingType = type,
-                ReturnType = PlatformTypes.Void
-            };
-
-            var methodDefinition = host.ResolveReference(method) as MethodDefinition;
-            
-            // Testing method calls inlining
-            var methodDefinition = host.ResolveReference(method) as MethodDefinition;
-            var methodCalls = methodDefinition.Body.Instructions.OfType<MethodCallInstruction>().ToList();
-
-            foreach (var methodCall in methodCalls)
-            {
-                var callee = host.ResolveReference(methodCall.Method) as MethodDefinition;
-                methodDefinition.Body.Inline(methodCall, callee.Body);
-            }
-
-            methodDefinition.Body.UpdateVariables();
-
-
-            */
+           
             var program = new Program(host);
+            program.ContainingClassUnderAnalysis = "CVBaseDataSummaryReducer";
+            program.ClassUnderAnalysis = "<Reduce>d__";
+            program.MethodUnderAnalysis = "MoveNext";
+
+            // program.ContainingClassUnderAnalysis = "SampleReducer2";
+
+
             program.VisitMethods();
+            
 
             System.Console.WriteLine("Done!");
             System.Console.ReadKey();
+
         }
     }
 

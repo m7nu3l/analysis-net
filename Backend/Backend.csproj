@@ -43,6 +43,7 @@
     <Compile Include="Analyses\ControlFlowAnalysis.cs" />
     <Compile Include="Analyses\BackwardCopyPropagationAnalysis.cs" />
     <Compile Include="Analyses\IteratorAnalysis.cs" />
+    <Compile Include="Analyses\LiveVariablesAnalysis.cs" />
     <Compile Include="Model\ControlFlowGraph.cs" />
     <Compile Include="Analyses\ForwardCopyPropagationAnalysis.cs" />
     <Compile Include="Analyses\DataFlowAnalysis.cs" />
