@@ -154,8 +154,11 @@ namespace Backend.Analyses
 			{
 				this.RemoveCopiesWithVariable(input, variable);
 			}
-
-			input.AddRange(gen);
+            foreach(var entry in gen)
+            {
+                input[entry.Key]=entry.Value;
+            }
+			
 			return input;
 		}
 
