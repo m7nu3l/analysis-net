@@ -231,12 +231,192 @@ namespace Backend.Serialization
 
 		#endregion
 
+		#region Call Graph
+
+		public static string Serialize(CallGraph cg)
+		{
+			using (var stringWriter = new StringWriter())
+			using (var xmlWriter = new XmlTextWriter(stringWriter))
+			{
+				var reachableMethods = new Dictionary<MethodDefinition, int>();
+
+				xmlWriter.Formatting = Formatting.Indented;
+				xmlWriter.WriteStartElement("DirectedGraph");
+				xmlWriter.WriteAttributeString("xmlns", "http://schemas.microsoft.com/vs/2009/dgml");
+				xmlWriter.WriteStartElement("Nodes");
+
+				foreach (var method in cg.Methods)
+				{
+					reachableMethods.Add(method, reachableMethods.Count);
+				}
+
+				foreach (var method in cg.Roots)
+				{
+					var methodId = reachableMethods[method];
+					var nodeId = Convert.ToString(methodId);
+					var label = string.Format("{0}.{1}", method.ContainingType.Name, method.Name);
+
+					xmlWriter.WriteStartElement("Node");
+					xmlWriter.WriteAttributeString("Id", nodeId);
+					xmlWriter.WriteAttributeString("Label", label);
+					xmlWriter.WriteAttributeString("Background", "Yellow");
+					xmlWriter.WriteEndElement();
+				}
+
+				var otherMethods = cg.Methods.Except(cg.Roots);
+
+				foreach (var method in otherMethods)
+				{
+					var methodId = reachableMethods[method];
+					var nodeId = Convert.ToString(methodId);
+					var label = string.Format("{0}.{1}", method.ContainingType.Name, method.Name);
+
+					xmlWriter.WriteStartElement("Node");
+					xmlWriter.WriteAttributeString("Id", nodeId);
+					xmlWriter.WriteAttributeString("Label", label);
+					xmlWriter.WriteEndElement();
+				}
+
+				xmlWriter.WriteEndElement();
+				xmlWriter.WriteStartElement("Links");
+
+				foreach (var entry in reachableMethods)
+				{
+					var sourceId = Convert.ToString(entry.Value);
+					var invocationsPerCallee = from inv in cg.GetInvocations(entry.Key)
+											   from callee in inv.PossibleCallees
+											   group inv by callee into g
+											   select g;
+
+					foreach (var invocations in invocationsPerCallee)
+					{
+						var calleeId = reachableMethods[invocations.Key];
+						var targetId = Convert.ToString(calleeId);
+						var label = string.Join("\n", invocations.Select(inv => inv.Label));
+
+						xmlWriter.WriteStartElement("Link");
+						xmlWriter.WriteAttributeString("Source", sourceId);
+						xmlWriter.WriteAttributeString("Target", targetId);
+						xmlWriter.WriteAttributeString("Label", label);
+						xmlWriter.WriteEndElement();
+					}
+				}
+
+				xmlWriter.WriteEndElement();
+				xmlWriter.WriteStartElement("Styles");
+				xmlWriter.WriteStartElement("Style");
+				xmlWriter.WriteAttributeString("TargetType", "Node");
+
+				xmlWriter.WriteStartElement("Setter");
+				xmlWriter.WriteAttributeString("Property", "FontFamily");
+				xmlWriter.WriteAttributeString("Value", "Consolas");
+				xmlWriter.WriteEndElement();
+
+				xmlWriter.WriteStartElement("Setter");
+				xmlWriter.WriteAttributeString("Property", "NodeRadius");
+				xmlWriter.WriteAttributeString("Value", "5");
+				xmlWriter.WriteEndElement();
+
+				xmlWriter.WriteStartElement("Setter");
+				xmlWriter.WriteAttributeString("Property", "MinWidth");
+				xmlWriter.WriteAttributeString("Value", "0");
+				xmlWriter.WriteEndElement();
+
+				xmlWriter.WriteEndElement();
+				xmlWriter.WriteEndElement();
+				xmlWriter.WriteEndElement();
+				xmlWriter.Flush();
+				return stringWriter.ToString();
+			}
+		}
+
+		#endregion
+
+		#region Class Hierarchy
+
+		public static string Serialize(ClassHierarchyAnalysis ch)
+		{
+			using (var stringWriter = new StringWriter())
+			using (var xmlWriter = new XmlTextWriter(stringWriter))
+			{
+				var allDefinedTypes = new Dictionary<ITypeDefinition, int>();
+
+				xmlWriter.Formatting = Formatting.Indented;
+				xmlWriter.WriteStartElement("DirectedGraph");
+				xmlWriter.WriteAttributeString("xmlns", "http://schemas.microsoft.com/vs/2009/dgml");
+				xmlWriter.WriteStartElement("Nodes");
+
+				foreach (var type in ch.Types)
+				{
+					allDefinedTypes.Add(type, allDefinedTypes.Count);
+				}
+
+				foreach (var entry in allDefinedTypes)
+				{
+					var nodeId = Convert.ToString(entry.Value);
+					var label = entry.Key.FullName;
+
+					xmlWriter.WriteStartElement("Node");
+					xmlWriter.WriteAttributeString("Id", nodeId);
+					xmlWriter.WriteAttributeString("Label", label);
+					xmlWriter.WriteEndElement();
+				}
+
+				xmlWriter.WriteEndElement();
+				xmlWriter.WriteStartElement("Links");
+
+				foreach (var entry in allDefinedTypes)
+				{
+					var sourceId = Convert.ToString(entry.Value);
+					var subtypes = ch.GetSubtypes(entry.Key);
+
+					foreach (var subtype in subtypes)
+					{
+						var subtypeId = allDefinedTypes[subtype];
+						var targetId = Convert.ToString(subtypeId);
+
+						xmlWriter.WriteStartElement("Link");
+						xmlWriter.WriteAttributeString("Source", sourceId);
+						xmlWriter.WriteAttributeString("Target", targetId);
+						xmlWriter.WriteEndElement();
+					}
+				}
+
+				xmlWriter.WriteEndElement();
+				xmlWriter.WriteStartElement("Styles");
+				xmlWriter.WriteStartElement("Style");
+				xmlWriter.WriteAttributeString("TargetType", "Node");
+
+				xmlWriter.WriteStartElement("Setter");
+				xmlWriter.WriteAttributeString("Property", "FontFamily");
+				xmlWriter.WriteAttributeString("Value", "Consolas");
+				xmlWriter.WriteEndElement();
+
+				xmlWriter.WriteStartElement("Setter");
+				xmlWriter.WriteAttributeString("Property", "NodeRadius");
+				xmlWriter.WriteAttributeString("Value", "5");
+				xmlWriter.WriteEndElement();
+
+				xmlWriter.WriteStartElement("Setter");
+				xmlWriter.WriteAttributeString("Property", "MinWidth");
+				xmlWriter.WriteAttributeString("Value", "0");
+				xmlWriter.WriteEndElement();
+
+				xmlWriter.WriteEndElement();
+				xmlWriter.WriteEndElement();
+				xmlWriter.WriteEndElement();
+				xmlWriter.Flush();
+				return stringWriter.ToString();
+			}
+		}
+
+		#endregion
+
 		#region Type Graph
-		
+
 		public static string Serialize(Host host, ITypeDefinition type)
 		{
-			var types = new ITypeDefinition[] { type };
-			return DGMLSerializer.Serialize(host, types);
+			return DGMLSerializer.Serialize(host, type.ToEnumerable());
 		}
 
 		public static string Serialize(Host host, Assembly assembly)

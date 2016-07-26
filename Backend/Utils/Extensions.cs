@@ -87,7 +87,19 @@ namespace Backend.Utils
 			return new Subset<T>(universe, true);
 		}
 
-		public static ISet<IVariable> GetVariables(this IInstructionContainer block)
+        public static uint StartOffset(this IInstructionContainer block)
+        {
+            var instruction = block.Instructions.First();
+            return instruction.Offset;
+        }
+
+        public static uint EndOffset(this IInstructionContainer block)
+        {
+            var instruction = block.Instructions.Last();
+            return instruction.Offset;
+        }
+
+        public static ISet<IVariable> GetVariables(this IInstructionContainer block)
 		{
 			var result = from i in block.Instructions
 						 from v in i.Variables
@@ -230,48 +242,40 @@ namespace Backend.Utils
 
         public static IExpression ReplaceVariables<T>(this IExpression expr, IDictionary<IVariable, T> equalities) where T : IExpression
 		{
-			foreach (var variable in expr.Variables)
-			{
-				var isTemporal = variable is TemporalVariable;
+            foreach (var variable in expr.Variables)
+            {
+                if (variable.IsTemporal())
+                {
+                    var hasValue = equalities.ContainsKey(variable);
 
-				if (variable is DerivedVariable)
-				{
-					var derived = variable as DerivedVariable;
-					isTemporal = derived.Original is TemporalVariable;
-				}
+                    if (hasValue)
+                    {
+                        var value = equalities[variable];
+                        var isUnknown = value is UnknownValue;
+                        var isPhi = value is PhiExpression;
+                        var isMethodCall = value is MethodCallExpression;
 
-				if (isTemporal)
-				{
-					var hasValue = equalities.ContainsKey(variable);
+                        if (isUnknown || isPhi || isMethodCall)
+                            continue;
 
-					if (hasValue)
-					{
-						var value = equalities[variable];
-						var isUnknown = value is UnknownValue;
-						var isPhi = value is PhiExpression;
-						var isMethodCall = value is MethodCallExpression;
+                        expr = expr.Replace(variable, value);
+                    }
+                }
+            }
 
-						if (isUnknown || isPhi || isMethodCall)
-							continue;
+            return expr;
+        }
 
-						expr = expr.Replace(variable, value);
-					}
-				}
-			}
-
-			return expr;
-		}
-
-		public static void RemoveTemporalVariables(this PointsToGraph ptg)
-		{
-			var temporals = ptg.Variables.OfType<TemporalVariable>().ToArray();
-
-			foreach (var temporal in temporals)
-			{
-				ptg.Remove(temporal);
-			}
-		}
-
+	    public static void RemoveTemporalVariables(this PointsToGraph ptg)
+        {
+            foreach (var variable in ptg.Variables.ToArray())
+            {
+                if (variable.IsTemporal())
+                {
+                    ptg.Remove(variable);
+                }
+            }
+        }
         public static void RemoveDerivedVariables(this PointsToGraph ptg)
         {
             var temporals = ptg.Variables.OfType<DerivedVariable>().ToArray();
