@@ -13,6 +13,7 @@ using Model.Types;
 
 namespace Backend.Analyses
 {
+    #region Iterator State Analysis (to be completed)
     public class IteratorState
     {
         public enum IteratorInternalState { TOP = -100, BOTTOM = -2, INITIALIZED = -3, CONTINUING = 1, END = -1 };
@@ -146,7 +147,9 @@ namespace Backend.Analyses
         }
     }
 
+    #endregion
 
+    #region Dependency Analysis (based of SongTao paper)
     public abstract class Traceable
     {
         public string TableName { get; set; }
@@ -434,7 +437,8 @@ namespace Backend.Analyses
             return oth.Escaping.MapEquals(Escaping)
                 && oth.A2_Variables.MapEquals(A2_Variables)
                 && oth.A3_Clousures.MapEquals(A3_Clousures)
-                && oth.A4_Ouput.MapEquals(A4_Ouput);
+                && oth.A4_Ouput.MapEquals(A4_Ouput)
+                && oth.ControlVariables.SetEquals(ControlVariables);
 
         }
         public override int GetHashCode()
@@ -443,7 +447,8 @@ namespace Backend.Analyses
             return Escaping.GetHashCode()
                 + A2_Variables.GetHashCode()
                 + A3_Clousures.GetHashCode()
-                + A4_Ouput.GetHashCode();
+                + A4_Ouput.GetHashCode()
+                + ControlVariables.GetHashCode();
                 
         }
         public DependencyDomain Clone()
@@ -486,11 +491,11 @@ namespace Backend.Analyses
         public override string ToString()
         {
             var result = "";
-            result += "A2\n";
-            foreach(var var in this.A2_Variables.Keys)
-            {
-                result += String.Format("{0}:{1}\n", var, ToString(A2_Variables[var]));
-            }
+            //result += "A2\n";
+            //foreach(var var in this.A2_Variables.Keys)
+            //{
+            //    result += String.Format("{0}:{1}\n", var, ToString(A2_Variables[var]));
+            //}
             result += "A3\n";
             foreach (var var in this.A3_Clousures.Keys)
             {
@@ -618,7 +623,6 @@ namespace Backend.Analyses
                 }
                 return res;
             }
-
             public override void Visit(LoadInstruction instruction)
             {
                //  v = o.f   (v is instruction.Result, o.f is instruction.Operand)
@@ -666,6 +670,20 @@ namespace Backend.Analyses
                         }
                     }
                     this.State.A2_Variables[loadStmt.Result] = union1;
+                }
+                else if(loadStmt.Operand is IVariable)
+                {
+                    var v = loadStmt.Operand as IVariable;
+                    var unionv = new HashSet<Traceable>();
+                    if (this.State.A2_Variables.ContainsKey(v))
+                    {
+                        unionv.UnionWith(this.State.A2_Variables[v]);
+                        if(this.State.A2_Variables.ContainsKey(loadStmt.Result) && this.State.A2_Variables[loadStmt.Result].Any())
+                        {
+
+                        }
+                        this.State.A2_Variables[loadStmt.Result] = unionv;
+                    }
                 }
             }
 
@@ -755,7 +773,7 @@ namespace Backend.Analyses
             }
             public override void Visit(ConditionalBranchInstruction instruction)
             {
-                this.State.ControlVariables.UnionWith(instruction.UsedVariables);
+                this.State.ControlVariables.UnionWith(instruction.UsedVariables.Where( v => GetTraceablesFromA2_Variables(v).Any()));
 
             }
             public override void Visit(MethodCallInstruction instruction)
@@ -767,8 +785,66 @@ namespace Backend.Analyses
 
                 // We are analyzing instructions of the form this.table.Schema.IndexOf("columnLiteral")
                 // to maintain a mapping between column numbers and literals 
-                AnalyzeSchemaRelatedMethod(methodCallStmt, methodInvoked, callResult);
+                var isSchemaMethod = AnalyzeSchemaRelatedMethod(methodCallStmt, methodInvoked, callResult);
+                if (!isSchemaMethod)
+                {
+                    var isScopeRowMethod = AnalyzeScopeRowMethods(methodCallStmt, methodInvoked, callResult);
 
+                    if (!isScopeRowMethod)
+                    {
+                        if (methodInvoked.Name == "Any") //  && methodInvoked.ContainingType.FullName == "Enumerable")
+                        {
+                            var arg = methodCallStmt.Arguments[0];
+                            var tablesCounters = GetTraceablesFromA2_Variables(arg)
+                                                .Where(t => t is TraceableTable)
+                                                .Select(table_i => new TraceableCounter(table_i.TableName));
+
+                            // this.State.A2_Variables.Add(methodCallStmt.Result, new TraceableCounter(table.TableName));
+                            this.State.A2_Variables[methodCallStmt.Result] = new HashSet<Traceable>(tablesCounters);
+                        }
+                        else if (methodInvoked.Name == "Add" && methodInvoked.ContainingType.FullName.Contains("Set"))
+                        {
+                            var arg0 = methodCallStmt.Arguments[0];
+                            var arg1 = methodCallStmt.Arguments[1];
+
+                            this.State.A2_Variables.AddRange(arg0, new HashSet<Traceable>(GetTraceablesFromA2_Variables(arg1)));
+                        }
+                        else if (methodInvoked.Name == "get_Item" && methodInvoked.ContainingType.FullName.Contains("Set"))
+                        {
+                            var arg0 = methodCallStmt.Arguments[0];
+                            var arg1 = methodCallStmt.Arguments[1];
+
+                            this.State.A2_Variables.AddRange(arg0, new HashSet<Traceable>(GetTraceablesFromA2_Variables(arg1)));
+                        }
+                        else if (methodInvoked.Name == "ContainsKey" && methodInvoked.ContainingType.FullName.Contains("Set"))
+                        {
+                            var arg0 = methodCallStmt.Arguments[0];
+                            var arg1 = methodCallStmt.Arguments[1];
+
+                            this.State.A2_Variables.AddRange(arg0, new HashSet<Traceable>(GetTraceablesFromA2_Variables(arg1)));
+                        }
+                        // other methdos
+                        else
+                        {
+                            // Pure Methods
+                            foreach (var result in methodCallStmt.ModifiedVariables)
+                            {
+                                foreach (var arg in methodCallStmt.Arguments)
+                                {
+                                    this.State.A2_Variables[result] = new HashSet<Traceable>(GetTraceablesFromA2_Variables(arg)); ;
+                                    // this.State.A2_Variables.AddRange(result, new HashSet<Traceable>(GetTraceablesFromA2_Variables(arg))); 
+                                }
+                            }
+                            // Unpure methods
+                        }
+
+                    }
+                }
+            }
+
+            private bool  AnalyzeScopeRowMethods(MethodCallInstruction methodCallStmt, IMethodReference methodInvoked, IVariable callResult)
+            {
+                var result = true;
                 // This is when you get rows
                 // a2 = a2[v<- a[arg_0]] 
                 if (methodInvoked.Name == "get_Rows" && methodInvoked.ContainingType.Name == "RowSet")
@@ -873,37 +949,12 @@ namespace Backend.Analyses
                     scopeData.row = callResult;
                     scopeData.schemaMap[callResult] = table;
                 }
-                else if (methodInvoked.Name == "Any") //  && methodInvoked.ContainingType.FullName == "Enumerable")
-                {
-                    var arg = methodCallStmt.Arguments[0];
-                    var tablesCounters = GetTraceablesFromA2_Variables(arg)
-                                        .Where(t => t is TraceableTable)
-                                        .Select(table_i => new TraceableCounter(table_i.TableName));
-
-                    // this.State.A2_Variables.Add(methodCallStmt.Result, new TraceableCounter(table.TableName));
-                    this.State.A2_Variables[methodCallStmt.Result] = new HashSet<Traceable>(tablesCounters);
-                }
-                else if (methodInvoked.Name == "Add"  && methodInvoked.ContainingType.FullName.Contains("Set"))
-                {
-                    var arg0 = methodCallStmt.Arguments[0];
-                    var arg1 = methodCallStmt.Arguments[1];
-
-                    this.State.A2_Variables.AddRange(arg0, new HashSet<Traceable>(GetTraceablesFromA2_Variables(arg1)));
-                }
-                // other methdos
                 else
                 {
-                    // Pure Methods
-                    foreach (var result in methodCallStmt.ModifiedVariables)
-                    {
-                        foreach (var arg in methodCallStmt.Arguments)
-                        {
-                            //this.State.A2_Variables[result] = new HashSet<Traceable>(GetTraceablesFromA2_Variables(arg)); ;
-                            this.State.A2_Variables.AddRange(result, new HashSet<Traceable>(GetTraceablesFromA2_Variables(arg))); 
-                        }
-                    }
-                    // Unpure methods
+                    result = false;
                 }
+                return result;
+
             }
 
             private ColumnDomain ObtainColumnLiteral(IVariable col)
@@ -949,8 +1000,9 @@ namespace Backend.Analyses
                 return methodInvoked.Name == "IndexOf" && methodInvoked.ContainingType.Name == "Schema";
             }
 
-            private void AnalyzeSchemaRelatedMethod(MethodCallInstruction methodCallStmt, IMethodReference methodInvoked, IVariable callResult)
+            private bool AnalyzeSchemaRelatedMethod(MethodCallInstruction methodCallStmt, IMethodReference methodInvoked, IVariable callResult)
             {
+                var result = true;
                 // this is callResult = arg.Schema(...)
                 // we associate arg the table and callResult with the schema
                 if (IsSchemaMethod(methodInvoked))
@@ -971,6 +1023,11 @@ namespace Backend.Analyses
                     this.State.A2_Variables.Add(callResult, new TraceableColumn(table.ToString(), columnLiteral));
                     // Y have the bidingVar that refer to the column, now I can find the "field"
                 }
+                else
+                {
+                    result = false;
+                }
+                return result;
             }
 
             private HashSet<Traceable> GetTraceablesFromA2_Variables(IVariable arg)
@@ -991,11 +1048,14 @@ namespace Backend.Analyses
             {
                 foreach (var result in instruction.ModifiedVariables)
                 {
+                    var union = new HashSet<Traceable>();
                     foreach (var arg in instruction.UsedVariables)
                     {
                         var tables = GetTraceablesFromA2_Variables(arg);
-                        this.State.A2_Variables.AddRange(result, tables);
+                        union.UnionWith(tables);
+                        
                     }
+                    this.State.A2_Variables[result] = union;
                 }
 
                 // base.Default(instruction);
@@ -1065,5 +1125,5 @@ namespace Backend.Analyses
             return visitor.State;
         }
     }
-
+    #endregion
 }

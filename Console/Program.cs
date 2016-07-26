@@ -357,21 +357,24 @@ namespace Console
 
             var iteratorAnalysis = new IteratorStateAnalysis(cfg, ptgs, this.equalities);
             var result = iteratorAnalysis.Analyze();
-            foreach (var node in cfg.ForwardOrder)
-            {
+            //foreach (var node in cfg.ForwardOrder)
+            //{
 
-                System.Console.Out.WriteLine("At {0}\nBefore {1}\nAfter {2}\n", node.Id, result[node.Id].Input, result[node.Id].Output);
-                //System.Console.Out.WriteLine(String.Join(Environment.NewLine, node.Instructions));
-            }
+            //    System.Console.Out.WriteLine("At {0}\nBefore {1}\nAfter {2}\n", node.Id, result[node.Id].Input, result[node.Id].Output);
+            //    //System.Console.Out.WriteLine(String.Join(Environment.NewLine, node.Instructions));
+            //}
 
             var dependencyAnalysis = new IteratorDependencyAnalysis(cfg, ptgs, this.equalities);
             var resultDepAnalysis = dependencyAnalysis.Analyze();
 
-            foreach (var node in cfg.ForwardOrder)
-            {
-                System.Console.Out.WriteLine("At {0}\nBefore {1}\nAfter {2}\n", node.Id, resultDepAnalysis[node.Id].Input, resultDepAnalysis[node.Id].Output);
-                //System.Console.Out.WriteLine(String.Join(Environment.NewLine, node.Instructions));
-            }
+            var node = cfg.Exit;
+            System.Console.Out.WriteLine("At {0}\nBefore {1}\nAfter {2}\n", node.Id, resultDepAnalysis[node.Id].Input, resultDepAnalysis[node.Id].Output);
+
+            //foreach (var node in cfg.ForwardOrder)
+            //{
+            //    System.Console.Out.WriteLine("At {0}\nBefore {1}\nAfter {2}\n", node.Id, resultDepAnalysis[node.Id].Input, resultDepAnalysis[node.Id].Output);
+            //    //System.Console.Out.WriteLine(String.Join(Environment.NewLine, node.Instructions));
+            //}
         }
         private bool CheckIterationStateModification(IInstruction instruction, ref int state)
         {
