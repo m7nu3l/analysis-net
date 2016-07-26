@@ -58,6 +58,12 @@ namespace Backend.Analyses
 		protected override ISet<IVariable> Flow(CFGNode node, ISet<IVariable> input)
 		{
 			var output = new HashSet<IVariable>(input);
+            var successor = node.Successors.ToArray();
+            for(int i=0; i<successor.Length; i++)
+            {
+                output.ExceptWith(GetPhiVariables(i, successor[i]));
+            }
+
             var kill = KILL[node.Id];
 			var gen = GEN[node.Id];
 
@@ -66,6 +72,15 @@ namespace Backend.Analyses
 			return output;
 		}
 
+        private ISet<IVariable> GetPhiVariables(int succesorOrder, CFGNode node)
+        {
+            var result = new HashSet<IVariable>();
+            foreach(var instruction in node.Instructions.OfType<PhiInstruction>())
+            {
+                result.Add(instruction.Arguments[succesorOrder]);
+            }
+            return result;
+        }
 
 		private void ComputeGen()
 		{
