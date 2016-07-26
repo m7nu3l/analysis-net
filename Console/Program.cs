@@ -48,7 +48,13 @@ namespace Console
 			method.Body = methodBody;
 
 			var cfAnalysis = new ControlFlowAnalysis(method.Body);
-			var cfg = cfAnalysis.GenerateNormalControlFlow();
+			//var cfg = cfAnalysis.GenerateNormalControlFlow();
+			var cfg = cfAnalysis.GenerateExceptionalControlFlow();
+
+			var dgml = DGMLSerializer.Serialize(cfg);
+
+			if (method.Name == "ExampleTryCatchFinally")
+				;
 
 			var domAnalysis = new DominanceAnalysis(cfg);
 			domAnalysis.Analyze();
@@ -86,7 +92,7 @@ namespace Console
 			methodBody.UpdateVariables();
 
 			//var dot = DOTSerializer.Serialize(cfg);
-			var dgml = DGMLSerializer.Serialize(cfg);
+			//var dgml = DGMLSerializer.Serialize(cfg);
 
 			//dgml = DGMLSerializer.Serialize(host, typeDefinition);
 		}
@@ -149,6 +155,29 @@ namespace Console
 			}
 
 			methodDefinition.Body.UpdateVariables();
+
+			type = new BasicType("ExamplesCallGraph")
+			{
+				Assembly = new AssemblyReference("Test"),
+				Namespace = "Test"
+			};
+
+			method = new MethodReference("Example1", PlatformTypes.Void)
+			{
+				ContainingType = type,
+			};
+
+			methodDefinition = host.ResolveReference(method) as MethodDefinition;
+
+			var ch = new ClassHierarchyAnalysis(host);
+			ch.Analyze();
+
+			var dgml = DGMLSerializer.Serialize(ch);
+
+			var chcga = new ClassHierarchyCallGraphAnalysis(host, ch);
+			var cg = chcga.Analyze(methodDefinition.ToEnumerable());
+
+			dgml = DGMLSerializer.Serialize(cg);
 
 			System.Console.WriteLine("Done!");
 			System.Console.ReadKey();
