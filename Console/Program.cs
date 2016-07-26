@@ -558,25 +558,7 @@ namespace Console
             var methodBody = disassembler.Execute();
             method.Body = methodBody;
 
-            var methodCalls = methodBody.Instructions.OfType<MethodCallInstruction>().ToList();
-            foreach (var methodCall in methodCalls)
-            {
-                var calleeM = host.ResolveReference(methodCall.Method);
-                var callee = calleeM as MethodDefinition;
-                if (callee != null)
-                {
-                    // var calleeCFG = DoAnalysisPhases(callee, host);
-                    var disassemblerCallee = new Disassembler(callee);
-                    var methodBodyCallee = disassemblerCallee.Execute();
-                    callee.Body = methodBodyCallee;
-                    methodBody.Inline(methodCall, callee.Body);
-                }
-            }
-
-            methodBody.UpdateVariables();
-
-            method.Body = methodBody;
-
+            DoInlining(method, host, methodBody);
 
             var cfAnalysis = new ControlFlowAnalysis(method.Body);
             var cfg = cfAnalysis.GenerateNormalControlFlow();
@@ -622,15 +604,36 @@ namespace Console
             return cfg;
         }
 
+        private static void DoInlining(MethodDefinition method, Host host, MethodBody methodBody)
+        {
+            var methodCalls = methodBody.Instructions.OfType<MethodCallInstruction>().ToList();
+            foreach (var methodCall in methodCalls)
+            {
+                var calleeM = host.ResolveReference(methodCall.Method);
+                var callee = calleeM as MethodDefinition;
+                if (callee != null)
+                {
+                    // var calleeCFG = DoAnalysisPhases(callee, host);
+                    var disassemblerCallee = new Disassembler(callee);
+                    var methodBodyCallee = disassemblerCallee.Execute();
+                    callee.Body = methodBodyCallee;
+                    methodBody.Inline(methodCall, callee.Body);
+                }
+            }
+
+            methodBody.UpdateVariables();
+
+            method.Body = methodBody;
+        }
 
         static void Main(string[] args)
         {
 
-            //const string root = @"C:\Users\t-diga\Source\Repos\ScopeExamples\ILAnalyzer\"; // @"..\..\..";
-            //const string input = root + @"\bin\Debug\ILAnalyzer.exe";
+            const string root = @"C:\Users\t-diga\Source\Repos\ScopeExamples\ILAnalyzer\"; // @"..\..\..";
+            const string input = root + @"\bin\Debug\ILAnalyzer.exe";
 
-            const string root = @"c:\users\t-diga\source\repos\scopeexamples\metting\";
-            const string input = root + @"\__scopecodegen__.dll";
+            //const string root = @"c:\users\t-diga\source\repos\scopeexamples\metting\";
+            //const string input = root + @"\__scopecodegen__.dll";
 
             var host = new Host();
             //host.Assemblies.Add(assembly);
@@ -638,13 +641,14 @@ namespace Console
             var loader = new Loader(host);
             loader.LoadAssembly(input);
 
+            // loader.LoadCoreAssembly();
            
             var program = new Program(host);
             program.ContainingClassUnderAnalysis = "CVBaseDataSummaryReducer";
             program.ClassUnderAnalysis = "<Reduce>d__";
             program.MethodUnderAnalysis = "MoveNext";
 
-            // program.ContainingClassUnderAnalysis = "SampleReducer2";
+            program.ContainingClassUnderAnalysis = "SampleReducer2";
 
 
             program.VisitMethods();
