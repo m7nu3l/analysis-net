@@ -629,11 +629,11 @@ namespace Console
         static void Main(string[] args)
         {
 
-            const string root = @"C:\Users\t-diga\Source\Repos\ScopeExamples\ILAnalyzer\"; // @"..\..\..";
-            const string input = root + @"\bin\Debug\ILAnalyzer.exe";
+            //const string root = @"C:\Users\t-diga\Source\Repos\ScopeExamples\ILAnalyzer\"; // @"..\..\..";
+            //const string input = root + @"\bin\Debug\ILAnalyzer.exe";
 
-            //const string root = @"c:\users\t-diga\source\repos\scopeexamples\metting\";
-            //const string input = root + @"\__scopecodegen__.dll";
+            const string root = @"c:\users\t-diga\source\repos\scopeexamples\metting\";
+            const string input = root + @"\__scopecodegen__.dll";
 
             var host = new Host();
             //host.Assemblies.Add(assembly);
@@ -648,7 +648,7 @@ namespace Console
             program.ClassUnderAnalysis = "<Reduce>d__";
             program.MethodUnderAnalysis = "MoveNext";
 
-            program.ContainingClassUnderAnalysis = "SampleReducer2";
+            //program.ContainingClassUnderAnalysis = "SampleReducer2";
 
 
             program.VisitMethods();

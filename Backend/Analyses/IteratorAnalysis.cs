@@ -626,9 +626,12 @@ namespace Backend.Analyses
             public override void Visit(LoadInstruction instruction)
             {
                //  v = o.f   (v is instruction.Result, o.f is instruction.Operand)
-
                 var loadStmt = instruction;
-                if (loadStmt.Operand is InstanceFieldAccess)
+                if(loadStmt.Operand is StaticFieldAccess)
+                {
+                    // TODO: Need to properly check 
+                }
+                else if (loadStmt.Operand is InstanceFieldAccess)
                 {
                     var fieldAccess = loadStmt.Operand as InstanceFieldAccess;
                     var o = fieldAccess.Instance;
@@ -671,20 +674,24 @@ namespace Backend.Analyses
                     }
                     this.State.A2_Variables[loadStmt.Result] = union1;
                 }
-                else if(loadStmt.Operand is IVariable)
+                else if (loadStmt.Operand is ArrayLengthAccess)
+                {
+                    UpdateUsingDefUsed(loadStmt);
+                }
+                else if (loadStmt.Operand is IVariable)
                 {
                     var v = loadStmt.Operand as IVariable;
                     var unionv = new HashSet<Traceable>();
                     if (this.State.A2_Variables.ContainsKey(v))
                     {
                         unionv.UnionWith(this.State.A2_Variables[v]);
-                        if(this.State.A2_Variables.ContainsKey(loadStmt.Result) && this.State.A2_Variables[loadStmt.Result].Any())
-                        {
-
-                        }
-                        this.State.A2_Variables[loadStmt.Result] = unionv;
                     }
+                    this.State.A2_Variables[loadStmt.Result] = unionv;
                 }
+                else if(loadStmt.Operand is Constant)
+                { }
+                else
+                { }
             }
 
             private void ProcessLoad(LoadInstruction loadStmt, InstanceFieldAccess fieldAccess, IVariable o, IFieldReference field)
@@ -769,6 +776,8 @@ namespace Backend.Analyses
                         this.State.A3_Clousures[new Location(ptgNode, fakeField)] = union;
                     }
                 }
+                else if(instruction.Result is StaticFieldAccess)
+                { }
 
             }
             public override void Visit(ConditionalBranchInstruction instruction)
@@ -800,42 +809,45 @@ namespace Backend.Analyses
                                                 .Select(table_i => new TraceableCounter(table_i.TableName));
 
                             // this.State.A2_Variables.Add(methodCallStmt.Result, new TraceableCounter(table.TableName));
-                            this.State.A2_Variables[methodCallStmt.Result] = new HashSet<Traceable>(tablesCounters);
+                            //this.State.A2_Variables[methodCallStmt.Result] = new HashSet<Traceable>(tablesCounters);
+                            UpdateUsingDefUsed(methodCallStmt);
+                        }
+                        else if (methodInvoked.Name == "Select") // && methodInvoked.ContainingType.FullName.Contains("Enumerable"))
+                        {
+                            var arg0 = methodCallStmt.Arguments[0];
+                            var arg1 = methodCallStmt.Arguments[1];
+                            //this.State.A2_Variables.AddRange(arg0, new HashSet<Traceable>(GetTraceablesFromA2_Variables(arg1)));
+                            UpdateUsingDefUsed(methodCallStmt);
+                            
                         }
                         else if (methodInvoked.Name == "Add" && methodInvoked.ContainingType.FullName.Contains("Set"))
                         {
                             var arg0 = methodCallStmt.Arguments[0];
                             var arg1 = methodCallStmt.Arguments[1];
-
-                            this.State.A2_Variables.AddRange(arg0, new HashSet<Traceable>(GetTraceablesFromA2_Variables(arg1)));
+                            //this.State.A2_Variables.AddRange(arg0, new HashSet<Traceable>(GetTraceablesFromA2_Variables(arg1)));
+                            UpdateUsingDefUsed(methodCallStmt);
+                            
                         }
                         else if (methodInvoked.Name == "get_Item" && methodInvoked.ContainingType.FullName.Contains("Set"))
                         {
                             var arg0 = methodCallStmt.Arguments[0];
                             var arg1 = methodCallStmt.Arguments[1];
-
-                            this.State.A2_Variables.AddRange(arg0, new HashSet<Traceable>(GetTraceablesFromA2_Variables(arg1)));
+                            //this.State.A2_Variables.AddRange(arg0, new HashSet<Traceable>(GetTraceablesFromA2_Variables(arg1)));
+                            UpdateUsingDefUsed(methodCallStmt);
                         }
                         else if (methodInvoked.Name == "ContainsKey" && methodInvoked.ContainingType.FullName.Contains("Set"))
                         {
                             var arg0 = methodCallStmt.Arguments[0];
                             var arg1 = methodCallStmt.Arguments[1];
-
-                            this.State.A2_Variables.AddRange(arg0, new HashSet<Traceable>(GetTraceablesFromA2_Variables(arg1)));
+                            //this.State.A2_Variables.AddRange(arg0, new HashSet<Traceable>(GetTraceablesFromA2_Variables(arg1)));
+                            UpdateUsingDefUsed(methodCallStmt);
                         }
                         // other methdos
                         else
                         {
                             // Pure Methods
-                            foreach (var result in methodCallStmt.ModifiedVariables)
-                            {
-                                foreach (var arg in methodCallStmt.Arguments)
-                                {
-                                    this.State.A2_Variables[result] = new HashSet<Traceable>(GetTraceablesFromA2_Variables(arg)); ;
-                                    // this.State.A2_Variables.AddRange(result, new HashSet<Traceable>(GetTraceablesFromA2_Variables(arg))); 
-                                }
-                            }
-                            // Unpure methods
+
+                            UpdateUsingDefUsed(methodCallStmt);
                         }
 
                     }
@@ -938,17 +950,17 @@ namespace Backend.Analyses
                     var traceables = this.State.ControlVariables.SelectMany(controlVar => GetTraceablesFromA2_Variables(controlVar));
                     this.State.A4_Ouput.AddRange(arg0, traceables);
                 }
-                else if ((methodInvoked.Name == "get_String" || methodInvoked.Name == "Get") && methodInvoked.ContainingType.Name == "ColumnData")
-                {
-                    var arg = methodCallStmt.Arguments[0];
+                //else if ((methodInvoked.Name == "get_String" || methodInvoked.Name == "Get") && methodInvoked.ContainingType.Name == "ColumnData")
+                //{
+                //    var arg = methodCallStmt.Arguments[0];
 
-                    this.State.A2_Variables[methodCallStmt.Result] = new HashSet<Traceable>(GetTraceablesFromA2_Variables(arg)); ;
+                //    this.State.A2_Variables[methodCallStmt.Result] = new HashSet<Traceable>(GetTraceablesFromA2_Variables(arg)); ;
 
-                    // Do I still need this
-                    var table = equalities.GetValue(arg);
-                    scopeData.row = callResult;
-                    scopeData.schemaMap[callResult] = table;
-                }
+                //    // Do I still need this
+                //    var table = equalities.GetValue(arg);
+                //    scopeData.row = callResult;
+                //    scopeData.schemaMap[callResult] = table;
+                //}
                 else
                 {
                     result = false;
@@ -1043,8 +1055,18 @@ namespace Backend.Analyses
 
                 return union;
             }
-
+            public override void Visit(PhiInstruction instruction)
+            {
+                UpdateUsingDefUsed(instruction);
+            }
             public override void Default(Instruction instruction)
+            {
+                UpdateUsingDefUsed(instruction);
+
+                // base.Default(instruction);
+            }
+
+            private void UpdateUsingDefUsed(Instruction instruction)
             {
                 foreach (var result in instruction.ModifiedVariables)
                 {
@@ -1053,12 +1075,10 @@ namespace Backend.Analyses
                     {
                         var tables = GetTraceablesFromA2_Variables(arg);
                         union.UnionWith(tables);
-                        
+
                     }
                     this.State.A2_Variables[result] = union;
                 }
-
-                // base.Default(instruction);
             }
         }
 
