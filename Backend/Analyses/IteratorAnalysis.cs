@@ -804,57 +804,65 @@ namespace Backend.Analyses
 
                     if (!isScopeRowMethod)
                     {
-                        if (methodInvoked.Name == "Any") //  && methodInvoked.ContainingType.FullName == "Enumerable")
-                        {
-                            var arg = methodCallStmt.Arguments[0];
-                            var tablesCounters = GetTraceablesFromA2_Variables(arg)
-                                                .Where(t => t is Traceable)
-                                                .Select(table_i => new TraceableCounter(table_i.TableName));
-                            var any = GetTraceablesFromA2_Variables(arg).Any();
-                            // this.State.A2_Variables.Add(methodCallStmt.Result, new TraceableCounter(table.TableName));
-                            //this.State.A2_Variables[methodCallStmt.Result] = new HashSet<Traceable>(tablesCounters);
-                            UpdateUsingDefUsed(methodCallStmt);
-                        }
-                        else if (methodInvoked.Name == "Select") // && methodInvoked.ContainingType.FullName.Contains("Enumerable"))
-                        {
-                            var arg0 = methodCallStmt.Arguments[0];
-                            var arg1 = methodCallStmt.Arguments[1];
-                            //this.State.A2_Variables.AddRange(arg0, new HashSet<Traceable>(GetTraceablesFromA2_Variables(arg1)));
-                            UpdateUsingDefUsed(methodCallStmt);
-                            
-                        }
-                        else if (methodInvoked.Name == "Add" && methodInvoked.ContainingType.FullName.Contains("Set"))
-                        {
-                            var arg0 = methodCallStmt.Arguments[0];
-                            var arg1 = methodCallStmt.Arguments[1];
-                            this.State.A2_Variables.AddRange(arg0, new HashSet<Traceable>(GetTraceablesFromA2_Variables(arg1)));
-                            //UpdateUsingDefUsed(methodCallStmt);
-                            
-                        }
-                        else if (methodInvoked.Name == "get_Item" && methodInvoked.ContainingType.FullName.Contains("Set"))
-                        {
-                            var arg0 = methodCallStmt.Arguments[0];
-                            var arg1 = methodCallStmt.Arguments[1];
-                            //this.State.A2_Variables.AddRange(arg0, new HashSet<Traceable>(GetTraceablesFromA2_Variables(arg1)));
-                            UpdateUsingDefUsed(methodCallStmt);
-                        }
-                        else if (methodInvoked.Name == "ContainsKey" && methodInvoked.ContainingType.FullName.Contains("Set"))
-                        {
-                            var arg0 = methodCallStmt.Arguments[0];
-                            var arg1 = methodCallStmt.Arguments[1];
-                            //this.State.A2_Variables.AddRange(arg0, new HashSet<Traceable>(GetTraceablesFromA2_Variables(arg1)));
-                            UpdateUsingDefUsed(methodCallStmt);
-                        }
-                        // other methdos
-                        else
+                        var isCollectionMethod = VisitCollectionMethods(methodCallStmt, methodInvoked);
+                        if(!isCollectionMethod)
                         {
                             // Pure Methods
-
                             UpdateUsingDefUsed(methodCallStmt);
                         }
-
                     }
                 }
+            }
+
+            private bool VisitCollectionMethods(MethodCallInstruction methodCallStmt, IMethodReference methodInvoked)
+            {
+                var result = true;
+                if (methodInvoked.Name == "Any") //  && methodInvoked.ContainingType.FullName == "Enumerable")
+                {
+                    var arg = methodCallStmt.Arguments[0];
+                    var tablesCounters = GetTraceablesFromA2_Variables(arg)
+                                        .Where(t => t is Traceable)
+                                        .Select(table_i => new TraceableCounter(table_i.TableName));
+                    var any = GetTraceablesFromA2_Variables(arg).Any();
+                    // this.State.A2_Variables.Add(methodCallStmt.Result, new TraceableCounter(table.TableName));
+                    //this.State.A2_Variables[methodCallStmt.Result] = new HashSet<Traceable>(tablesCounters);
+                    UpdateUsingDefUsed(methodCallStmt);
+                }
+                else if (methodInvoked.Name == "Select") // && methodInvoked.ContainingType.FullName.Contains("Enumerable"))
+                {
+                    var arg0 = methodCallStmt.Arguments[0];
+                    var arg1 = methodCallStmt.Arguments[1];
+                    //this.State.A2_Variables.AddRange(arg0, new HashSet<Traceable>(GetTraceablesFromA2_Variables(arg1)));
+                    UpdateUsingDefUsed(methodCallStmt);
+
+                }
+                else if (methodInvoked.Name == "Add" && methodInvoked.ContainingType.FullName.Contains("Set"))
+                {
+                    var arg0 = methodCallStmt.Arguments[0];
+                    var arg1 = methodCallStmt.Arguments[1];
+                    this.State.A2_Variables.AddRange(arg0, new HashSet<Traceable>(GetTraceablesFromA2_Variables(arg1)));
+                    //UpdateUsingDefUsed(methodCallStmt);
+
+                }
+                else if (methodInvoked.Name == "get_Item" && methodInvoked.ContainingType.FullName.Contains("Set"))
+                {
+                    var arg0 = methodCallStmt.Arguments[0];
+                    var arg1 = methodCallStmt.Arguments[1];
+                    //this.State.A2_Variables.AddRange(arg0, new HashSet<Traceable>(GetTraceablesFromA2_Variables(arg1)));
+                    UpdateUsingDefUsed(methodCallStmt);
+                }
+                else if (methodInvoked.Name == "ContainsKey" && methodInvoked.ContainingType.FullName.Contains("Set"))
+                {
+                    var arg0 = methodCallStmt.Arguments[0];
+                    var arg1 = methodCallStmt.Arguments[1];
+                    //this.State.A2_Variables.AddRange(arg0, new HashSet<Traceable>(GetTraceablesFromA2_Variables(arg1)));
+                    UpdateUsingDefUsed(methodCallStmt);
+                }
+                else
+                {
+                    result = false;
+                }
+                return result;
             }
 
             private void AssignTraceables(IVariable source, IVariable destination)
