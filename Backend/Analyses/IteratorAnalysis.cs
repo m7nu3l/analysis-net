@@ -415,7 +415,7 @@ namespace Backend.Analyses
 
         public MapSet<IVariable, Traceable> A4_Ouput { get; set; }
 
-        public MapSet<PTGNode, Traceable> Escaping { get; set; }
+        public ISet<Traceable> Escaping { get; set; }
 
         public ISet<IVariable> ControlVariables { get; set; }
 
@@ -425,7 +425,7 @@ namespace Backend.Analyses
             A3_Clousures = new MapSet<Location, Traceable>();
             A4_Ouput = new MapSet<IVariable, Traceable>();
 
-            Escaping = new MapSet<PTGNode, Traceable>();
+            Escaping = new HashSet<Traceable>();
 
             ControlVariables = new HashSet<IVariable>();
         }
@@ -434,7 +434,7 @@ namespace Backend.Analyses
         {
             // Add ControlVariables
             var oth = obj as DependencyDomain;
-            return oth.Escaping.MapEquals(Escaping)
+            return oth.Escaping.SetEquals(Escaping)
                 && oth.A2_Variables.MapEquals(A2_Variables)
                 && oth.A3_Clousures.MapEquals(A3_Clousures)
                 && oth.A4_Ouput.MapEquals(A4_Ouput)
@@ -454,7 +454,7 @@ namespace Backend.Analyses
         public DependencyDomain Clone()
         {
             var result = new DependencyDomain();
-            result.Escaping = new MapSet<PTGNode, Traceable>(this.Escaping);
+            result.Escaping = new HashSet<Traceable>(this.Escaping);
             result.A2_Variables = new MapSet<IVariable, Traceable>(this.A2_Variables);
             result.A3_Clousures = new MapSet<Location, Traceable>(this.A3_Clousures);
             result.A4_Ouput = new MapSet<IVariable, Traceable>(this.A4_Ouput);
@@ -465,13 +465,13 @@ namespace Backend.Analyses
         public DependencyDomain Join(DependencyDomain right)
         {
             var result = new DependencyDomain();
-            result.Escaping = new MapSet<PTGNode, Traceable>(this.Escaping);
+            result.Escaping = new HashSet<Traceable>(this.Escaping);
            
             result.A2_Variables = new MapSet<IVariable, Traceable>(this.A2_Variables);
             result.A3_Clousures = new MapSet<Location, Traceable>(this.A3_Clousures);
             result.A4_Ouput = new MapSet<IVariable, Traceable>(this.A4_Ouput);
 
-            result.ControlVariables = new HashSet<IVariable>();
+            result.ControlVariables = new HashSet<IVariable>(this.ControlVariables);
 
             result.Escaping.UnionWith(right.Escaping);
 
@@ -681,13 +681,16 @@ namespace Backend.Analyses
                 else if (loadStmt.Operand is IVariable)
                 {
                     var v = loadStmt.Operand as IVariable;
-                    var unionv = new HashSet<Traceable>();
-                    if (this.State.A2_Variables.ContainsKey(v))
-                    {
-                        unionv.UnionWith(this.State.A2_Variables[v]);
-                    }
-                    this.State.A2_Variables[loadStmt.Result] = unionv;
+                    this.State.A2_Variables[loadStmt.Result] = GetTraceablesFromA2_Variables(v);
                 }
+                else if(loadStmt.Operand is Reference)
+                {
+                }
+                else if (loadStmt.Operand is Dereference)
+                {
+                }
+                else if(loadStmt.Operand is IndirectMethodCallExpression)
+                { }
                 else if(loadStmt.Operand is Constant)
                 { }
                 else
@@ -805,9 +808,9 @@ namespace Backend.Analyses
                         {
                             var arg = methodCallStmt.Arguments[0];
                             var tablesCounters = GetTraceablesFromA2_Variables(arg)
-                                                .Where(t => t is TraceableTable)
+                                                .Where(t => t is Traceable)
                                                 .Select(table_i => new TraceableCounter(table_i.TableName));
-
+                            var any = GetTraceablesFromA2_Variables(arg).Any();
                             // this.State.A2_Variables.Add(methodCallStmt.Result, new TraceableCounter(table.TableName));
                             //this.State.A2_Variables[methodCallStmt.Result] = new HashSet<Traceable>(tablesCounters);
                             UpdateUsingDefUsed(methodCallStmt);
@@ -824,8 +827,8 @@ namespace Backend.Analyses
                         {
                             var arg0 = methodCallStmt.Arguments[0];
                             var arg1 = methodCallStmt.Arguments[1];
-                            //this.State.A2_Variables.AddRange(arg0, new HashSet<Traceable>(GetTraceablesFromA2_Variables(arg1)));
-                            UpdateUsingDefUsed(methodCallStmt);
+                            this.State.A2_Variables.AddRange(arg0, new HashSet<Traceable>(GetTraceablesFromA2_Variables(arg1)));
+                            //UpdateUsingDefUsed(methodCallStmt);
                             
                         }
                         else if (methodInvoked.Name == "get_Item" && methodInvoked.ContainingType.FullName.Contains("Set"))
@@ -854,6 +857,17 @@ namespace Backend.Analyses
                 }
             }
 
+            private void AssignTraceables(IVariable source, IVariable destination)
+            {
+                HashSet<Traceable> union = GetTraceablesFromA2_Variables(source);
+                this.State.A2_Variables[destination] = union; 
+            }
+            private void AddTraceables(IVariable source, IVariable destination)
+            {
+                HashSet<Traceable> union = GetTraceablesFromA2_Variables(source);
+                this.State.A2_Variables.Add(destination, union);
+            }
+
             private bool  AnalyzeScopeRowMethods(MethodCallInstruction methodCallStmt, IMethodReference methodInvoked, IVariable callResult)
             {
                 var result = true;
@@ -862,10 +876,8 @@ namespace Backend.Analyses
                 if (methodInvoked.Name == "get_Rows" && methodInvoked.ContainingType.Name == "RowSet")
                 {
                     var arg = methodCallStmt.Arguments[0];
+                    AssignTraceables(arg, methodCallStmt.Result);
 
-                    HashSet<Traceable> union = GetTraceablesFromA2_Variables(arg);
-                    // this.State.A2_Variables.Add(methodCallStmt.Result, union); // a2[ v = a2[arg[0]]] 
-                    this.State.A2_Variables[methodCallStmt.Result] = union; // a2[ v = a2[arg[0]]] 
                     // TODO: I don't know I need this
                     var inputTable = equalities.GetValue(arg);
                     scopeData.row = callResult;
@@ -878,10 +890,8 @@ namespace Backend.Analyses
                     var arg = methodCallStmt.Arguments[0];
 
                     // a2[ v = a2[arg[0]]] 
-                    HashSet<Traceable> union = GetTraceablesFromA2_Variables(arg);
-                    //this.State.A2_Variables.Add(methodCallStmt.Result, union); 
-                    this.State.A2_Variables[methodCallStmt.Result] = union;
-
+                    AssignTraceables(arg, methodCallStmt.Result);
+                    
                     // TODO: Do I need this?
                     var rows = equalities.GetValue(arg) as MethodCallExpression;
                     var inputTable = equalities.GetValue(rows.Arguments[0]);
@@ -897,9 +907,7 @@ namespace Backend.Analyses
                 else if (methodInvoked.Name == "get_Current" && methodInvoked.ContainingType.FullName == "IEnumerator<Row>")
                 {
                     var arg = methodCallStmt.Arguments[0];
-                    HashSet<Traceable> tables = GetTraceablesFromA2_Variables(arg);
-                    //this.State.A2_Variables.Add(methodCallStmt.Result, tables);
-                    this.State.A2_Variables[methodCallStmt.Result] = tables;
+                    AssignTraceables(arg, methodCallStmt.Result);
                 }
                 // v = arg.Current
                 // a2 := a2[v <- Table(i)] if Table(i) in a2[arg]
@@ -909,8 +917,6 @@ namespace Backend.Analyses
                     var tablesCounters = GetTraceablesFromA2_Variables(arg)
                                         .Where(t => t is TraceableTable)
                                         .Select(table_i => new TraceableCounter(table_i.TableName));
-
-                    // this.State.A2_Variables.Add(methodCallStmt.Result, new TraceableCounter(table.TableName));
                     this.State.A2_Variables[methodCallStmt.Result] = new HashSet<Traceable>(tablesCounters);
                 }
                 // v = arg.getItem(col)
@@ -921,13 +927,10 @@ namespace Backend.Analyses
                     var col = methodCallStmt.Arguments[1];
                     var columnLiteral = ObtainColumnLiteral(col);
 
-                    // HashSet<Traceable> tables = GetTraceablesFromA2_Variables(arg);
-
                     var tableColumns = GetTraceablesFromA2_Variables(arg)
                                         .Where(t => t is TraceableTable)
                                         .Select(table_i => new TraceableColumn(table_i.TableName, columnLiteral));
 
-                    // this.State.A2_Variables.Add(methodCallStmt.Result, new TraceableColumn(table_i.TableName, columnLiteral));
                     this.State.A2_Variables[methodCallStmt.Result] = new HashSet<Traceable>(tableColumns); ;
 
                     // Do I still need this
@@ -944,7 +947,7 @@ namespace Backend.Analyses
 
 
                     var tables = GetTraceablesFromA2_Variables(arg1);
-                    this.State.A4_Ouput.Add(arg0, tables);
+                    this.State.A4_Ouput.AddRange(arg0, tables);
 
                     //
                     var traceables = this.State.ControlVariables.SelectMany(controlVar => GetTraceablesFromA2_Variables(controlVar));
