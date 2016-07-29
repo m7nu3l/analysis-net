@@ -17,178 +17,176 @@ using Model.ThreeAddressCode.Instructions;
 
 namespace Console
 {
-    class Program
-    {
-        private Host host;
+	class Program
+	{
+		private Host host;
 
-        public Program(Host host)
-        {
-            this.host = host;
-        }
+		public Program(Host host)
+		{
+			this.host = host;
+		}
+		
+		public void VisitMethods()
+		{
+			var methods = host.Assemblies.SelectMany(a => a.RootNamespace.GetAllTypes())
+										 .SelectMany(t => t.Members.OfType<MethodDefinition>())
+										 .Where(md => md.Body != null);
 
-        public void VisitMethods()
-        {
-            var allDefinedMethods = from a in host.Assemblies
-                                    from t in a.RootNamespace.GetAllTypes()
-                                    from m in t.Members.OfType<MethodDefinition>()
-                                    where m.Body != null
-                                    select m;
+			foreach (var method in methods)
+			{
+				VisitMethod(method);
+			}
+		}
 
-            foreach (var method in allDefinedMethods)
-            {
-                VisitMethod(method);
-            }
-        }
+		private void VisitMethod(MethodDefinition method)
+		{
+			System.Console.WriteLine(method.Name);
 
-        private void VisitMethod(MethodDefinition method)
-        {
-            System.Console.WriteLine(method.Name);
+			var methodBodyBytecode = method.Body;
+			var disassembler = new Disassembler(method);
+			var methodBody = disassembler.Execute();			
+			method.Body = methodBody;
 
-            var methodBodyBytecode = method.Body;
-            var disassembler = new Disassembler(method);
-            var methodBody = disassembler.Execute();
-            method.Body = methodBody;
+			var cfAnalysis = new ControlFlowAnalysis(method.Body);
+			//var cfg = cfAnalysis.GenerateNormalControlFlow();
+			var cfg = cfAnalysis.GenerateExceptionalControlFlow();
 
-            var cfAnalysis = new ControlFlowAnalysis(method.Body);
-            //var cfg = cfAnalysis.GenerateNormalControlFlow();
-            var cfg = cfAnalysis.GenerateExceptionalControlFlow();
+			var dgml = DGMLSerializer.Serialize(cfg);
 
-            var dgml = DGMLSerializer.Serialize(cfg);
+			if (method.Name == "ExampleTryCatchFinally")
+				;
 
-            if (method.Name == "ExampleTryCatchFinally")
-                ;
+			var domAnalysis = new DominanceAnalysis(cfg);
+			domAnalysis.Analyze();
+			domAnalysis.GenerateDominanceTree();
 
-            var domAnalysis = new DominanceAnalysis(cfg);
-            domAnalysis.Analyze();
-            domAnalysis.GenerateDominanceTree();
+			var loopAnalysis = new NaturalLoopAnalysis(cfg);
+			loopAnalysis.Analyze();
 
-            var loopAnalysis = new NaturalLoopAnalysis(cfg);
-            loopAnalysis.Analyze();
+			var domFrontierAnalysis = new DominanceFrontierAnalysis(cfg);
+			domFrontierAnalysis.Analyze();
 
-            var domFrontierAnalysis = new DominanceFrontierAnalysis(cfg);
-            domFrontierAnalysis.Analyze();
+			var splitter = new WebAnalysis(cfg);
+			splitter.Analyze();
+			splitter.Transform();
 
-            var splitter = new WebAnalysis(cfg);
-            splitter.Analyze();
-            splitter.Transform();
+			methodBody.UpdateVariables();
 
-            methodBody.UpdateVariables();
+			var typeAnalysis = new TypeInferenceAnalysis(cfg);
+			typeAnalysis.Analyze();
 
-            var typeAnalysis = new TypeInferenceAnalysis(cfg);
-            typeAnalysis.Analyze();
+			var forwardCopyAnalysis = new ForwardCopyPropagationAnalysis(cfg);
+			forwardCopyAnalysis.Analyze();
+			forwardCopyAnalysis.Transform(methodBody);
 
-            var forwardCopyAnalysis = new ForwardCopyPropagationAnalysis(cfg);
-            forwardCopyAnalysis.Analyze();
-            forwardCopyAnalysis.Transform(methodBody);
+			var backwardCopyAnalysis = new BackwardCopyPropagationAnalysis(cfg);
+			backwardCopyAnalysis.Analyze();
+			backwardCopyAnalysis.Transform(methodBody);
 
-            var backwardCopyAnalysis = new BackwardCopyPropagationAnalysis(cfg);
-            backwardCopyAnalysis.Analyze();
-            backwardCopyAnalysis.Transform(methodBody);
+			//var pointsTo = new PointsToAnalysis(cfg);
+			//var result = pointsTo.Analyze();
 
-            //var pointsTo = new PointsToAnalysis(cfg);
-            //var result = pointsTo.Analyze();
+			var liveVariables = new LiveVariablesAnalysis(cfg);
+			liveVariables.Analyze();
 
-            var liveVariables = new LiveVariablesAnalysis(cfg);
-            liveVariables.Analyze();
+			var ssa = new StaticSingleAssignment(methodBody, cfg);
+			ssa.Transform();
+			ssa.Prune(liveVariables);
 
-            var ssa = new StaticSingleAssignment(methodBody, cfg);
-            ssa.Transform();
-            //ssa.Prune(liveVariables);
+			methodBody.UpdateVariables();
 
-            methodBody.UpdateVariables();
+			//var dot = DOTSerializer.Serialize(cfg);
+			//var dgml = DGMLSerializer.Serialize(cfg);
 
-            //var dot = DOTSerializer.Serialize(cfg);
-            //var dgml = DGMLSerializer.Serialize(cfg);
+			//dgml = DGMLSerializer.Serialize(host, typeDefinition);
+		}
 
-            //dgml = DGMLSerializer.Serialize(host, typeDefinition);
-        }
+		static void Main(string[] args)
+		{
+			const string root = @"..\..\..";
+			//const string root = @"C:"; // casa
+			//const string root = @"C:\Users\Edgar\Projects"; // facu
 
-        static void Main(string[] args)
-        {
-            const string root = @"..\..\..";
-            //const string root = @"C:"; // casa
-            //const string root = @"C:\Users\Edgar\Projects"; // facu
+			const string input = root + @"\Test\bin\Debug\Test.dll";
 
-            const string input = root + @"\Test\bin\Debug\Test.dll";
+			//using (var host = new PeReader.DefaultHost())
+			//using (var assembly = new Assembly(host))
+			//{
+			//	assembly.Load(input);
 
-            //using (var host = new PeReader.DefaultHost())
-            //using (var assembly = new Assembly(host))
-            //{
-            //	assembly.Load(input);
+			//	Types.Initialize(host);
 
-            //	Types.Initialize(host);
+			//	//var extractor = new TypesExtractor(host);
+			//	//extractor.Extract(assembly.Module);
 
-            //	//var extractor = new TypesExtractor(host);
-            //	//extractor.Extract(assembly.Module);
+			//	var visitor = new MethodVisitor(host, assembly.PdbReader);
+			//	visitor.Rewrite(assembly.Module);
+			//}
 
-            //	var visitor = new MethodVisitor(host, assembly.PdbReader);
-            //	visitor.Rewrite(assembly.Module);
-            //}
+			var host = new Host();
+			//host.Assemblies.Add(assembly);
 
-            var host = new Host();
-            //host.Assemblies.Add(assembly);
+			PlatformTypes.Resolve(host);
 
-            PlatformTypes.Resolve(host);
+			var loader = new Loader(host);
+			loader.LoadAssembly(input);
+			//loader.LoadCoreAssembly();
 
-            var loader = new Loader(host);
-            loader.LoadAssembly(input);
-            //loader.LoadCoreAssembly();
+			var type = new BasicType("ExamplesPointsTo")
+			{
+				Assembly = new AssemblyReference("Test"),
+				Namespace = "Test"
+			};
 
-            var type = new BasicType("ExamplesPointsTo")
-            {
-                Assembly = new AssemblyReference("Test"),
-                Namespace = "Test"
-            };
+			var typeDefinition = host.ResolveReference(type);
 
-            var typeDefinition = host.ResolveReference(type);
+			var method = new MethodReference("Example1", PlatformTypes.Void)
+			{
+				ContainingType = type,
+			};
 
-            var method = new MethodReference("Example1", PlatformTypes.Void)
-            {
-                ContainingType = type,
-            };
+			//var methodDefinition = host.ResolveReference(method) as MethodDefinition;
 
-            //var methodDefinition = host.ResolveReference(method) as MethodDefinition;
+			var program = new Program(host);
+			program.VisitMethods();
 
-            var program = new Program(host);
-            program.VisitMethods();
+			// Testing method calls inlining
+			var methodDefinition = host.ResolveReference(method) as MethodDefinition;
+			var methodCalls = methodDefinition.Body.Instructions.OfType<MethodCallInstruction>().ToList();
 
-            // Testing method calls inlining
-            var methodDefinition = host.ResolveReference(method) as MethodDefinition;
-            var methodCalls = methodDefinition.Body.Instructions.OfType<MethodCallInstruction>().ToList();
+			foreach (var methodCall in methodCalls)
+			{
+				var callee = host.ResolveReference(methodCall.Method) as MethodDefinition;
+				methodDefinition.Body.Inline(methodCall, callee.Body);
+			}
 
-            foreach (var methodCall in methodCalls)
-            {
-                var callee = host.ResolveReference(methodCall.Method) as MethodDefinition;
-                methodDefinition.Body.Inline(methodCall, callee.Body);
-            }
+			methodDefinition.Body.UpdateVariables();
 
-            methodDefinition.Body.UpdateVariables();
+			type = new BasicType("ExamplesCallGraph")
+			{
+				Assembly = new AssemblyReference("Test"),
+				Namespace = "Test"
+			};
 
-            type = new BasicType("ExamplesCallGraph")
-            {
-                Assembly = new AssemblyReference("Test"),
-                Namespace = "Test"
-            };
+			method = new MethodReference("Example1", PlatformTypes.Void)
+			{
+				ContainingType = type,
+			};
 
-            method = new MethodReference("Example1", PlatformTypes.Void)
-            {
-                ContainingType = type,
-            };
+			methodDefinition = host.ResolveReference(method) as MethodDefinition;
 
-            methodDefinition = host.ResolveReference(method) as MethodDefinition;
+			var ch = new ClassHierarchyAnalysis(host);
+			ch.Analyze();
 
-            var ch = new ClassHierarchyAnalysis(host);
-            ch.Analyze();
+			var dgml = DGMLSerializer.Serialize(ch);
 
-            var dgml = DGMLSerializer.Serialize(ch);
+			var chcga = new ClassHierarchyCallGraphAnalysis(host, ch);
+			var cg = chcga.Analyze(methodDefinition.ToEnumerable());
 
-            var chcga = new ClassHierarchyCallGraphAnalysis(host, ch);
-            var cg = chcga.Analyze(methodDefinition.ToEnumerable());
+			dgml = DGMLSerializer.Serialize(cg);
 
-            dgml = DGMLSerializer.Serialize(cg);
-
-            System.Console.WriteLine("Done!");
-            System.Console.ReadKey();
-        }
-    }
+			System.Console.WriteLine("Done!");
+			System.Console.ReadKey();
+		}
+	}
 }
