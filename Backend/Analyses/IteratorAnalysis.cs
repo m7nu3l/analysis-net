@@ -582,7 +582,7 @@ namespace Backend.Analyses
                     return true;
                 }
 
-                if (fieldAccess.Instance.Type.ToString().Contains("<Reduce>d__") && !fieldAccess.FieldName.Contains("<>1__state"))
+                if (fieldAccess.Instance.Type.ToString().Contains("<Reduce>d__")) // && !fieldAccess.FieldName.StartsWith.Contains("<>1__state"))
                 {
                     return true;
                 }

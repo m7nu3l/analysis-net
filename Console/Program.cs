@@ -14,6 +14,7 @@ using Model.ThreeAddressCode.Instructions;
 using Model.ThreeAddressCode.Values;
 using Model.ThreeAddressCode.Visitor;
 using Model.ThreeAddressCode.Expressions;
+using System.IO;
 
 namespace Console
 {
@@ -459,11 +460,11 @@ namespace Console
 
         private void VisitMethod(MethodDefinition method)
         {
-            if (method.ContainingType.ContainingType == null) return;
+            //if (method.ContainingType.ContainingType == null) return;
 
-            if (!method.ContainingType.ContainingType.Name.Equals(this.ContainingClassUnderAnalysis) 
-                || !method.ContainingType.Name.Contains(this.ClassUnderAnalysis) || !method.Name.Equals(this.MethodUnderAnalysis))
-                return;
+            //if (!method.ContainingType.ContainingType.Name.Equals(this.ContainingClassUnderAnalysis) 
+            //    || !method.ContainingType.Name.Contains(this.ClassUnderAnalysis) || !method.Name.Equals(this.MethodUnderAnalysis))
+            //    return;
 
             System.Console.WriteLine(method.Name);
 
@@ -558,11 +559,10 @@ namespace Console
             var methodBody = disassembler.Execute();
             method.Body = methodBody;
 
-            DoInlining(method, host, methodBody);
+            // DoInlining(method, host, methodBody);
 
             var cfAnalysis = new ControlFlowAnalysis(method.Body);
             var cfg = cfAnalysis.GenerateNormalControlFlow();
-
 
             var domAnalysis = new DominanceAnalysis(cfg);
             domAnalysis.Analyze();
@@ -580,6 +580,7 @@ namespace Console
 
             methodBody.UpdateVariables();
 
+
             var analysis = new TypeInferenceAnalysis(cfg);
             analysis.Analyze();
 
@@ -591,15 +592,37 @@ namespace Console
             backwardCopyProgapagtion.Analyze();
             backwardCopyProgapagtion.Transform(methodBody);
 
+            var liveVariables = new LiveVariablesAnalysis(cfg);
+            var resultLiveVar = liveVariables.Analyze();
+
 
             var ssa = new StaticSingleAssignment(methodBody, cfg);
             ssa.Transform();
             methodBody.UpdateVariables();
 
-            var liveVariables = new LiveVariablesAnalysis(cfg);
-            var result = liveVariables.Analyze();
+            
+            method.Body = methodBody;
 
-            // I will do some inlining
+
+            var counter = 0;
+            foreach (var cfgNode in cfg.ForwardOrder)
+            {
+                var liveVars = resultLiveVar[cfgNode.Id].Input;
+                var insToRemove = new HashSet<Instruction>();
+                
+                foreach (var def in cfgNode.Instructions.OfType<PhiInstruction>().ToArray())
+                {
+                    var derived = def.Result as DerivedVariable;
+                    if (!liveVars.Contains(derived.Original))
+                    {
+                        cfgNode.Instructions.Remove(def);
+                        counter++;
+                    }
+                }
+                
+            }
+            methodBody.UpdateVariables();
+
             var dgml = DGMLSerializer.Serialize(cfg);
             return cfg;
         }
@@ -628,13 +651,23 @@ namespace Console
 
         static void Main(string[] args)
         {
-
             //const string root = @"C:\Users\t-diga\Source\Repos\ScopeExamples\ILAnalyzer\"; // @"..\..\..";
             //const string input = root + @"\bin\Debug\ILAnalyzer.exe";
 
             const string root = @"c:\users\t-diga\source\repos\scopeexamples\metting\";
             const string input = root + @"\__scopecodegen__.dll";
 
+            //AnalyzeDll(input,ScopeMethodKind.Reducer);
+
+            AnalyzeScopeScript(new string[] { @"D:\ScriptExamples\Files", @"D:\Temp\", "Reducer" } );
+
+            System.Console.ReadKey();
+
+        }
+        enum ScopeMethodKind {  Producer, Reducer };
+
+        private static void AnalyzeDll(string input, ScopeMethodKind kind)
+        {
             var host = new Host();
             //host.Assemblies.Add(assembly);
 
@@ -642,20 +675,75 @@ namespace Console
             loader.LoadAssembly(input);
 
             // loader.LoadCoreAssembly();
-           
+
             var program = new Program(host);
+            var classFilter = "";
+            var clousureFilter = "<Reduce>d__";
             program.ContainingClassUnderAnalysis = "CVBaseDataSummaryReducer";
-            program.ClassUnderAnalysis = "<Reduce>d__";
+            if (kind == ScopeMethodKind.Reducer)
+            {
+                classFilter = "Reducer";
+                program.ClassUnderAnalysis = "<Reduce>d__";
+            }
+            else
+            {
+                classFilter = "Producer";
+                clousureFilter = "<Produce>d__";
+                program.ClassUnderAnalysis = "<Produce>d__";
+            }
             program.MethodUnderAnalysis = "MoveNext";
 
-            //program.ContainingClassUnderAnalysis = "SampleReducer2";
 
+            var candidateClasses = host.Assemblies.SelectMany(a => a.RootNamespace.GetAllTypes().OfType<ClassDefinition>())
+                            .Where(c => c.Base!=null && c.Base.Name==classFilter);
+            //foreach (var t in types)
+            //{
+            //    System.Console.WriteLine("{0}", t.FullPathName());
+            //}
 
-            program.VisitMethods();
-            
+            if (candidateClasses.Any())
+            {
+                foreach (var candidateClass in candidateClasses)
+                {
+                    var assembly = host.Assemblies.Where(a => a.Name == candidateClass.Name);
+                    var candidateClousures = candidateClass.Types.OfType<ClassDefinition>()
+                                    .Where(c => c.Name.StartsWith(clousureFilter));
+                    var methods = candidateClousures.SelectMany(t => t.Members.OfType<MethodDefinition>())
+                                                .Where(md => md.Body != null
+                                                && md.Name.Equals(program.MethodUnderAnalysis));
+                    if (methods.Any())
+                    {
+                        System.Console.WriteLine("Analyzing {0} on class {1}.{2} for {3}", program.MethodUnderAnalysis, program.ContainingClassUnderAnalysis, program.ClassUnderAnalysis, input);
+                        program.VisitMethod(methods.First());
+                        System.Console.WriteLine("Done!");
+                    }
+                    else
+                    {
+                        System.Console.WriteLine("No method {0} on class {1} in {2}", program.MethodUnderAnalysis, candidateClass.FullName, input);
+                    }
+                }
+            }
+            else
+            {
+                System.Console.WriteLine("No {0} class in {1}", kind, input);
+            }
+        }
 
+        public static void AnalyzeScopeScript(string[] args)
+        {
+            var inputFolder = args[0];
+            var outputFolder = args[1];
+            var kind = args[2];
+            string[] files = Directory.GetFiles(inputFolder, "__ScopeCodeGen__.dll", SearchOption.AllDirectories);
+            foreach(var dllToAnalyze in files)
+            {
+                System.Console.WriteLine("Analyzing {0}", dllToAnalyze);
+                AnalyzeDll(dllToAnalyze,ScopeMethodKind.Reducer);
+       
+            }
             System.Console.WriteLine("Done!");
             System.Console.ReadKey();
+
 
         }
     }
