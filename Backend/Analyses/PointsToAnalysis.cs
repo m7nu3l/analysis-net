@@ -86,7 +86,13 @@ namespace Backend.Analyses
                 //    ptAnalysis.ProcessCopy(ptg, methodCall.Result, methodCall.Arguments[0]);
                 //}
             }
-
+            public override void Visit(PhiInstruction instruction)
+            {
+                foreach(var v in instruction.Arguments)
+                {
+                    ptAnalysis.ProcessCopy(ptg, instruction.Result, v);
+                }
+            }
         }
 
         //private int nextPTGNodeId;
@@ -224,9 +230,8 @@ namespace Backend.Analyses
 
                 if (!hasField)
 				{
-                    
                     // ptg.PointsTo(node, access.Field, ptg.Null);
-                    if (MayAliasParameter(ptg, node))
+                    if (MayReacheableFromParameter(ptg, node))
                     {
                         // Preventive assignement of a new Node unknown (should be only for parameters)
                         var target = this.GetNode(ptg, offset, dst.Type, PTGNodeKind.Unknown);
@@ -242,9 +247,9 @@ namespace Backend.Analyses
                 }
             }
         }
-        private bool MayAliasParameter(PointsToGraph ptg, PTGNode n)
+        private bool MayReacheableFromParameter(PointsToGraph ptg, PTGNode n)
         {
-            var result = method.Body.Parameters.Intersect(n.Variables).Any();
+            var result = method.Body.Parameters.Where(p => ptg.Reachable(p,n)).Any();
             // This version does not need the inverted mapping of nodes-> variables (which may be expensive to maintain)
             // var result = method.Body.Parameters.Any(p =>ptg.GetTargets(p).Contains(n));
             return result;

@@ -305,6 +305,38 @@ namespace Backend.Utils
             return ptg.GetTargets(v2).Intersect(query).Any();
         }
         #endregion
+        #region Reachability in PTG
+        public static bool Reachable(this PointsToGraph ptg, IVariable v1, PTGNode n)
+        {
+            var result = false;
+            ISet<PTGNode> visitedNodes = new HashSet<PTGNode>();
+            Queue<PTGNode> workList = new Queue<PTGNode>();
+            var nodes = ptg.GetTargets(v1);
+            if (nodes.Contains(n)) return true;
+
+            foreach (var ptgNode in nodes)
+            {
+                workList.Enqueue(ptgNode);
+            }
+            while(workList.Any())
+            {
+                var ptgNode = workList.Dequeue();
+                visitedNodes.Add(ptgNode);
+                if (ptgNode.Equals(n)) return true;
+                foreach(var adjacents in ptgNode.Targets.Values)
+                {
+                    foreach (var adjacent in adjacents)
+                    {
+                        if (!visitedNodes.Contains(adjacent))
+                        {
+                            workList.Enqueue(adjacent);
+                        }
+                    }
+                }
+            }
+            return result;
+        }
+        #endregion
 
         public static bool IsPure(this IMethodReference method)
 		{
@@ -402,6 +434,13 @@ namespace Backend.Utils
             //    ins.Offset += methodCall.Offset; //  nextInstructionOffset;
             //    ins.Label = string.Format("L_{0:X4}", ins.Offset);
             //}
+        }
+
+        // From Zvonimir to get the full name with all the containing types
+        public static string FullPathName(this ITypeDefinition type)
+        {
+            if (type.ContainingType == null) return type.ContainingNamespace.FullName + "." + type.Name;
+            return type.ContainingType.FullPathName() + "." + type.FullName;
         }
 
     }

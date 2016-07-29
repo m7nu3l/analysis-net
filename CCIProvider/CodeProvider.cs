@@ -120,7 +120,7 @@ namespace CCIProvider
 
 				if (instruction == null)
 				{
-					Console.WriteLine("Unknown bytecode: {0}", op.OperationCode);
+					//Console.WriteLine("Unknown bytecode: {0}", op.OperationCode);
 					//throw new UnknownBytecodeException(op);
 					//continue;
 
