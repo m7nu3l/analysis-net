@@ -559,7 +559,7 @@ namespace Console
             var methodBody = disassembler.Execute();
             method.Body = methodBody;
 
-            // DoInlining(method, host, methodBody);
+            DoInlining(method, host, methodBody);
 
             var cfAnalysis = new ControlFlowAnalysis(method.Body);
             var cfg = cfAnalysis.GenerateNormalControlFlow();
@@ -669,6 +669,7 @@ namespace Console
         private static void AnalyzeDll(string input, ScopeMethodKind kind)
         {
             var host = new Host();
+            PlatformTypes.Resolve(host);
             //host.Assemblies.Add(assembly);
 
             var loader = new Loader(host);
@@ -677,6 +678,7 @@ namespace Console
             // loader.LoadCoreAssembly();
 
             var program = new Program(host);
+
             var classFilter = "";
             var clousureFilter = "<Reduce>d__";
             program.ContainingClassUnderAnalysis = "CVBaseDataSummaryReducer";
