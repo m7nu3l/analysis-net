@@ -507,6 +507,8 @@ namespace Backend.Analyses
                 result += String.Format("({0}){1}= dep({2})\n", var, ToString(A2_Variables[var]), ToString(A4_Ouput[var]));
                 //result += String.Format("{0}:{1}\n", var, ToString(A4_Ouput[var]));
             }
+            result += "Escape\n";
+            result += ToString(Escaping);
 
             return result;
         }
@@ -813,11 +815,41 @@ namespace Backend.Analyses
                         if(!isCollectionMethod)
                         {
                             // Pure Methods
-                            UpdateUsingDefUsed(methodCallStmt);
+                            if(IsPureMethod(methodCallStmt))
+                            {
+                                UpdateUsingDefUsed(methodCallStmt);
+                            }
+                            else
+                            {
+                                foreach(var arg  in methodCallStmt.Arguments)
+                                {
+                                    this.State.Escaping.UnionWith(GetTraceablesFromA2_Variables(arg));
+                                }
+                            }
                         }
                     }
                 }
             }
+
+            private bool IsPureMethod(MethodCallInstruction metodCallStmt)
+            {
+                var result = false;
+                var containingType = metodCallStmt.Method.ContainingType;
+                if(containingType.Name=="String")
+                {
+                    return true;
+                }
+                if(containingType is BasicType && metodCallStmt.Method.Name==".ctor")
+                {
+                    return true;
+                }
+                if (containingType.TypeKind == TypeKind.ValueType)
+                {
+                    return true;
+                }
+                return result;
+            }
+
             public override void Visit(PhiInstruction instruction)
             {
                 UpdateUsingDefUsed(instruction);
@@ -842,6 +874,10 @@ namespace Backend.Analyses
             /// <returns></returns>
             private bool VisitCollectionMethods(MethodCallInstruction methodCallStmt, IMethodReference methodInvoked)
             {
+                var pureCollectionMethods = new HashSet<String>() { "Contains", "ContainsKey", "get_Item", "Count", "get_Count" };
+                var pureEnumerationMethods = new HashSet<String>() { "Select", "Where", "Any", "Count" };
+                 
+
                 var result = true;
                 if (methodInvoked.Name == "Any") //  && methodInvoked.ContainingType.FullName == "Enumerable")
                 {
@@ -852,26 +888,22 @@ namespace Backend.Analyses
                     var any = GetTraceablesFromA2_Variables(arg).Any();
                     UpdateUsingDefUsed(methodCallStmt);
                 }
-                else if (methodInvoked.Name == "Select") // && methodInvoked.ContainingType.FullName.Contains("Enumerable"))
+                else if (pureEnumerationMethods.Contains(methodInvoked.Name)) // && methodInvoked.ContainingType.FullName.Contains("Enumerable"))
                 {
                     var arg0 = methodCallStmt.Arguments[0];
                     var arg1 = methodCallStmt.Arguments[1];
                     UpdateUsingDefUsed(methodCallStmt);
 
                 }
-                else if (methodInvoked.Name == "get_Item" && methodInvoked.ContainingType.FullName.Contains("Set"))
+                else if (pureCollectionMethods.Contains(methodInvoked.Name) && methodInvoked.ContainingType.FullName.Contains("Set"))
                 {
-                    var arg0 = methodCallStmt.Arguments[0];
-                    var arg1 = methodCallStmt.Arguments[1];
                     UpdateUsingDefUsed(methodCallStmt);
                 }
-                else if (methodInvoked.Name == "ContainsKey" && methodInvoked.ContainingType.FullName.Contains("Set"))
+                else if (pureCollectionMethods.Contains(methodInvoked.Name) && methodInvoked.ContainingType.FullName.Contains("SortedDictionary"))
                 {
-                    var arg0 = methodCallStmt.Arguments[0];
-                    var arg1 = methodCallStmt.Arguments[1];
-                    //this.State.A2_Variables.AddRange(arg0, new HashSet<Traceable>(GetTraceablesFromA2_Variables(arg1)));
                     UpdateUsingDefUsed(methodCallStmt);
                 }
+
                 else if (methodInvoked.Name == "Add" && methodInvoked.ContainingType.FullName.Contains("Set"))
                 {
                     var arg0 = methodCallStmt.Arguments[0];
@@ -981,17 +1013,15 @@ namespace Backend.Analyses
                     var traceables = this.State.ControlVariables.SelectMany(controlVar => GetTraceablesFromA2_Variables(controlVar));
                     this.State.A4_Ouput.AddRange(arg0, traceables);
                 }
-                //else if ((methodInvoked.Name == "get_String" || methodInvoked.Name == "Get") && methodInvoked.ContainingType.Name == "ColumnData")
-                //{
-                //    var arg = methodCallStmt.Arguments[0];
-
-                //    this.State.A2_Variables[methodCallStmt.Result] = new HashSet<Traceable>(GetTraceablesFromA2_Variables(arg)); ;
-
-                //    // Do I still need this
-                //    var table = equalities.GetValue(arg);
-                //    scopeData.row = callResult;
-                //    scopeData.schemaMap[callResult] = table;
-                //}
+                else if ((methodInvoked.Name == "get_String" || methodInvoked.Name == "Get") && methodInvoked.ContainingType.Name == "ColumnData")
+                {
+                    var arg = methodCallStmt.Arguments[0];
+                    this.State.A2_Variables[methodCallStmt.Result] = new HashSet<Traceable>(GetTraceablesFromA2_Variables(arg)); ;
+                }
+                else if(methodInvoked.ContainingType.Namespace=="ScopeRuntime")
+                {
+                    this.UpdateUsingDefUsed(methodCallStmt);
+                }
                 else
                 {
                     result = false;
