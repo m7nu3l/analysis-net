@@ -81,7 +81,348 @@ namespace Console
         }
     }
 
+    class SongTaoDependencyAnalysis
+    {
+        private Host host;
+        private DataFlowAnalysisResult<PointsToGraph>[] ptAnalysisResult;
+        private MethodDefinition moveNextMethod;
+        private IDictionary<IVariable, IExpression> equalities;
+        private MethodDefinition entryMethod;
+        private IList<InstanceFieldAccess> specialFields; 
 
+        public SongTaoDependencyAnalysis(Host host,
+                                        MethodDefinition method,
+                                        MethodDefinition entryMethod)
+        {
+            this.host = host;
+            this.moveNextMethod = method;
+            this.entryMethod = entryMethod;
+            this.equalities = new Dictionary<IVariable, IExpression>();
+        }
+
+        public void AnalyzeMoveNextMethod()
+        {
+            var cfgEntry = DoAnalysisPhases(entryMethod, host, false);
+
+            var especialFields = cfgEntry.ForwardOrder[1].Instructions.OfType<StoreInstruction>()
+                .Where(st => st.Result is InstanceFieldAccess).Select(st => st.Result as InstanceFieldAccess);
+            this.specialFields = especialFields.ToList();
+
+            Backend.Model.ControlFlowGraph cfg = DoAnalysisPhases(this.moveNextMethod, this.host);
+
+            var pointsTo = new PointsToAnalysis(cfg, this.moveNextMethod);
+            this.ptAnalysisResult = pointsTo.Analyze();
+
+            this.PropagateExpressions(cfg);
+            this.AnalyzeScopeMethods(cfg, ptAnalysisResult);
+
+            //var sorted_nodes = cfg.ForwardOrder;
+            //var ptgExit = ptAnalysisResult[cfg.Exit.Id].Output;
+            //ptgExit.RemoveTemporalVariables();
+            //ptgExit.RemoveDerivedVariables();
+            //var ptgDGML = DGMLSerializer.Serialize(ptgExit);
+
+            var dgml = DGMLSerializer.Serialize(cfg);
+
+        }
+
+        void AnalyzeScopeMethods(ControlFlowGraph cfg, DataFlowAnalysisResult<PointsToGraph>[] ptgs)
+        {
+
+            var iteratorAnalysis = new IteratorStateAnalysis(cfg, ptgs, this.equalities);
+            var result = iteratorAnalysis.Analyze();
+
+            var dependencyAnalysis = new IteratorDependencyAnalysis(cfg, ptgs, this.equalities);
+            var resultDepAnalysis = dependencyAnalysis.Analyze();
+
+            var node = cfg.Exit;
+            System.Console.Out.WriteLine("At {0}\nBefore {1}\nAfter {2}\n", node.Id, resultDepAnalysis[node.Id].Input, resultDepAnalysis[node.Id].Output);
+
+            //foreach (var node in cfg.ForwardOrder)
+            //{
+            //    System.Console.Out.WriteLine("At {0}\nBefore {1}\nAfter {2}\n", node.Id, resultDepAnalysis[node.Id].Input, resultDepAnalysis[node.Id].Output);
+            //    //System.Console.Out.WriteLine(String.Join(Environment.NewLine, node.Instructions));
+            //}
+        }
+
+        private static Backend.Model.ControlFlowGraph DoAnalysisPhases(MethodDefinition method, Host host, bool inline = true)
+        {
+            var disassembler = new Disassembler(method);
+            var methodBody = disassembler.Execute();
+            method.Body = methodBody;
+
+            if (inline)
+            {
+                DoInlining(method, host, methodBody);
+            }
+
+            var cfAnalysis = new ControlFlowAnalysis(method.Body);
+            var cfg = cfAnalysis.GenerateNormalControlFlow();
+
+            var domAnalysis = new DominanceAnalysis(cfg);
+            domAnalysis.Analyze();
+            domAnalysis.GenerateDominanceTree();
+
+            var loopAnalysis = new NaturalLoopAnalysis(cfg);
+            loopAnalysis.Analyze();
+
+            var domFrontierAnalysis = new DominanceFrontierAnalysis(cfg);
+            domFrontierAnalysis.Analyze();
+
+            var splitter = new WebAnalysis(cfg);
+            splitter.Analyze();
+            splitter.Transform();
+
+            methodBody.UpdateVariables();
+
+
+            var analysis = new TypeInferenceAnalysis(cfg);
+            analysis.Analyze();
+
+            var copyProgapagtion = new ForwardCopyPropagationAnalysis(cfg);
+            copyProgapagtion.Analyze();
+            copyProgapagtion.Transform(methodBody);
+
+            var backwardCopyProgapagtion = new BackwardCopyPropagationAnalysis(cfg);
+            backwardCopyProgapagtion.Analyze();
+            backwardCopyProgapagtion.Transform(methodBody);
+
+            var liveVariables = new LiveVariablesAnalysis(cfg);
+            var resultLiveVar = liveVariables.Analyze();
+
+
+            var ssa = new StaticSingleAssignment(methodBody, cfg);
+            ssa.Transform();
+            methodBody.UpdateVariables();
+
+
+            method.Body = methodBody;
+
+            // We use live variables to remove unnecessary phi nodes
+            foreach (var cfgNode in cfg.ForwardOrder)
+            {
+                var liveVars = resultLiveVar[cfgNode.Id].Input;
+                var insToRemove = new HashSet<Instruction>();
+
+                foreach (var def in cfgNode.Instructions.OfType<PhiInstruction>().ToArray())
+                {
+                    var derived = def.Result as DerivedVariable;
+                    if (!liveVars.Contains(derived.Original))
+                    {
+                        cfgNode.Instructions.Remove(def);
+                    }
+                }
+
+            }
+            methodBody.UpdateVariables();
+
+            var dgml = DGMLSerializer.Serialize(cfg);
+            return cfg;
+        }
+
+        private static void DoInlining(MethodDefinition method, Host host, MethodBody methodBody)
+        {
+            var methodCalls = methodBody.Instructions.OfType<MethodCallInstruction>().ToList();
+            foreach (var methodCall in methodCalls)
+            {
+                var calleeM = host.ResolveReference(methodCall.Method);
+                var callee = calleeM as MethodDefinition;
+                if (callee != null)
+                {
+                    // var calleeCFG = DoAnalysisPhases(callee, host);
+                    var disassemblerCallee = new Disassembler(callee);
+                    var methodBodyCallee = disassemblerCallee.Execute();
+                    callee.Body = methodBodyCallee;
+                    methodBody.Inline(methodCall, callee.Body);
+                }
+            }
+
+            methodBody.UpdateVariables();
+
+            method.Body = methodBody;
+        }
+
+        #region Methods to Compute a sort of propagation of Equalities (should be moved to extensions or utils)
+        private void PropagateExpressions(ControlFlowGraph cfg)
+        {
+            foreach (var node in cfg.ForwardOrder)
+            {
+                this.PropagateExpressions(node);
+            }
+        }
+
+        private void PropagateExpressions(CFGNode node)
+        {
+            foreach (var instruction in node.Instructions)
+            {
+                this.PropagateExpressions(instruction);
+            }
+        }
+
+        private void PropagateExpressions(IInstruction instruction)
+        {
+            var definition = instruction as DefinitionInstruction;
+
+            if (definition != null && definition.HasResult)
+            {
+                var expr = definition.ToExpression().ReplaceVariables(equalities);
+                equalities.Add(definition.Result, expr);
+            }
+        }
+
+        #endregion
+    }
+
+
+    class Program
+    {
+        private Host host;
+
+        public object ContainingClassUnderAnalysis { get; private set; }
+        public string ClassUnderAnalysis { get; private set; }
+        public object MethodUnderAnalysis { get; private set; }
+
+        public Program(Host host)
+        {
+            this.host = host;
+        }
+
+        //private void VisitMethods()
+        //{
+        //    var methods = host.Assemblies.SelectMany(a => a.RootNamespace.GetAllTypes())
+        //                                 .SelectMany(t => t.Members.OfType<MethodDefinition>())
+        //                                 .Where(md => md.Body != null);
+
+        //    foreach (var method in methods)
+        //    {
+        //        VisitMethod(method);
+        //    }
+        //}
+        //private void VisitMethod(MethodDefinition method)
+        //{
+        //    System.Console.WriteLine(method.Name);
+
+        //    Backend.Model.ControlFlowGraph cfg = DoAnalysisPhases(method, host);
+
+        //    var pointsTo = new PointsToAnalysis(cfg, method);
+        //    var result = pointsTo.Analyze();
+
+        //    var dependencyAnalysis = new AlternativeDependencyAnalysis(method, cfg, result);
+        //    dependencyAnalysis.Analyze();
+
+        //    var dgml = DGMLSerializer.Serialize(cfg);
+
+        //    //dgml = DGMLSerializer.Serialize(host, typeDefinition);
+        //}
+
+
+        static void Main(string[] args)
+        {
+            //const string root = @"C:\Users\t-diga\Source\Repos\ScopeExamples\ILAnalyzer\"; // @"..\..\..";
+            //const string input = root + @"\bin\Debug\ILAnalyzer.exe";
+
+            const string root = @"c:\users\t-diga\source\repos\scopeexamples\metting\";
+            const string input = root + @"\__scopecodegen__.dll";
+
+            AnalyzeDll(input,ScopeMethodKind.Reducer);
+
+            //AnalyzeScopeScript(new string[] { @"D:\ScriptExamples\Files", @"D:\Temp\", "Reducer" } );
+
+            System.Console.ReadKey();
+
+        }
+
+        enum ScopeMethodKind {  Producer, Reducer };
+
+        private static void AnalyzeDll(string input, ScopeMethodKind kind)
+        {
+            var host = new Host();
+            PlatformTypes.Resolve(host);
+            //host.Assemblies.Add(assembly);
+
+            var loader = new Loader(host);
+            loader.LoadAssembly(input);
+
+            // loader.LoadCoreAssembly();
+
+            var program = new Program(host);
+
+            var classFilter = "";
+            var clousureFilter = "<Reduce>d__";
+            var entryMethod = "Reduce";
+            program.ContainingClassUnderAnalysis = "CVBaseDataSummaryReducer";
+            if (kind == ScopeMethodKind.Reducer)
+            {
+                classFilter = "Reducer";
+                program.ClassUnderAnalysis = "<Reduce>d__";
+            }
+            else
+            {
+                classFilter = "Producer";
+                clousureFilter = "<Produce>d__";
+                entryMethod = "Produce";
+                program.ClassUnderAnalysis = "<Produce>d__";
+            }
+            program.MethodUnderAnalysis = "MoveNext";
+
+
+            var candidateClasses = host.Assemblies.SelectMany(a => a.RootNamespace.GetAllTypes().OfType<ClassDefinition>())
+                            .Where(c => c.Base!=null && c.Base.Name==classFilter);
+            //foreach (var t in types)
+            //{
+            //    System.Console.WriteLine("{0}", t.FullPathName());
+            //}
+
+            if (candidateClasses.Any())
+            {
+                foreach (var candidateClass in candidateClasses)
+                {
+                    var assembly = host.Assemblies.Where(a => a.Name == candidateClass.Name);
+                    var candidateClousures = candidateClass.Types.OfType<ClassDefinition>()
+                                    .Where(c => c.Name.StartsWith(clousureFilter));
+                    var methods = candidateClousures.SelectMany(t => t.Members.OfType<MethodDefinition>())
+                                                .Where(md => md.Body != null
+                                                && md.Name.Equals(program.MethodUnderAnalysis));
+                    if (methods.Any())
+                    {
+                        var entryMethodDef = candidateClass.Methods.Where(m => m.Name == entryMethod).Single();
+                        System.Console.WriteLine("Analyzing {0} on class {1}.{2} for {3}", program.MethodUnderAnalysis, program.ContainingClassUnderAnalysis, program.ClassUnderAnalysis, input);
+                        var dependencyAnalysis = new SongTaoDependencyAnalysis(host, methods.First(), entryMethodDef);
+                        dependencyAnalysis.AnalyzeMoveNextMethod();
+                        System.Console.WriteLine("Done!");
+                    }
+                    else
+                    {
+                        System.Console.WriteLine("No method {0} on class {1} in {2}", program.MethodUnderAnalysis, candidateClass.FullName, input);
+                    }
+                }
+            }
+            else
+            {
+                System.Console.WriteLine("No {0} class in {1}", kind, input);
+            }
+        }
+
+        public static void AnalyzeScopeScript(string[] args)
+        {
+            var inputFolder = args[0];
+            var outputFolder = args[1];
+            var kind = args[2];
+            string[] files = Directory.GetFiles(inputFolder, "__ScopeCodeGen__.dll", SearchOption.AllDirectories);
+            foreach(var dllToAnalyze in files)
+            {
+                System.Console.WriteLine("Analyzing {0}", dllToAnalyze);
+                AnalyzeDll(dllToAnalyze,ScopeMethodKind.Reducer);
+       
+            }
+            System.Console.WriteLine("Done!");
+            System.Console.ReadKey();
+
+
+        }
+    }
+
+    #region Alternative version using classic dependency analysis (needs to be updated)
     class AlternativeDependencyAnalysis
     {
         private class AlternativeDependencyAnalyzer : InstructionVisitor
@@ -285,32 +626,24 @@ namespace Console
 
 
         private ControlFlowGraph cfg;
-        // private PointsToAnalysis ptAnalysis;
         private InstructionDependencyGraph depGraph;
 
         IDictionary<IVariable, ICollection<int>> LastDefsVar = new Dictionary<IVariable, ICollection<int>>();
         IDictionary<PTGNode, IDictionary<IFieldReference, ICollection<int>>>
             LastDefsPtg = new Dictionary<PTGNode, IDictionary<IFieldReference, ICollection<int>>>();
-        private DataFlowAnalysisResult<PointsToGraph>[] result;
+        private DataFlowAnalysisResult<PointsToGraph>[] ptAnalysisResult;
         private MethodDefinition method;
 
         private IDictionary<IVariable, IExpression> equalities;
 
 
-        //public DependencyAnalysis(ControlFlowGraph cfg, PointsToAnalysis ptAnalysis)
-        //{
-        //    this.cfg = cfg;
-        //    this.ptAnalysis = ptAnalysis;
-        //    this.depGraph = new DependencyGraph();
-        //}
 
-        public AlternativeDependencyAnalysis(MethodDefinition method, ControlFlowGraph cfg, DataFlowAnalysisResult<PointsToGraph>[] result)
+        public AlternativeDependencyAnalysis(MethodDefinition method, ControlFlowGraph cfg, DataFlowAnalysisResult<PointsToGraph>[] ptAnalysisResult)
         {
             this.method = method;
             this.cfg = cfg;
-            this.result = result;
+            this.ptAnalysisResult = ptAnalysisResult;
             this.depGraph = new InstructionDependencyGraph(cfg);
-
             this.equalities = new Dictionary<IVariable, IExpression>();
         }
 
@@ -322,61 +655,29 @@ namespace Console
             }
             var sorted_nodes = cfg.ForwardOrder;
 
-            //for (var i = 0; i < sorted_nodes.Length; ++i)
-            //{
-            //    var cfgNode = sorted_nodes[i];
-            //    var ptg = result[cfgNode.Id].Output;
-            //    foreach (var instruction in cfgNode.Instructions)
-            //    {
-            //        var inferer = new AlternativeDependencyAnalyzer(cfgNode, ptg, this);
+            for (var i = 0; i < sorted_nodes.Length; ++i)
+            {
+                var cfgNode = sorted_nodes[i];
+                var ptg = ptAnalysisResult[cfgNode.Id].Output;
+                foreach (var instruction in cfgNode.Instructions)
+                {
+                    var inferer = new AlternativeDependencyAnalyzer(cfgNode, ptg, this);
 
-            //        var uses = instruction.UsedVariables;
-            //        var defs = instruction.ModifiedVariables;
-            //        inferer.Visit(cfgNode);
-            //    }
-            //}
-            //System.Console.WriteLine("Finish Dep analysis");
-            //System.Console.WriteLine(depGraph);
-            //var depGraphDGML = DGMLSerializer.Serialize(depGraph);
+                    var uses = instruction.UsedVariables;
+                    var defs = instruction.ModifiedVariables;
+                    inferer.Visit(cfgNode);
+                }
+            }
+            System.Console.WriteLine("Finish Dep analysis");
+            System.Console.WriteLine(depGraph);
+            var depGraphDGML = DGMLSerializer.Serialize(depGraph);
 
             var cfgGraphDGML = DGMLSerializer.Serialize(cfg);
-            var ptgExit = result[cfg.Exit.Id].Output;
-            
+            var ptgExit = ptAnalysisResult[cfg.Exit.Id].Output;
+
             this.PropagateExpressions(cfg);
-            if (method.Name == "MoveNext")
-            {
-                this.AnalyzeScopeMethods(cfg, result);
-                ptgExit.RemoveTemporalVariables();
-                ptgExit.RemoveDerivedVariables();
-
-                var ptgDGML = DGMLSerializer.Serialize(ptgExit);
-            }
         }
 
-        void AnalyzeScopeMethods(ControlFlowGraph cfg, DataFlowAnalysisResult<PointsToGraph>[] ptgs)
-        {
-
-            var iteratorAnalysis = new IteratorStateAnalysis(cfg, ptgs, this.equalities);
-            var result = iteratorAnalysis.Analyze();
-            //foreach (var node in cfg.ForwardOrder)
-            //{
-
-            //    System.Console.Out.WriteLine("At {0}\nBefore {1}\nAfter {2}\n", node.Id, result[node.Id].Input, result[node.Id].Output);
-            //    //System.Console.Out.WriteLine(String.Join(Environment.NewLine, node.Instructions));
-            //}
-
-            var dependencyAnalysis = new IteratorDependencyAnalysis(cfg, ptgs, this.equalities);
-            var resultDepAnalysis = dependencyAnalysis.Analyze();
-
-            var node = cfg.Exit;
-            System.Console.Out.WriteLine("At {0}\nBefore {1}\nAfter {2}\n", node.Id, resultDepAnalysis[node.Id].Input, resultDepAnalysis[node.Id].Output);
-
-            //foreach (var node in cfg.ForwardOrder)
-            //{
-            //    System.Console.Out.WriteLine("At {0}\nBefore {1}\nAfter {2}\n", node.Id, resultDepAnalysis[node.Id].Input, resultDepAnalysis[node.Id].Output);
-            //    //System.Console.Out.WriteLine(String.Join(Environment.NewLine, node.Instructions));
-            //}
-        }
         private bool CheckIterationStateModification(IInstruction instruction, ref int state)
         {
             bool res = false;
@@ -404,83 +705,6 @@ namespace Console
 
             return state;
         }
-
-        private void PropagateExpressions(ControlFlowGraph cfg)
-        {
-            foreach (var node in cfg.ForwardOrder)
-            {
-                this.PropagateExpressions(node);
-            }
-        }
-
-        private void PropagateExpressions(CFGNode node)
-        {
-            foreach (var instruction in node.Instructions)
-            {
-                this.PropagateExpressions(instruction);
-            }
-        }
-
-        private void PropagateExpressions(IInstruction instruction)
-        {
-            var definition = instruction as DefinitionInstruction;
-
-            if (definition != null && definition.HasResult)
-            {
-                var expr = definition.ToExpression().ReplaceVariables(equalities);
-                equalities.Add(definition.Result, expr);
-            }
-        }
-    }
-
-    class Program
-    {
-        private Host host;
-
-        public object ContainingClassUnderAnalysis { get; private set; }
-        public string ClassUnderAnalysis { get; private set; }
-        public object MethodUnderAnalysis { get; private set; }
-
-        public Program(Host host)
-        {
-            this.host = host;
-        }
-
-        public void VisitMethods()
-        {
-            var methods = host.Assemblies.SelectMany(a => a.RootNamespace.GetAllTypes())
-                                         .SelectMany(t => t.Members.OfType<MethodDefinition>())
-                                         .Where(md => md.Body != null);
-
-            foreach (var method in methods)
-            {
-                VisitMethod(method);
-            }
-        }
-
-        private void VisitMethod(MethodDefinition method)
-        {
-            //if (method.ContainingType.ContainingType == null) return;
-
-            //if (!method.ContainingType.ContainingType.Name.Equals(this.ContainingClassUnderAnalysis) 
-            //    || !method.ContainingType.Name.Contains(this.ClassUnderAnalysis) || !method.Name.Equals(this.MethodUnderAnalysis))
-            //    return;
-
-            System.Console.WriteLine(method.Name);
-
-            Backend.Model.ControlFlowGraph cfg = DoAnalysisPhases(method, host);
-
-            var pointsTo = new PointsToAnalysis(cfg, method);
-            var result = pointsTo.Analyze();
-
-            var dependencyAnalysis = new AlternativeDependencyAnalysis(method, cfg, result);
-            dependencyAnalysis.Analyze();
-
-            var dgml = DGMLSerializer.Serialize(cfg);
-
-            //dgml = DGMLSerializer.Serialize(host, typeDefinition);
-        }
-
         private void ComputeDependencyGraph(ControlFlowAnalysis cfg)
         {
             //var dependencyGraph = new DependencyGraph();
@@ -553,201 +777,33 @@ namespace Console
             //System.Console.WriteLine(dependencyGraph);
         }
 
-        private static Backend.Model.ControlFlowGraph DoAnalysisPhases(MethodDefinition method, Host host)
+
+        private void PropagateExpressions(ControlFlowGraph cfg)
         {
-            var disassembler = new Disassembler(method);
-            var methodBody = disassembler.Execute();
-            method.Body = methodBody;
-
-            DoInlining(method, host, methodBody);
-
-            var cfAnalysis = new ControlFlowAnalysis(method.Body);
-            var cfg = cfAnalysis.GenerateNormalControlFlow();
-
-            var domAnalysis = new DominanceAnalysis(cfg);
-            domAnalysis.Analyze();
-            domAnalysis.GenerateDominanceTree();
-
-            var loopAnalysis = new NaturalLoopAnalysis(cfg);
-            loopAnalysis.Analyze();
-
-            var domFrontierAnalysis = new DominanceFrontierAnalysis(cfg);
-            domFrontierAnalysis.Analyze();
-
-            var splitter = new WebAnalysis(cfg);
-            splitter.Analyze();
-            splitter.Transform();
-
-            methodBody.UpdateVariables();
-
-
-            var analysis = new TypeInferenceAnalysis(cfg);
-            analysis.Analyze();
-
-            var copyProgapagtion = new ForwardCopyPropagationAnalysis(cfg);
-            copyProgapagtion.Analyze();
-            copyProgapagtion.Transform(methodBody);
-
-            var backwardCopyProgapagtion = new BackwardCopyPropagationAnalysis(cfg);
-            backwardCopyProgapagtion.Analyze();
-            backwardCopyProgapagtion.Transform(methodBody);
-
-            var liveVariables = new LiveVariablesAnalysis(cfg);
-            var resultLiveVar = liveVariables.Analyze();
-
-
-            var ssa = new StaticSingleAssignment(methodBody, cfg);
-            ssa.Transform();
-            methodBody.UpdateVariables();
-
-            
-            method.Body = methodBody;
-
-
-            var counter = 0;
-            foreach (var cfgNode in cfg.ForwardOrder)
+            foreach (var node in cfg.ForwardOrder)
             {
-                var liveVars = resultLiveVar[cfgNode.Id].Input;
-                var insToRemove = new HashSet<Instruction>();
-                
-                foreach (var def in cfgNode.Instructions.OfType<PhiInstruction>().ToArray())
-                {
-                    var derived = def.Result as DerivedVariable;
-                    if (!liveVars.Contains(derived.Original))
-                    {
-                        cfgNode.Instructions.Remove(def);
-                        counter++;
-                    }
-                }
-                
-            }
-            methodBody.UpdateVariables();
-
-            var dgml = DGMLSerializer.Serialize(cfg);
-            return cfg;
-        }
-
-        private static void DoInlining(MethodDefinition method, Host host, MethodBody methodBody)
-        {
-            var methodCalls = methodBody.Instructions.OfType<MethodCallInstruction>().ToList();
-            foreach (var methodCall in methodCalls)
-            {
-                var calleeM = host.ResolveReference(methodCall.Method);
-                var callee = calleeM as MethodDefinition;
-                if (callee != null)
-                {
-                    // var calleeCFG = DoAnalysisPhases(callee, host);
-                    var disassemblerCallee = new Disassembler(callee);
-                    var methodBodyCallee = disassemblerCallee.Execute();
-                    callee.Body = methodBodyCallee;
-                    methodBody.Inline(methodCall, callee.Body);
-                }
-            }
-
-            methodBody.UpdateVariables();
-
-            method.Body = methodBody;
-        }
-
-        static void Main(string[] args)
-        {
-            //const string root = @"C:\Users\t-diga\Source\Repos\ScopeExamples\ILAnalyzer\"; // @"..\..\..";
-            //const string input = root + @"\bin\Debug\ILAnalyzer.exe";
-
-            const string root = @"c:\users\t-diga\source\repos\scopeexamples\metting\";
-            const string input = root + @"\__scopecodegen__.dll";
-
-            //AnalyzeDll(input,ScopeMethodKind.Reducer);
-
-            AnalyzeScopeScript(new string[] { @"D:\ScriptExamples\Files", @"D:\Temp\", "Reducer" } );
-
-            System.Console.ReadKey();
-
-        }
-        enum ScopeMethodKind {  Producer, Reducer };
-
-        private static void AnalyzeDll(string input, ScopeMethodKind kind)
-        {
-            var host = new Host();
-            PlatformTypes.Resolve(host);
-            //host.Assemblies.Add(assembly);
-
-            var loader = new Loader(host);
-            loader.LoadAssembly(input);
-
-            // loader.LoadCoreAssembly();
-
-            var program = new Program(host);
-
-            var classFilter = "";
-            var clousureFilter = "<Reduce>d__";
-            program.ContainingClassUnderAnalysis = "CVBaseDataSummaryReducer";
-            if (kind == ScopeMethodKind.Reducer)
-            {
-                classFilter = "Reducer";
-                program.ClassUnderAnalysis = "<Reduce>d__";
-            }
-            else
-            {
-                classFilter = "Producer";
-                clousureFilter = "<Produce>d__";
-                program.ClassUnderAnalysis = "<Produce>d__";
-            }
-            program.MethodUnderAnalysis = "MoveNext";
-
-
-            var candidateClasses = host.Assemblies.SelectMany(a => a.RootNamespace.GetAllTypes().OfType<ClassDefinition>())
-                            .Where(c => c.Base!=null && c.Base.Name==classFilter);
-            //foreach (var t in types)
-            //{
-            //    System.Console.WriteLine("{0}", t.FullPathName());
-            //}
-
-            if (candidateClasses.Any())
-            {
-                foreach (var candidateClass in candidateClasses)
-                {
-                    var assembly = host.Assemblies.Where(a => a.Name == candidateClass.Name);
-                    var candidateClousures = candidateClass.Types.OfType<ClassDefinition>()
-                                    .Where(c => c.Name.StartsWith(clousureFilter));
-                    var methods = candidateClousures.SelectMany(t => t.Members.OfType<MethodDefinition>())
-                                                .Where(md => md.Body != null
-                                                && md.Name.Equals(program.MethodUnderAnalysis));
-                    if (methods.Any())
-                    {
-                        System.Console.WriteLine("Analyzing {0} on class {1}.{2} for {3}", program.MethodUnderAnalysis, program.ContainingClassUnderAnalysis, program.ClassUnderAnalysis, input);
-                        program.VisitMethod(methods.First());
-                        System.Console.WriteLine("Done!");
-                    }
-                    else
-                    {
-                        System.Console.WriteLine("No method {0} on class {1} in {2}", program.MethodUnderAnalysis, candidateClass.FullName, input);
-                    }
-                }
-            }
-            else
-            {
-                System.Console.WriteLine("No {0} class in {1}", kind, input);
+                this.PropagateExpressions(node);
             }
         }
 
-        public static void AnalyzeScopeScript(string[] args)
+        private void PropagateExpressions(CFGNode node)
         {
-            var inputFolder = args[0];
-            var outputFolder = args[1];
-            var kind = args[2];
-            string[] files = Directory.GetFiles(inputFolder, "__ScopeCodeGen__.dll", SearchOption.AllDirectories);
-            foreach(var dllToAnalyze in files)
+            foreach (var instruction in node.Instructions)
             {
-                System.Console.WriteLine("Analyzing {0}", dllToAnalyze);
-                AnalyzeDll(dllToAnalyze,ScopeMethodKind.Reducer);
-       
+                this.PropagateExpressions(instruction);
             }
-            System.Console.WriteLine("Done!");
-            System.Console.ReadKey();
+        }
 
+        private void PropagateExpressions(IInstruction instruction)
+        {
+            var definition = instruction as DefinitionInstruction;
 
+            if (definition != null && definition.HasResult)
+            {
+                var expr = definition.ToExpression().ReplaceVariables(equalities);
+                equalities.Add(definition.Result, expr);
+            }
         }
     }
-
+    #endregion
 }

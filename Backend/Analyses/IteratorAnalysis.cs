@@ -558,6 +558,15 @@ namespace Backend.Analyses
                 this.cfgNode = cfgNode;
             }
 
+            private bool IsClousureParamerField(FieldDefinition fieldDef)
+            {
+                var result = true;
+            
+                return result;
+            }
+
+
+
             private bool ISClousureField(InstanceFieldAccess fieldAccess)
             {
                 var field = fieldAccess.Field;
