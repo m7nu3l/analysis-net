@@ -567,30 +567,37 @@ namespace Backend.Analyses
 
 
 
+            private bool IsScopeType(IType type)
+            {
+                if (type.ToString() == "RowSet")
+                {
+                    return true;
+                }
+                if (type.ToString() == "Row")
+                {
+                    return true;
+                }
+                if (type.ToString() == "IEnumerable<Row>")
+                {
+                    return true;
+                }
+                if (type.ToString() == "IEnumerable<Row>")
+                {
+                    return true;
+                }
+                if (type.ToString() == "IEnumerator<Row>")
+                {
+                    return true;
+                }
+                return false;
+            }
             private bool ISClousureField(InstanceFieldAccess fieldAccess)
             {
                 var field = fieldAccess.Field;
-                if (field.Type.ToString() == "RowSet")
+                if(IsScopeType(field.Type))
                 {
                     return true;
                 }
-                if (field.Type.ToString() == "Row")
-                {
-                    return true;
-                }
-                if (field.Type.ToString() == "IEnumerable<Row>")
-                {
-                    return true;
-                }
-                if (field.Type.ToString() == "IEnumerable<Row>")
-                {
-                    return true;
-                }
-                if (field.Type.ToString() == "IEnumerator<Row>")
-                {
-                    return true;
-                }
-
                 if(IsClousureParamerField(fieldAccess))
                 {
                     return true;
@@ -652,12 +659,6 @@ namespace Backend.Analyses
                     var o = fieldAccess.Instance;
                     var field = fieldAccess.Field;
 
-                    // Check for special field
-                    if (field.Name[0] == '<' && field.Name.Contains(">"))
-                    {
-
-                    }
-
                     ProcessLoad(loadStmt, fieldAccess, o, field);
 
                     // TODO: Filter for columns only
@@ -698,18 +699,18 @@ namespace Backend.Analyses
                     var v = loadStmt.Operand as IVariable;
                     this.State.A2_Variables[loadStmt.Result] = GetTraceablesFromA2_Variables(v);
                 }
-                else if(loadStmt.Operand is Reference)
-                {
-                }
+                // For these cases I'm doing nothing
+                else if (loadStmt.Operand is Constant)
+                {}
+                // These cases should be handled with care (escape?)
+                else if (loadStmt.Operand is Reference)
+                {}
                 else if (loadStmt.Operand is Dereference)
-                {
-                }
+                {}
                 else if(loadStmt.Operand is IndirectMethodCallExpression)
-                { }
-                else if(loadStmt.Operand is Constant)
-                { }
+                {}
                 else
-                { }
+                {}
             }
 
             private void ProcessLoad(LoadInstruction loadStmt, InstanceFieldAccess fieldAccess, IVariable o, IFieldReference field)
@@ -721,7 +722,6 @@ namespace Backend.Analyses
                 union1 = GetTraceablesFromA2_Variables(o);
                 if (ISClousureField(fieldAccess))
                 {
-
                     // this is a[loc(o.f)]
                     foreach (var ptgNode in ptg.GetTargets(o))
                     {
@@ -731,17 +731,7 @@ namespace Backend.Analyses
                             union1.UnionWith(this.State.A3_Clousures[loc]);
                         }
                     }
-                    // I need this to keep track of this like r = this.table
-                    //if (loadStmt.Result.Type.ToString() == "IEnumerator<Row>"
-                    //    || loadStmt.Result.Type.ToString() == "IEnumerable<Row>"
-                    //    || loadStmt.Result.Type.ToString() == "Row")
-                    //{
-                    //    var inputTable = this.scopeData.schemaMap[this.scopeData.row];
-                    //    this.scopeData.schemaMap[loadStmt.Result] = inputTable;
-                    //    // union1.Add(inputTable.ToString());
-                    //}
                 }
-
                 this.State.A2_Variables[loadStmt.Result] = union1;
             }
 
@@ -828,7 +818,28 @@ namespace Backend.Analyses
                     }
                 }
             }
+            public override void Visit(PhiInstruction instruction)
+            {
+                UpdateUsingDefUsed(instruction);
+            }
 
+            /// <summary>
+            /// Default treatment of statement using Def/Use information
+            /// TODO: Check for soundness
+            /// </summary>
+            /// <param name="instruction"></param>
+            public override void Default(Instruction instruction)
+            {
+                UpdateUsingDefUsed(instruction);
+                // base.Default(instruction);
+            }
+
+            /// <summary>
+            /// Special treatment for collection methdod: some are pure, other only modify the receiver
+            /// </summary>
+            /// <param name="methodCallStmt"></param>
+            /// <param name="methodInvoked"></param>
+            /// <returns></returns>
             private bool VisitCollectionMethods(MethodCallInstruction methodCallStmt, IMethodReference methodInvoked)
             {
                 var result = true;
@@ -839,31 +850,19 @@ namespace Backend.Analyses
                                         .Where(t => t is Traceable)
                                         .Select(table_i => new TraceableCounter(table_i.TableName));
                     var any = GetTraceablesFromA2_Variables(arg).Any();
-                    // this.State.A2_Variables.Add(methodCallStmt.Result, new TraceableCounter(table.TableName));
-                    //this.State.A2_Variables[methodCallStmt.Result] = new HashSet<Traceable>(tablesCounters);
                     UpdateUsingDefUsed(methodCallStmt);
                 }
                 else if (methodInvoked.Name == "Select") // && methodInvoked.ContainingType.FullName.Contains("Enumerable"))
                 {
                     var arg0 = methodCallStmt.Arguments[0];
                     var arg1 = methodCallStmt.Arguments[1];
-                    //this.State.A2_Variables.AddRange(arg0, new HashSet<Traceable>(GetTraceablesFromA2_Variables(arg1)));
                     UpdateUsingDefUsed(methodCallStmt);
-
-                }
-                else if (methodInvoked.Name == "Add" && methodInvoked.ContainingType.FullName.Contains("Set"))
-                {
-                    var arg0 = methodCallStmt.Arguments[0];
-                    var arg1 = methodCallStmt.Arguments[1];
-                    this.State.A2_Variables.AddRange(arg0, new HashSet<Traceable>(GetTraceablesFromA2_Variables(arg1)));
-                    //UpdateUsingDefUsed(methodCallStmt);
 
                 }
                 else if (methodInvoked.Name == "get_Item" && methodInvoked.ContainingType.FullName.Contains("Set"))
                 {
                     var arg0 = methodCallStmt.Arguments[0];
                     var arg1 = methodCallStmt.Arguments[1];
-                    //this.State.A2_Variables.AddRange(arg0, new HashSet<Traceable>(GetTraceablesFromA2_Variables(arg1)));
                     UpdateUsingDefUsed(methodCallStmt);
                 }
                 else if (methodInvoked.Name == "ContainsKey" && methodInvoked.ContainingType.FullName.Contains("Set"))
@@ -872,6 +871,12 @@ namespace Backend.Analyses
                     var arg1 = methodCallStmt.Arguments[1];
                     //this.State.A2_Variables.AddRange(arg0, new HashSet<Traceable>(GetTraceablesFromA2_Variables(arg1)));
                     UpdateUsingDefUsed(methodCallStmt);
+                }
+                else if (methodInvoked.Name == "Add" && methodInvoked.ContainingType.FullName.Contains("Set"))
+                {
+                    var arg0 = methodCallStmt.Arguments[0];
+                    var arg1 = methodCallStmt.Arguments[1];
+                    this.State.A2_Variables.AddRange(arg0, new HashSet<Traceable>(GetTraceablesFromA2_Variables(arg1)));
                 }
                 else
                 {
@@ -1038,6 +1043,13 @@ namespace Backend.Analyses
                 return methodInvoked.Name == "IndexOf" && methodInvoked.ContainingType.Name == "Schema";
             }
 
+            /// <summary>
+            /// These are method that access columns by name or number 
+            /// </summary>
+            /// <param name="methodCallStmt"></param>
+            /// <param name="methodInvoked"></param>
+            /// <param name="callResult"></param>
+            /// <returns></returns>
             private bool AnalyzeSchemaRelatedMethod(MethodCallInstruction methodCallStmt, IMethodReference methodInvoked, IVariable callResult)
             {
                 var result = true;
@@ -1068,6 +1080,11 @@ namespace Backend.Analyses
                 return result;
             }
 
+            /// <summary>
+            /// Get all "traceacbles" for a variable and all it aliases
+            /// </summary>
+            /// <param name="arg"></param>
+            /// <returns></returns>
             private HashSet<Traceable> GetTraceablesFromA2_Variables(IVariable arg)
             {
                 var union = new HashSet<Traceable>();
@@ -1080,16 +1097,6 @@ namespace Backend.Analyses
                 }
 
                 return union;
-            }
-            public override void Visit(PhiInstruction instruction)
-            {
-                UpdateUsingDefUsed(instruction);
-            }
-            public override void Default(Instruction instruction)
-            {
-                UpdateUsingDefUsed(instruction);
-
-                // base.Default(instruction);
             }
 
             private void UpdateUsingDefUsed(Instruction instruction)
