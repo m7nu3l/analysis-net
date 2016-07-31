@@ -558,10 +558,10 @@ namespace Backend.Analyses
                 this.cfgNode = cfgNode;
             }
 
-            private bool IsClousureParamerField(FieldDefinition fieldDef)
+            private bool IsClousureParamerField(IFieldAccess fieldAccess)
             {
                 var result = true;
-            
+                result = this.iteratorDependencyAnalysis.specialFields.Contains(fieldAccess);
                 return result;
             }
 
@@ -591,7 +591,13 @@ namespace Backend.Analyses
                     return true;
                 }
 
-                if (fieldAccess.Instance.Type.ToString().Contains("<Reduce>d__")) // && !fieldAccess.FieldName.StartsWith.Contains("<>1__state"))
+                if(IsClousureParamerField(fieldAccess))
+                {
+                    return true;
+                }
+
+                if (fieldAccess.Instance.Type.ToString()== this.iteratorDependencyAnalysis.iteratorClass.Name) 
+                    // && !fieldAccess.FieldName.StartsWith.Contains("<>1__state"))
                 {
                     return true;
                 }
@@ -1106,9 +1112,14 @@ namespace Backend.Analyses
         private IDictionary<IVariable, IExpression> equalities;
         DataFlowAnalysisResult<PointsToGraph>[] ptgs;
         private ScopeInfo scopeData;
+        private IList<InstanceFieldAccess> specialFields;
+        private ITypeDefinition iteratorClass; 
 
-        public IteratorDependencyAnalysis(ControlFlowGraph cfg, DataFlowAnalysisResult<PointsToGraph>[] ptgs, IDictionary<IVariable, IExpression> equalitiesMap) : base(cfg)
+        public IteratorDependencyAnalysis(ITypeDefinition iteratorClass, ControlFlowGraph cfg, DataFlowAnalysisResult<PointsToGraph>[] ptgs,
+                                            IList<InstanceFieldAccess> specialFields, IDictionary<IVariable, IExpression> equalitiesMap) : base(cfg)
         {
+            this.iteratorClass = iteratorClass;
+            this.specialFields = specialFields;
             this.ptgs = ptgs;
             this.equalities = equalitiesMap;
             this.scopeData = new ScopeInfo();

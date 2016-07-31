@@ -132,7 +132,7 @@ namespace Console
             var iteratorAnalysis = new IteratorStateAnalysis(cfg, ptgs, this.equalities);
             var result = iteratorAnalysis.Analyze();
 
-            var dependencyAnalysis = new IteratorDependencyAnalysis(cfg, ptgs, this.equalities);
+            var dependencyAnalysis = new IteratorDependencyAnalysis(this.moveNextMethod.ContainingType, cfg, ptgs, this.specialFields , this.equalities);
             var resultDepAnalysis = dependencyAnalysis.Analyze();
 
             var node = cfg.Exit;
