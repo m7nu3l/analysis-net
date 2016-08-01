@@ -423,6 +423,12 @@ namespace Backend.Utils
             }
             return result;
         }
+        public static bool MayReacheableFromVariable(this PointsToGraph ptg, IVariable v1, IVariable v2)
+        {
+            var result = ptg.GetTargets(v2).Any(n => ptg.Reachable(v1, n));
+            return result;
+        }
+
         #endregion
 
         public static bool IsPure(this IMethodReference method)
@@ -529,6 +535,13 @@ namespace Backend.Utils
             if (type.ContainingType == null) return type.ContainingNamespace.FullName + "." + type.Name;
             return type.ContainingType.FullPathName() + "." + type.FullName;
         }
-
+        public static bool IsReferenceType(this IType type)
+        {
+            return type.TypeKind == TypeKind.ReferenceType;
+        }
+        public static bool IsValueType(this IType type)
+        {
+            return type.TypeKind == TypeKind.ValueType;
+        }
     }
 }
