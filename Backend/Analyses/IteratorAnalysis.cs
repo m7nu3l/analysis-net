@@ -821,7 +821,10 @@ namespace Backend.Analyses
                             }
                             else
                             {
-                                foreach(var arg  in methodCallStmt.Arguments)
+                                // Should I do this?
+                                UpdateUsingDefUsed(methodCallStmt);
+
+                                foreach (var arg  in methodCallStmt.Arguments)
                                 {
                                     this.State.Escaping.UnionWith(GetTraceablesFromA2_Variables(arg));
                                 }
@@ -888,18 +891,21 @@ namespace Backend.Analyses
                     var any = GetTraceablesFromA2_Variables(arg).Any();
                     UpdateUsingDefUsed(methodCallStmt);
                 }
-                else if (pureEnumerationMethods.Contains(methodInvoked.Name)) // && methodInvoked.ContainingType.FullName.Contains("Enumerable"))
+                else if(methodInvoked.IsPure() || pureEnumerationMethods.Contains(methodInvoked.Name)) // && methodInvoked.ContainingType.FullName.Contains("Enumerable"))
                 {
                     var arg0 = methodCallStmt.Arguments[0];
                     var arg1 = methodCallStmt.Arguments[1];
                     UpdateUsingDefUsed(methodCallStmt);
-
                 }
-                else if (pureCollectionMethods.Contains(methodInvoked.Name) && methodInvoked.ContainingType.FullName.Contains("Set"))
+                else if(pureCollectionMethods.Contains(methodInvoked.Name) &&  TypeHelper.IsContainer(methodInvoked.ContainingType))
                 {
                     UpdateUsingDefUsed(methodCallStmt);
                 }
-                else if (pureCollectionMethods.Contains(methodInvoked.Name) && methodInvoked.ContainingType.FullName.Contains("SortedDictionary"))
+                else if (pureCollectionMethods.Contains(methodInvoked.Name) && methodInvoked.ContainingType.Name.Contains("Set"))
+                {
+                    UpdateUsingDefUsed(methodCallStmt);
+                }
+                else if (pureCollectionMethods.Contains(methodInvoked.Name) && methodInvoked.ContainingType.Name.Contains("SortedDictionary"))
                 {
                     UpdateUsingDefUsed(methodCallStmt);
                 }
