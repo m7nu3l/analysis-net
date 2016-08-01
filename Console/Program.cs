@@ -1,23 +1,19 @@
 ﻿// Copyright (c) Edgardo Zoppi.  All Rights Reserved.  Licensed under the MIT License.  See License.txt in the project root for license information.
 
-using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using CCIProvider;
 using Model;
 using Model.Types;
-using Backend.Analyses;
+using Model.ThreeAddressCode.Instructions;
 using Backend.Serialization;
+using Backend.Analyses;
+using Backend.Model;
 using Backend.Transformations;
 using Backend.Utils;
-using Model.ThreeAddressCode.Values;
-using Backend.Model;
-using Model.ThreeAddressCode.Instructions;
 
 namespace Console
 {
-	class Program
+    class Program
 	{
 		private Host host;
 
