@@ -402,6 +402,36 @@ namespace Backend.Utils
         }
         #endregion
 
+            foreach (var ptgNode in nodes)
+            {
+                workList.Enqueue(ptgNode);
+            }
+            while(workList.Any())
+            {
+                var ptgNode = workList.Dequeue();
+                visitedNodes.Add(ptgNode);
+                if (ptgNode.Equals(n)) return true;
+                foreach(var adjacents in ptgNode.Targets.Values)
+                {
+                    foreach (var adjacent in adjacents)
+                    {
+                        if (!visitedNodes.Contains(adjacent))
+                        {
+                            workList.Enqueue(adjacent);
+                        }
+                    }
+                }
+            }
+            return result;
+        }
+        public static bool MayReacheableFromVariable(this PointsToGraph ptg, IVariable v1, IVariable v2)
+        {
+            var result = ptg.GetTargets(v2).Any(n => ptg.Reachable(v1, n));
+            return result;
+        }
+
+        #endregion
+
         public static bool IsPure(this IMethodReference method)
 		{
 			var result = method.Attributes.Any(a => a.Type.Equals(PlatformTypes.PureAttribute));

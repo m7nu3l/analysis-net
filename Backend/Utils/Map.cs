@@ -122,7 +122,12 @@ namespace Backend.Utils
 		{
 		}
 
-		public MapSet(IEnumerable<KeyValuePair<TKey, IEnumerable<TValue>>> other)
+        public MapSet(MapSet<TKey, TValue> map)
+        {
+            this.AddRange(map);
+        }
+
+        public MapSet(IEnumerable<KeyValuePair<TKey, IEnumerable<TValue>>> other)
 			: base(other)
 		{
 		}
@@ -149,7 +154,15 @@ namespace Backend.Utils
 
 			return result;
 		}
-	}
+
+        public void UnionWith(MapSet<TKey, TValue> oth)
+        {
+            foreach (var entry in oth)
+            {
+                this.AddRange(entry.Key, entry.Value);
+            }
+        }
+    }
 
 	public class MapList<TKey, TValue> : Map<TKey, TValue, List<TValue>>
 	{
