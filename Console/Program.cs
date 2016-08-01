@@ -324,9 +324,9 @@ namespace Console
             const string root = @"c:\users\t-diga\source\repos\scopeexamples\metting\";
             const string input = root + @"\__scopecodegen__.dll";
 
-            AnalyzeDll(input,ScopeMethodKind.Reducer);
+            //AnalyzeDll(input,ScopeMethodKind.Reducer);
 
-            //AnalyzeScopeScript(new string[] { @"D:\ScriptExamples\Files", @"D:\Temp\", "Reducer" } );
+            AnalyzeScopeScript(new string[] { @"D:\ScriptExamples\Files", @"D:\Temp\", "Reducer" } );
 
             System.Console.ReadKey();
 

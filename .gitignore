@@ -15,3 +15,5 @@ Test/obj
 /packages
 /CCIProvider/bin/Debug
 /CCIProvider/obj/Debug
+/ScopeProgramAnalysis/bin/Debug
+/ScopeProgramAnalysis/obj/Debug
