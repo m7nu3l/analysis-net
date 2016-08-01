@@ -46,7 +46,6 @@
     <Compile Include="Analyses\ClassHierarchyAnalysis.cs" />
     <Compile Include="Analyses\LiveVariablesAnalysis.cs" />
     <Compile Include="Model\CallGraph.cs" />
-    <Compile Include="Analyses\LiveVariablesAnalysis.cs" />
     <Compile Include="Model\ControlFlowGraph.cs" />
     <Compile Include="Analyses\ForwardCopyPropagationAnalysis.cs" />
     <Compile Include="Analyses\DataFlowAnalysis.cs" />

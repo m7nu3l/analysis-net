@@ -59,10 +59,6 @@
       <Project>{f08216ad-e55c-44b1-a253-ab8b024b7597}</Project>
       <Name>Model</Name>
     </ProjectReference>
-    <ProjectReference Include="..\ScopeProgramAnalysis\ScopeProgramAnalysis.csproj">
-      <Project>{3f115c9f-e6d2-424d-8cf5-c023dd4b929a}</Project>
-      <Name>ScopeProgramAnalysis</Name>
-    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
