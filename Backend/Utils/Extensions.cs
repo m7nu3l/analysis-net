@@ -446,23 +446,19 @@ namespace Backend.Utils
 		public static void Inline(this MethodBody callerBody, MethodCallInstruction methodCall, MethodBody calleeBody)
 		{
 			// TODO: Fix local variables (and parameters) name clashing
-			// TODO: Fix instruction labels clashing
 
-			var nextInstructionIndex = callerBody.Instructions.IndexOf(methodCall);
-			callerBody.Instructions.RemoveAt(nextInstructionIndex);
+			var index = callerBody.Instructions.IndexOf(methodCall);
+			callerBody.Instructions.RemoveAt(index);
 
 			IInstruction nextInstruction = null;
-            uint nextInstructionOffset = 0;
 
-			if (callerBody.Instructions.Count > nextInstructionIndex)
+			if (callerBody.Instructions.Count > index)
 			{
 				// The caller method has more instructions after the method call
-				nextInstruction = callerBody.Instructions[nextInstructionIndex];
-                nextInstructionOffset = nextInstruction.Offset;
+				nextInstruction = callerBody.Instructions[index];
+			}			
 
-            }			
-
-			for (var i = 0; i < calleeBody.Parameters.Count; ++i, ++nextInstructionIndex)
+			for (var i = 0; i < calleeBody.Parameters.Count; ++i)
 			{
 				var parameter = calleeBody.Parameters[i];
                 if(parameter.Name=="this")
@@ -472,7 +468,9 @@ namespace Backend.Utils
 				var argument = methodCall.Arguments[i];
 				var copy = new LoadInstruction(methodCall.Offset, parameter, argument);
 
-				callerBody.Instructions.Insert(nextInstructionIndex, copy);
+				copy.Label = string.Format("{0}_{1}", methodCall.Label, copy.Label);
+				callerBody.Instructions.Insert(index, copy);
+				index++;
 			}
 
 			var lastCalleeInstructionIndex = calleeBody.Instructions.Count - 1;
@@ -491,8 +489,9 @@ namespace Backend.Utils
 						// Copy the return value of the callee to the result variable of the method call
 						var copy = new LoadInstruction(methodCall.Offset + ret.Offset/*ret.Offset+ nextInstructionOffset*/, methodCall.Result, ret.Operand);
 
-						callerBody.Instructions.Insert(nextInstructionIndex, copy);
-						nextInstructionIndex++;
+						copy.Label = string.Format("{0}_{1}", methodCall.Label, copy.Label);
+						callerBody.Instructions.Insert(index, copy);
+						index++;
 					}
 
 					if (nextInstruction != null && i < lastCalleeInstructionIndex)
@@ -500,48 +499,38 @@ namespace Backend.Utils
 						// Jump to the instruction after the method call
 						var branch = new UnconditionalBranchInstruction(methodCall.Offset + ret.Offset /*ret.Offset+ nextInstructionOffset*/, nextInstruction.Offset + nextInstructionOffset);
 
-						callerBody.Instructions.Insert(nextInstructionIndex, branch);
-						nextInstructionIndex++;
+						branch.Label = string.Format("{0}_{1}", methodCall.Label, branch.Label);
+						callerBody.Instructions.Insert(index, branch);
+						index++;
 					}
 				}
 				else
 				{
-                    instruction.Offset += nextInstructionOffset;
-                    instruction.Label = string.Format("L_{0:X4}", instruction.Offset);
-                    if (instruction is BranchInstruction)
-                    {
-                        var branch = instruction as BranchInstruction;
-                        var labelOffset = int.Parse(branch.Target.Substring(2), System.Globalization.NumberStyles.HexNumber);
-                        branch.Target = string.Format("L_{0:X4}", labelOffset+ methodCall.Offset /*nextInstructionOffset*/);
-                    }
+					// TODO: Fix! We should clone the instruction
+					// so the original is not modified
+					// and calleeBody remain intacted
 
-                    callerBody.Instructions.Insert(nextInstructionIndex, instruction);
-					nextInstructionIndex++;
+					if (instruction is BranchInstruction)
+					{
+						var branch = instruction as BranchInstruction;
+						branch.Target = string.Format("{0}_{1}", methodCall.Label, branch.Target);
+					}
+					else if (instruction is SwitchInstruction)
+					{
+						var branch = instruction as SwitchInstruction;
+
+						for (var j = 0; j < branch.Targets.Count; ++j)
+						{
+							var target = branch.Targets[j];
+							branch.Targets[j] = string.Format("{0}_{1}", methodCall.Label, target);
+						}
+					}
+
+					instruction.Label = string.Format("{0}_{1}", methodCall.Label, instruction.Label);
+					callerBody.Instructions.Insert(index, instruction);
+					index++;
 				}
-
 			}
-            // TODO: Diego: If I add this I broke the CFG analysis
-            //for (int i = nextInstructionIndex; i < callerBody.Instructions.Count; i++)
-            //{
-            //    var ins = callerBody.Instructions[i];
-            //    ins.Offset += methodCall.Offset; //  nextInstructionOffset;
-            //    ins.Label = string.Format("L_{0:X4}", ins.Offset);
-            //}
-        }
-
-        // From Zvonimir to get the full name with all the containing types
-        public static string FullPathName(this ITypeDefinition type)
-        {
-            if (type.ContainingType == null) return type.ContainingNamespace.FullName + "." + type.Name;
-            return type.ContainingType.FullPathName() + "." + type.FullName;
-        }
-        public static bool IsReferenceType(this IType type)
-        {
-            return type.TypeKind == TypeKind.ReferenceType;
-        }
-        public static bool IsValueType(this IType type)
-        {
-            return type.TypeKind == TypeKind.ValueType;
-        }
-    }
+		}
+	}
 }
