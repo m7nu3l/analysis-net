@@ -135,6 +135,7 @@ namespace Backend.Model
     }
     public class PointsToGraph
     {
+        private Stack<MapSet<IVariable, PTGNode>> stackFrame;
 		private MapSet<IVariable, PTGNode> variables;
 		private IDictionary<int, PTGNode> nodes;
 
@@ -153,7 +154,7 @@ namespace Backend.Model
             this.nodeIdAtOffset = new Dictionary<uint, int>();
             nextPTGNodeId=1;
 
-            
+            //this.stackFrame = new Stack<MapSet<IVariable, PTGNode>>();
         }
 
         public IEnumerable<IVariable> Variables
@@ -175,8 +176,14 @@ namespace Backend.Model
 
 		public void Union(PointsToGraph ptg)
 		{
-			// add all new nodes
-			foreach (var node in ptg.Nodes)
+            // We assume they have the same stack frame
+            if (this.stackFrame == null)
+            {
+                this.stackFrame = ptg.stackFrame;
+            }
+            System.Diagnostics.Debug.Assert(this.stackFrame == ptg.stackFrame);
+            // add all new nodes
+            foreach (var node in ptg.Nodes)
 			{
 				if (this.Contains(node)) continue;
 				var clone = new PTGNode(node.Id, node.Type, node.Offset, node.Kind);
@@ -285,6 +292,101 @@ namespace Backend.Model
 			this.RemoveEdges(variable);
 			variables.Remove(variable);
 		}
+
+        public void Rename(IVariable oldVar, IVariable newVar)
+        {
+            var nodes = this.GetTargets(oldVar);
+            foreach(var node in nodes)
+            {
+                node.Variables.Remove(oldVar);
+                node.Variables.Add(newVar);
+            }
+            variables.AddRange(newVar, nodes);
+
+            variables.Remove(oldVar);
+            variables.Add(newVar);
+        }
+
+        public void RenameVariables(IEnumerable<KeyValuePair<IVariable,IVariable>> binding)
+        {
+            foreach(var entry in binding)
+            {
+                Rename(entry.Key, entry.Value);
+            }
+        }
+
+        public void RemoveLocalVariables()
+        {
+            foreach (var variable in Variables.ToArray())
+            {
+                if (!variable.IsParameter)
+                {
+                    Remove(variable);
+                }
+            }
+        }
+        
+        public MapSet<IVariable, PTGNode> NewFrame()
+        {
+            if(this.stackFrame == null)
+            {
+                this.stackFrame = new Stack<MapSet<IVariable, PTGNode>>();
+            }
+            var result = variables;
+            foreach (var entry in variables)
+            {
+                var nodes = entry.Value;
+                foreach (var node in nodes)
+                {
+                    node.Variables.Remove(entry.Key);
+                }
+            }
+
+            var frame = new MapSet<IVariable, PTGNode>();
+            stackFrame.Push(variables);
+            variables = frame;
+            return result;
+        }
+
+        public MapSet<IVariable, PTGNode> NewFrame(IEnumerable<KeyValuePair<IVariable, IVariable>> binding)
+        {
+            var oldFrame = NewFrame();
+            foreach (var entry in binding)
+            {
+                if (oldFrame.ContainsKey(entry.Key))
+                {
+                    foreach (var node in oldFrame[entry.Key])
+                    {
+                        PointsTo(entry.Value, node);
+                    }
+                }
+            }
+            return oldFrame;
+        }
+
+        public void RestoreFrame()
+        {
+            var frame = stackFrame.Pop();
+            variables = frame;
+            foreach (var entry in variables)
+            {
+                var nodes = entry.Value;
+                foreach (var node in nodes)
+                {
+                    node.Variables.Add(entry.Key);
+                }
+            }
+        }
+
+        public void RestoreFrame(IVariable retVariable, IVariable dest)
+        {
+            var nodes = GetTargets(retVariable);
+            RestoreFrame();
+            foreach (var node in nodes)
+            {
+                PointsTo(dest,node);
+            }
+        }
 
         public void PointsTo(IVariable variable, PTGNode target)
         {

@@ -93,13 +93,23 @@ namespace Backend.Analyses
                     ptAnalysis.ProcessCopy(ptg, instruction.Result, v);
                 }
             }
+            public override void Visit(ReturnInstruction instruction)
+            {
+                if (instruction.HasOperand)
+                {
+                    var rv = ptAnalysis.ReturnVariable;
+                    ptAnalysis.ProcessCopy(ptg, rv, instruction.Operand);
+                }
+            }
         }
 
         //private int nextPTGNodeId;
 		private PointsToGraph initialGraph;
         private MethodDefinition method;
 
-		public PointsToAnalysis(ControlFlowGraph cfg, MethodDefinition method)
+        public IVariable ReturnVariable { get; private set; }
+
+        public PointsToAnalysis(ControlFlowGraph cfg, MethodDefinition method)
 			: base(cfg)
 		{
             this.method = method;
@@ -148,6 +158,8 @@ namespace Backend.Analyses
 
 		private void CreateInitialGraph()
 		{
+            this.ReturnVariable = new LocalVariable("$RV");
+            this.ReturnVariable.Type = PlatformTypes.Object;
 			var ptg = new PointsToGraph();
 			var variables = cfg.GetVariables();
 
@@ -173,7 +185,6 @@ namespace Backend.Analyses
 					ptg.Add(variable);
 				}
 			}
-
 			this.initialGraph = ptg;
 		}
 
