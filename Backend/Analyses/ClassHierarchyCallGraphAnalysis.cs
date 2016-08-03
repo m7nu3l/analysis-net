@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Edgardo Zoppi.  All Rights Reserved.  Licensed under the MIT License.  See License.txt in the project root for license information.
 
 using Backend.Model;
+using Backend.Transformations;
 using Model;
 using Model.ThreeAddressCode.Instructions;
 using Model.Types;
@@ -13,8 +14,8 @@ namespace Backend.Analyses
 {
 	public class ClassHierarchyCallGraphAnalysis
 	{
-		private Host host;
-		private ClassHierarchyAnalysis classHierarchy;
+		protected Host host;
+		protected ClassHierarchyAnalysis classHierarchy;
 
 		public ClassHierarchyCallGraphAnalysis(Host host, ClassHierarchyAnalysis cha)
 		{
@@ -57,6 +58,7 @@ namespace Backend.Analyses
 			while (worklist.Count > 0)
 			{
 				var method = worklist.Dequeue();
+                MethodFound(method);
 				var methodCalls = method.Body.Instructions.OfType<MethodCallInstruction>();
 
 				foreach (var methodCall in methodCalls)
@@ -81,7 +83,14 @@ namespace Backend.Analyses
 			return result;
 		}
 
-		private IMethodReference ResolveStaticCallee(MethodCallInstruction methodCall)
+        protected virtual void MethodFound(MethodDefinition method)
+        {
+            var disassembler = new Disassembler(method);
+            var methodBody = disassembler.Execute();
+            method.Body = methodBody;
+        }
+
+        private IMethodReference ResolveStaticCallee(MethodCallInstruction methodCall)
 		{
 			var staticCallee = methodCall.Method;
 

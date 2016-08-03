@@ -85,7 +85,13 @@ namespace Backend.Model
 			return methodInfo.Invocations.Values;
 		}
 
-		public void Add(MethodDefinition root)
+        public InvocationInfo GetInvocation(MethodDefinition method, string label)
+        {
+            var methodInfo = GetMethodInfo(method);
+            return methodInfo.Invocations[label];
+        }
+
+        public void Add(MethodDefinition root)
 		{
 			var info = new MethodInfo(root, true);
 			methods.Add(root, info);
