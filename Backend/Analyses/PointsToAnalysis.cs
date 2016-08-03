@@ -86,14 +86,30 @@ namespace Backend.Analyses
                 //    ptAnalysis.ProcessCopy(ptg, methodCall.Result, methodCall.Arguments[0]);
                 //}
             }
-
+            public override void Visit(PhiInstruction instruction)
+            {
+                foreach(var v in instruction.Arguments)
+                {
+                    ptAnalysis.ProcessCopy(ptg, instruction.Result, v);
+                }
+            }
+            public override void Visit(ReturnInstruction instruction)
+            {
+                if (instruction.HasOperand)
+                {
+                    var rv = ptAnalysis.ReturnVariable;
+                    ptAnalysis.ProcessCopy(ptg, rv, instruction.Operand);
+                }
+            }
         }
 
         //private int nextPTGNodeId;
 		private PointsToGraph initialGraph;
         private MethodDefinition method;
 
-		public PointsToAnalysis(ControlFlowGraph cfg, MethodDefinition method)
+        public IVariable ReturnVariable { get; private set; }
+
+        public PointsToAnalysis(ControlFlowGraph cfg, MethodDefinition method)
 			: base(cfg)
 		{
             this.method = method;
@@ -142,6 +158,8 @@ namespace Backend.Analyses
 
 		private void CreateInitialGraph()
 		{
+            this.ReturnVariable = new LocalVariable("$RV");
+            this.ReturnVariable.Type = PlatformTypes.Object;
 			var ptg = new PointsToGraph();
 			var variables = cfg.GetVariables();
 
@@ -167,7 +185,6 @@ namespace Backend.Analyses
 					ptg.Add(variable);
 				}
 			}
-
 			this.initialGraph = ptg;
 		}
 
@@ -224,9 +241,8 @@ namespace Backend.Analyses
 
                 if (!hasField)
 				{
-                    
                     // ptg.PointsTo(node, access.Field, ptg.Null);
-                    if (MayAliasParameter(ptg, node))
+                    if (MayReacheableFromParameter(ptg, node))
                     {
                         // Preventive assignement of a new Node unknown (should be only for parameters)
                         var target = this.GetNode(ptg, offset, dst.Type, PTGNodeKind.Unknown);
@@ -242,9 +258,9 @@ namespace Backend.Analyses
                 }
             }
         }
-        private bool MayAliasParameter(PointsToGraph ptg, PTGNode n)
+        private bool MayReacheableFromParameter(PointsToGraph ptg, PTGNode n)
         {
-            var result = method.Body.Parameters.Intersect(n.Variables).Any();
+            var result = method.Body.Parameters.Where(p => ptg.Reachable(p,n)).Any();
             // This version does not need the inverted mapping of nodes-> variables (which may be expensive to maintain)
             // var result = method.Body.Parameters.Any(p =>ptg.GetTargets(p).Contains(n));
             return result;
