@@ -104,7 +104,7 @@ namespace Backend.Analyses
         }
 
         //private int nextPTGNodeId;
-		private PointsToGraph initialGraph;
+		protected PointsToGraph initialGraph;
         private MethodDefinition method;
 
         public IVariable ReturnVariable { get; private set; }

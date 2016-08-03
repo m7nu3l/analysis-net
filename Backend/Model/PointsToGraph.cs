@@ -355,6 +355,7 @@ namespace Backend.Model
             {
                 if (oldFrame.ContainsKey(entry.Key))
                 {
+                    this.variables.Add(entry.Value);
                     foreach (var node in oldFrame[entry.Key])
                     {
                         PointsTo(entry.Value, node);
