@@ -146,7 +146,7 @@ namespace Console
 			//var methodDefinition = host.ResolveReference(method) as MethodDefinition;
 
 			var program = new Program(host);
-			program.VisitMethods();
+			//program.VisitMethods();
 
 			// Testing method calls inlining
 			var methodDefinition = host.ResolveReference(method) as MethodDefinition;
