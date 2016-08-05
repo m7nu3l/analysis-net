@@ -398,26 +398,47 @@ namespace CCIProvider
 			return name;
 		}
 
-		private string GetTypeName(Cci.ITypeReference typeref, out string containingAssembly, out string containingNamespace)
+		private string GetTypeName(Cci.INamedTypeReference namedTyperef, out string containingAssembly, out string containingNamespace)
 		{
-			var fullName = Cci.TypeHelper.GetTypeName(typeref, Cci.NameFormattingOptions.OmitContainingType | Cci.NameFormattingOptions.PreserveSpecialNames);
-			var lastDotIndex = fullName.LastIndexOf('.');
-			string name;
+			var parts = new List<string>();
+			var name = namedTyperef.Name.Value;
+			Cci.ITypeReference typeref = namedTyperef;
 
-			if (lastDotIndex > 0)
+			while (typeref is Cci.INestedTypeReference ||
+				   typeref is Cci.IGenericTypeInstanceReference ||
+				   typeref is Cci.IGenericTypeParameterReference)
 			{
-				containingNamespace = fullName.Substring(0, lastDotIndex);
-				name = fullName.Substring(lastDotIndex + 1);
-			}
-			else
-			{
-				containingNamespace = string.Empty;
-				name = fullName;
+				if (typeref is Cci.INestedTypeReference)
+				{
+					var nestedTyperef = typeref as Cci.INestedTypeReference;
+					typeref = nestedTyperef.ContainingType;
+				}
+				else if (typeref is Cci.IGenericTypeInstanceReference)
+				{
+					var genericInstanceTyperef = typeref as Cci.IGenericTypeInstanceReference;
+					typeref = genericInstanceTyperef.GenericType;
+				}
+				else if (typeref is Cci.IGenericTypeParameterReference)
+				{
+					var genericParameterTyperef = typeref as Cci.IGenericTypeParameterReference;
+					typeref = genericParameterTyperef.DefiningType;
+				}
 			}
 
-			var definingAssembly = Cci.TypeHelper.GetDefiningUnitReference(typeref);
-			containingAssembly = definingAssembly.Name.Value;
+			var namespaceTyperef = typeref as Cci.INamespaceTypeReference;
+			var namespaceref = namespaceTyperef.ContainingUnitNamespace;
 
+			while (namespaceref is Cci.INestedUnitNamespaceReference)
+			{				
+				var nestedNamespaceref = namespaceref as Cci.INestedUnitNamespaceReference;
+				parts.Add(nestedNamespaceref.Name.Value);
+				namespaceref = nestedNamespaceref.ContainingUnitNamespace;
+			}
+
+			var assemblyref = namespaceref as Cci.IUnitNamespaceReference;
+
+			containingAssembly = assemblyref.Unit.Name.Value;
+			containingNamespace = string.Join(".", parts);
 			return name;
 		}
 
