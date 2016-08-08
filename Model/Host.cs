@@ -32,7 +32,7 @@ namespace Model
 			}			
 		}
 
-		public ITypeDefinition ResolveReference(BasicType type)
+		public ITypeDefinition ResolveReference(IBasicType type)
 		{
 			var assembly = this.Assemblies.SingleOrDefault(a => a.MatchReference(type.ContainingAssembly));
 			if (assembly == null) return null;

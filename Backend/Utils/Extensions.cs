@@ -542,46 +542,30 @@ namespace Backend.Utils
             return type.TypeKind == TypeKind.ValueType;
         }
 
-        public static IMethodReference FindMethodImplementation(this Host host, BasicType receiverType, IMethodReference method)
+        public static IMethodReference FindMethodImplementation(this Host host, IBasicType receiverType, IMethodReference method)
         {
             var result = method;
 
-            if (!method.ContainingType.Equals(receiverType))
+            while (receiverType != null && !method.ContainingType.Equals(receiverType))
             {
-                while (receiverType != null)
+                var receiverTypeDef = receiverType.ResolvedType as ClassDefinition;
+                if (receiverTypeDef == null) break;
+
+                var matchingMethod = receiverTypeDef.Methods.SingleOrDefault(m => m.MatchSignature(method));
+
+                if (matchingMethod != null)
                 {
-                    var receiverTypeDef = host.ResolveReference(receiverType) as ClassDefinition;
-
-                    if (receiverTypeDef != null)
-                    {
-                        var matchingMethod = receiverTypeDef.Methods.SingleOrDefault(m => m.MatchSignature(method));
-
-                        if (matchingMethod != null)
-                        {
-                            var matchingMethodRef = new MethodReference(method.Name, method.ReturnType)
-                            {
-                                Name = method.Name,
-                                IsStatic = method.IsStatic,
-                                GenericParameterCount = method.GenericParameterCount,
-                                ContainingType = receiverType
-                            };
-
-                            matchingMethodRef.Attributes.UnionWith(method.Attributes);
-                            matchingMethodRef.Parameters.AddRange(method.Parameters);
-
-                            result = matchingMethodRef;
-                            break;
-                        }
-                        else
-                        {
-                            receiverType = receiverTypeDef.Base;
-                        }
-                    }
+                    result = matchingMethod;
+                    break;
                 }
+                else
+                {
+                    receiverType = receiverTypeDef.Base;
+                }
+
             }
 
             return result;
         }
-
     }
 }
