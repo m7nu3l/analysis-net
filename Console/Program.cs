@@ -132,8 +132,8 @@ namespace Console
 
 			var type = new BasicType("ExamplesPointsTo")
 			{
-				Assembly = new AssemblyReference("Test"),
-				Namespace = "Test"
+				ContainingAssembly = new AssemblyReference("Test"),
+				ContainingNamespace = "Test"
 			};
 
 			var typeDefinition = host.ResolveReference(type);
@@ -162,8 +162,8 @@ namespace Console
 
 			type = new BasicType("ExamplesCallGraph")
 			{
-				Assembly = new AssemblyReference("Test"),
-				Namespace = "Test"
+				ContainingAssembly = new AssemblyReference("Test"),
+				ContainingNamespace = "Test"
 			};
 
 			method = new MethodReference("Example1", PlatformTypes.Void)
