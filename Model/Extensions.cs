@@ -19,6 +19,22 @@ namespace Model
 			}
 		}
 
+		public static void RemoveAll<T>(this ICollection<T> self, IEnumerable<T> elements)
+		{
+			foreach (var element in elements)
+			{
+				self.Remove(element);
+			}
+		}
+
+		public static void SetRange<K, V>(this IDictionary<K, V> self, IEnumerable<KeyValuePair<K, V>> elements)
+		{
+			foreach (var element in elements)
+			{
+				self[element.Key] = element.Value;
+			}
+		}
+
 		public static IEnumerable<T> ToEnumerable<T>(this T item)
 		{
 			yield return item;
@@ -28,6 +44,24 @@ namespace Model
 			where T : struct
 		{
 			return new UnknownValueException<T>(self);
+		}
+
+		public static string GetFullName(this IBasicType type)
+		{
+			var containingAssembly = string.Empty;
+			var containingNamespace = string.Empty;
+
+			if (type.ContainingAssembly != null)
+			{
+				containingAssembly = string.Format("[{0}]", type.ContainingAssembly.Name);
+			}
+
+			if (type.ContainingNamespace != null)
+			{
+				containingNamespace = string.Format("{0}.", type.ContainingNamespace);
+			}
+
+			return string.Format("{0}{1}{2}", containingAssembly, containingNamespace, type.GenericName);
 		}
 	}
 }

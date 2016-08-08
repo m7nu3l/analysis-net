@@ -126,7 +126,7 @@ namespace Backend.Analyses
 				this.RemoveCopiesWithVariable(output, variable);
 			}
 
-			output.AddRange(gen);
+			output.SetRange(gen);
 			return output;
 		}
 
@@ -202,6 +202,7 @@ namespace Backend.Analyses
 
 			if (isCopy)
 			{
+				this.RemoveCopiesWithVariable(copies, left);
 				copies.Add(left, right);
 			}
 
