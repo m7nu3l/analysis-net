@@ -531,7 +531,7 @@ namespace Backend.Utils
         public static string FullPathName(this ITypeDefinition type)
         {
             if (type.ContainingType == null) return type.ContainingNamespace.FullName + "." + type.Name;
-            return type.ContainingType.FullPathName() + "." + type.FullName;
+            return type.ContainingType.FullPathName() + "." + type.Name;
         }
         public static bool IsReferenceType(this IType type)
         {
