@@ -2,6 +2,7 @@
 
 using Backend.Model;
 using Backend.Transformations;
+using Backend.Utils;
 using Model;
 using Model.ThreeAddressCode.Instructions;
 using Model.Types;
@@ -105,52 +106,11 @@ namespace Backend.Analyses
 					var receiver = methodCall.Arguments.First();
 					var receiverType = receiver.Type as BasicType;
 
-					staticCallee = FindMethodImplementation(receiverType, staticCallee);
+					staticCallee = host.FindMethodImplementation(receiverType, staticCallee);
 				}
 			}
 
 			return staticCallee;
-		}
-
-		private IMethodReference FindMethodImplementation(BasicType receiverType, IMethodReference method)
-		{
-			var result = method;
-
-			if (!method.ContainingType.Equals(receiverType))
-			{
-				while (receiverType != null)
-				{
-					var receiverTypeDef = host.ResolveReference(receiverType) as ClassDefinition;
-
-					if (receiverTypeDef != null)
-					{
-						var matchingMethod = receiverTypeDef.Methods.SingleOrDefault(m => m.MatchSignature(method));
-
-						if (matchingMethod != null)
-						{
-							var matchingMethodRef = new MethodReference(method.Name, method.ReturnType)
-							{
-								Name = method.Name,
-								IsStatic = method.IsStatic,
-								GenericParameterCount = method.GenericParameterCount,
-								ContainingType = receiverType
-							};
-
-							matchingMethodRef.Attributes.UnionWith(method.Attributes);
-							matchingMethodRef.Parameters.AddRange(method.Parameters);
-
-							result = matchingMethodRef;
-							break;
-						}
-						else
-						{
-							receiverType = receiverTypeDef.Base;
-						}
-					}
-				}
-			}
-
-			return result;
 		}
 
 		private IEnumerable<MethodDefinition> ResolvePossibleCallees(IMethodReference methodref)

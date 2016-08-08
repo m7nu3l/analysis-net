@@ -50,7 +50,22 @@ namespace Backend.Analyses
                     var access = load.Operand as InstanceFieldAccess;
                     ptAnalysis.ProcessLoad(ptg, offset, load.Result, access);
                 }
+                else if (instruction.Operand is VirtualMethodReference)
+                {
+                    var loadDelegateStmt = instruction.Operand as VirtualMethodReference;
+                    var methodRef = loadDelegateStmt.Method;
+                    var instance = loadDelegateStmt.Instance;
+                    ptAnalysis.ProcessDelegateAddr(ptg, instruction.Offset, load.Result, methodRef, instance);
+
+                }
+                else if (instruction.Operand is StaticMethodReference)
+                {
+
+                }
+
             }
+
+
             public override void Visit(StoreInstruction instruction)
             {
                 var store = instruction;
@@ -258,6 +273,15 @@ namespace Backend.Analyses
                 }
             }
         }
+
+        internal  void ProcessDelegateAddr(PointsToGraph ptg, uint offset, IVariable dst, IMethodReference methodRef, IVariable instance)
+        {
+            var delegateNode = new DelegateNode((int)offset, methodRef, instance);
+            ptg.Add(delegateNode);
+            ptg.RemoveEdges(dst);
+            ptg.PointsTo(dst, delegateNode);
+        }
+
         private bool MayReacheableFromParameter(PointsToGraph ptg, PTGNode n)
         {
             var result = method.Body.Parameters.Where(p => ptg.Reachable(p,n)).Any();

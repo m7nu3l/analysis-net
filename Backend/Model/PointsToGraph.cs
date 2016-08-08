@@ -21,7 +21,8 @@ namespace Backend.Model
         Null,
         Object,
 		Unknown,
-        Parameter
+        Parameter,
+        Delegate
     }
 
     public class PTGNode
@@ -94,6 +95,11 @@ namespace Backend.Model
 
 			return result;
 		}
+        public virtual PTGNode Clone()
+        {
+            var clone = new PTGNode(this.Id, this.Type, this.Offset, this.Kind);
+            return clone;
+        }
     }
 
     public class NullNode : PTGNode
@@ -114,6 +120,11 @@ namespace Backend.Model
         {
             return "Null";
         }
+        public override PTGNode Clone()
+        {
+            return this;
+        }
+
     }
 
     public class ParameterNode : PTGNode
@@ -132,6 +143,44 @@ namespace Backend.Model
         {
             return this.Parameter.GetHashCode() + base.GetHashCode();
         }
+        public override PTGNode Clone()
+        {
+            var clone = new ParameterNode(this.Id, this.Parameter);
+            return clone;
+        }
+
+    }
+
+    public class DelegateNode : PTGNode
+    {
+        public  IMethodReference Method { get; private set; }
+        public  IVariable Instance { get; private set; }
+        public  bool IsStatic { get; private set; }
+
+        public DelegateNode(int id, IMethodReference method, IVariable instance) : base(id, PTGNodeKind.Delegate)
+        {
+            this.Method = method;
+            this.Instance = instance;
+            this.IsStatic = instance == null;
+        }
+        public override bool Equals(object obj)
+        {
+            var oth = obj as DelegateNode;
+            return oth != null && oth.Method.Equals(Method) 
+                && oth.Instance == this.Instance
+                && base.Equals(oth);
+        }
+        public override int GetHashCode()
+        {
+            return this.Method.GetHashCode() + (this.IsStatic? 1: this.Instance.GetHashCode())
+                + base.GetHashCode();
+        }
+        public override PTGNode Clone()
+        {
+            var node = new DelegateNode(this.Id, this.Method, this.Instance);
+            return node;
+        }
+
     }
     public class PointsToGraph
     {
@@ -186,7 +235,7 @@ namespace Backend.Model
             foreach (var node in ptg.Nodes)
 			{
 				if (this.Contains(node)) continue;
-				var clone = new PTGNode(node.Id, node.Type, node.Offset, node.Kind);
+				var clone = node.Clone();
 
 				nodes.Add(clone.Id, clone);
 			}
