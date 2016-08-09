@@ -59,14 +59,14 @@ namespace Backend.Analyses
 			{
 				var method = worklist.Dequeue();
                 MethodFound(method);
-				var methodCalls = method.Body.Instructions.OfType<MethodCallInstruction>();
+                var methodCalls = method.Body.Instructions.OfType<MethodCallInstruction>();
 
 				foreach (var methodCall in methodCalls)
 				{
-					var staticCallee = ResolveStaticCallee(methodCall);
-					var possibleCallees = ResolvePossibleCallees(staticCallee);
+                    var staticCallee = methodCall.Method; // ResolveStaticCallee(methodCall);
+                    var possibleCallees = ResolvePossibleCallees(staticCallee);
 
-					result.Add(method, methodCall.Label, staticCallee);
+                    result.Add(method, methodCall.Label, staticCallee);
 					result.Add(method, methodCall.Label, possibleCallees);
 
 					foreach (var calleeref in possibleCallees)
@@ -156,7 +156,7 @@ namespace Backend.Analyses
 
 			result.Add(methodref);
 
-			if (!methodref.IsStatic)
+			if (!methodref.IsStatic && methodref.Name!=".ctor")
 			{
 				var subtypes = classHierarchy.GetAllSubtypes(methodref.ContainingType);
 				var compatibleMethods = from t in subtypes
