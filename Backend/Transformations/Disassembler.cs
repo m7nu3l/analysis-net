@@ -160,9 +160,9 @@ namespace Backend.Transformations
 						ProcessEndFinally(op);
 						break;
 
-					//case Bytecode.BasicOperation.EndFilter:
-					//	ProcessEndFilter(op);
-					//	break;
+					case Bytecode.BasicOperation.EndFilter:
+						ProcessEndFilter(op);
+						break;
 
 					case Bytecode.BasicOperation.LocalAllocation:
 						ProcessLocalAllocation(op);
@@ -280,6 +280,39 @@ namespace Backend.Transformations
 			private void ProcessEndFinally(Bytecode.BasicInstruction op)
 			{
 				stack.Clear();
+
+				// Quick fix to preserve the offset in case it is a target location of some jump
+				// Otherwise it will break the control-flow analysis later.
+				var instruction = new Tac.NopInstruction(op.Offset);
+				body.Instructions.Add(instruction);
+
+				//// TODO: Maybe we don't need to add this branch instruction
+				//// since it is jumping to the next one,
+				//// so it is the same as falling through
+				//if (exceptionHandlersEnd.ContainsKey(op.Offset))
+				//{
+				//	var handlers = exceptionHandlersEnd[op.Offset];
+
+				//	foreach (var handler in handlers)
+				//	{
+				//		if (handler.Kind == ExceptionHandlerBlockKind.Finally ||
+				//			handler.Kind == ExceptionHandlerBlockKind.Fault)
+				//		{
+				//			var branch = new UnconditionalBranchInstruction(op.Offset, op.Offset + 1);
+				//			body.Instructions.Add(branch);
+				//		}
+				//	}
+				//}
+			}
+
+			private void ProcessEndFilter(Bytecode.BasicInstruction op)
+			{
+				stack.Clear();
+
+				// Quick fix to preserve the offset in case it is a target location of some jump
+				// Otherwise it will break the control-flow analysis later.
+				var instruction = new Tac.NopInstruction(op.Offset);
+				body.Instructions.Add(instruction);
 
 				//// TODO: Maybe we don't need to add this branch instruction
 				//// since it is jumping to the next one,
@@ -892,14 +925,14 @@ namespace Backend.Transformations
 
 		private MethodDefinition method;
 		private OperandStack stack;
-		private MapList<string, IExceptionHandlerBlock> exceptionHandlersStart;
+		private MapList<string, ExceptionHandlerBlock> exceptionHandlersStart;
 		//private MapList<string, IExceptionHandlerBlock> exceptionHandlersEnd;
 
 		public Disassembler(MethodDefinition methodDefinition)
 		{
 			this.method = methodDefinition;
 			this.stack = new OperandStack(method.Body.MaxStack);
-			this.exceptionHandlersStart = new MapList<string, IExceptionHandlerBlock>();
+			this.exceptionHandlersStart = new MapList<string, ExceptionHandlerBlock>();
 			//this.exceptionHandlersEnd = new MapList<string, IExceptionHandlerBlock>();
 		}
 
