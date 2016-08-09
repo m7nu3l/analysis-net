@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Edgardo Zoppi.  All Rights Reserved.  Licensed under the MIT License.  See License.txt in the project root for license information.
 
 using Backend.Model;
+using Backend.Transformations;
 using Model;
 using Model.ThreeAddressCode.Instructions;
 using Model.Types;
@@ -13,8 +14,8 @@ namespace Backend.Analyses
 {
 	public class ClassHierarchyCallGraphAnalysis
 	{
-		private Host host;
-		private ClassHierarchyAnalysis classHierarchy;
+		protected Host host;
+		protected ClassHierarchyAnalysis classHierarchy;
 
 		public ClassHierarchyCallGraphAnalysis(Host host, ClassHierarchyAnalysis cha)
 		{
@@ -57,14 +58,15 @@ namespace Backend.Analyses
 			while (worklist.Count > 0)
 			{
 				var method = worklist.Dequeue();
-				var methodCalls = method.Body.Instructions.OfType<MethodCallInstruction>();
+                MethodFound(method);
+                var methodCalls = method.Body.Instructions.OfType<MethodCallInstruction>();
 
 				foreach (var methodCall in methodCalls)
 				{
-					var staticCallee = ResolveStaticCallee(methodCall);
-					var possibleCallees = ResolvePossibleCallees(staticCallee);
+                    var staticCallee = methodCall.Method; // ResolveStaticCallee(methodCall);
+                    var possibleCallees = ResolvePossibleCallees(staticCallee);
 
-					result.Add(method, methodCall.Label, staticCallee);
+                    result.Add(method, methodCall.Label, staticCallee);
 					result.Add(method, methodCall.Label, possibleCallees);
 
 					foreach (var calleeref in possibleCallees)
@@ -87,7 +89,14 @@ namespace Backend.Analyses
 			return result;
 		}
 
-		private IMethodReference ResolveStaticCallee(MethodCallInstruction methodCall)
+        protected virtual void MethodFound(MethodDefinition method)
+        {
+            var disassembler = new Disassembler(method);
+            var methodBody = disassembler.Execute();
+            method.Body = methodBody;
+        }
+
+        private IMethodReference ResolveStaticCallee(MethodCallInstruction methodCall)
 		{
 			var staticCallee = methodCall.Method;
 
@@ -147,7 +156,7 @@ namespace Backend.Analyses
 
 			result.Add(methodref);
 
-			if (!methodref.IsStatic)
+			if (!methodref.IsStatic && methodref.Name!=".ctor")
 			{
 				var subtypes = classHierarchy.GetAllSubtypes(methodref.ContainingType);
 				var compatibleMethods = from t in subtypes
