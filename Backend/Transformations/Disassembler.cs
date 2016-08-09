@@ -970,14 +970,24 @@ namespace Backend.Transformations
 
 					foreach (var successor in node.Successors)
 					{
-                        var successorIsHanderHeader = cfg.Regions.OfType<CFGExceptionHandlerRegion>().Where(r => r.Header.Equals(successor)).Any();
+                        var successorIsHanderHeader = cfg.Regions.OfType<CFGExceptionHandlerRegion>()
+                                                      .Where(r => r.Kind==CFGRegionKind.Catch && r.Header.Equals(successor)).Any();
                         if (successorIsHanderHeader)
                         {
                             stackSize = 1; stack.Size = 1;
                         }
                         else
                         {
-                            stackSize = stackSizeAtEntry[successor.Id];
+                            var successorIsFinally = cfg.Regions.OfType<CFGExceptionHandlerRegion>()
+                                                          .Where(r => r.Kind == CFGRegionKind.Finally && r.Header.Equals(successor)).Any();
+                            if (successorIsFinally)
+                            {
+                                stackSize = 0; stack.Size = 0;
+                            }
+                            else
+                            {
+                                stackSize = stackSizeAtEntry[successor.Id];
+                            }
                         }
 
 						if (!stackSize.HasValue)
