@@ -25,9 +25,50 @@ namespace Backend.Model
         Delegate
     }
 
+    
+    public interface PTGContext
+    {
+
+    }
+
+    public class MethodContex : PTGContext
+    {
+        public MethodContex(IMethodReference method)
+        {
+            this.Method = method;
+        }
+        public IMethodReference Method { get; set;  }  
+    }
+
+    public class PTGID
+    {
+        public PTGID(PTGContext context, int offset)
+        {
+            this.Context = context;
+            this.OffSet = offset;
+        }
+        PTGContext Context { get; set; }
+        public int OffSet { get; set; }
+        public override string ToString()
+        {
+            return String.Format("{0}:{1}",Context,OffSet);
+        }
+        public override bool Equals(object obj)
+        {
+            var ptgID = obj as PTGID;
+            return ptgID!=null && ptgID.OffSet==OffSet 
+                && ptgID.Context==Context || ptgID.Context.Equals(Context);
+        }
+        public override int GetHashCode()
+        {
+            if (Context == null) return OffSet.GetHashCode();
+            return Context.GetHashCode()+OffSet.GetHashCode();
+        }
+    }
+
     public class PTGNode
     {
-		public int Id { get; private set; }
+		public PTGID Id { get; private set; }
 		public PTGNodeKind Kind { get; private set; }
 		public uint Offset { get; set; }
         public IType Type { get; set; }
@@ -35,7 +76,7 @@ namespace Backend.Model
         public MapSet<IFieldReference, PTGNode> Sources { get; private set; }
         public MapSet<IFieldReference, PTGNode> Targets { get; private set; }
 
-		public PTGNode(int id, PTGNodeKind kind = PTGNodeKind.Null)
+		public PTGNode(PTGID id, PTGNodeKind kind = PTGNodeKind.Null)
         {
 			this.Id = id;
             this.Kind = kind;
@@ -44,10 +85,10 @@ namespace Backend.Model
             this.Targets = new MapSet<IFieldReference, PTGNode>();
         }
 
-		public PTGNode(int id, IType type, uint offset = 0, PTGNodeKind kind = PTGNodeKind.Object)
+		public PTGNode(PTGID id, IType type, PTGNodeKind kind = PTGNodeKind.Object)
 			: this(id, kind)
 		{
-			this.Offset = offset;
+            this.Id = id;
 			this.Type = type;
 		}
 
@@ -66,9 +107,9 @@ namespace Backend.Model
 			var other = obj as PTGNode;
 
 			return other != null &&
-				//this.Id == other.Id &&
+				this.Id == other.Id &&
 				this.Kind == other.Kind &&
-				this.Offset == other.Offset &&
+				//this.Offset == other.Offset &&
 				object.Equals(this.Type, other.Type);
 		}
 
@@ -97,14 +138,16 @@ namespace Backend.Model
 		}
         public virtual PTGNode Clone()
         {
-            var clone = new PTGNode(this.Id, this.Type, this.Offset, this.Kind);
+            var clone = new PTGNode(this.Id, this.Type, this.Kind);
             return clone;
         }
     }
 
     public class NullNode : PTGNode
     {
-        public NullNode() : base(0, PTGNodeKind.Null)
+        public static PTGID nullID = new PTGID(null,  0);
+
+        public NullNode() : base(nullID, PTGNodeKind.Null)
         {
         }
         public override bool Equals(object obj)
@@ -130,7 +173,7 @@ namespace Backend.Model
     public class ParameterNode : PTGNode
     {
         public  string Parameter { get; private set;  }
-        public ParameterNode(int id, string parameter, PTGNodeKind kind = PTGNodeKind.Null) : base(id, PTGNodeKind.Parameter)
+        public ParameterNode(PTGID id, string parameter, PTGNodeKind kind = PTGNodeKind.Null) : base(id, PTGNodeKind.Parameter)
         {
             this.Parameter = parameter;
         }
@@ -154,10 +197,10 @@ namespace Backend.Model
     public class DelegateNode : PTGNode
     {
         public  IMethodReference Method { get; private set; }
-        public  IVariable Instance { get; private set; }
+        public  IVariable Instance { get; internal set; }
         public  bool IsStatic { get; private set; }
 
-        public DelegateNode(int id, IMethodReference method, IVariable instance) : base(id, PTGNodeKind.Delegate)
+        public DelegateNode(PTGID id, IMethodReference method, IVariable instance) : base(id, PTGNodeKind.Delegate)
         {
             this.Method = method;
             this.Instance = instance;
@@ -186,10 +229,7 @@ namespace Backend.Model
     {
         private Stack<MapSet<IVariable, PTGNode>> stackFrame;
 		private MapSet<IVariable, PTGNode> variables;
-		private IDictionary<int, PTGNode> nodes;
-
-        private IDictionary<uint, int> nodeIdAtOffset;
-        private int nextPTGNodeId;
+		private IDictionary<PTGID, PTGNode> nodes;
 
         public PTGNode Null { get; private set; }
 
@@ -197,11 +237,11 @@ namespace Backend.Model
         {
             this.Null = new NullNode();
             this.variables = new MapSet<IVariable, PTGNode>();            
-			this.nodes = new Dictionary<int, PTGNode>();
+			this.nodes = new Dictionary<PTGID, PTGNode>();
             this.Add(this.Null);
 
-            this.nodeIdAtOffset = new Dictionary<uint, int>();
-            nextPTGNodeId=1;
+            //this.nodeIdAtOffset = new Dictionary<uint, int>();
+            //nextPTGNodeId=1;
 
             //this.stackFrame = new Stack<MapSet<IVariable, PTGNode>>();
         }
@@ -288,7 +328,7 @@ namespace Backend.Model
 			return this.ContainsNode(node.Id);
 		}
 
-		public bool ContainsNode(int id)
+		public bool ContainsNode(PTGID id)
 		{
 			return nodes.ContainsKey(id);
 		}
@@ -303,32 +343,16 @@ namespace Backend.Model
 			nodes.Add(node.Id, node);
 		}
 
-		public PTGNode GetNode(uint offset, IType type, PTGNodeKind kind = PTGNodeKind.Object)
+		public PTGNode GetNode(PTGID ptgId, IType type, PTGNodeKind kind = PTGNodeKind.Object)
 		{
-
-            if(nodes.ContainsKey((int)offset))
+            if(nodes.ContainsKey(ptgId))
             {
-                return nodes[(int)offset];
+                return nodes[ptgId];
             }
 
-            var node = new PTGNode((int)offset, type, offset, kind);
+            var node = new PTGNode(ptgId, type, kind);
             this.Add(node);
             return node;
-
-            //if (nodeIdAtOffset.ContainsKey(offset))
-            //{
-            //    var nodeId = nodeIdAtOffset[offset];
-            //    return nodes[nodeId];
-            //}
-            //else
-            //{
-            //    var nodeId = ++nextPTGNodeId;
-            //    var node = new PTGNode(nodeId, type, offset, kind);
-            //    this.Add(node);
-            //    nodeIdAtOffset.Add(offset, nodeId);
-            //    return node;
-            //}
-            // return nodes[id];
 		}
 
 		public ISet<PTGNode> GetTargets(IVariable variable)
@@ -447,6 +471,13 @@ namespace Backend.Model
 
             target.Variables.Add(variable);
             this.variables.Add(variable, target);
+        }
+        public void PointsTo(IVariable variable, IEnumerable<PTGNode> targets)
+        {
+            foreach(var n in targets)
+            {
+                PointsTo(variable, n);
+            }
         }
 
         public void PointsTo(PTGNode source, IFieldReference field, PTGNode target)

@@ -11,6 +11,7 @@ using Backend.Analyses;
 using Model.Types;
 using Model;
 using Backend.Model;
+using Backend.Transformations;
 
 namespace Backend.Utils
 {
@@ -542,6 +543,20 @@ namespace Backend.Utils
             return type.TypeKind == TypeKind.ValueType;
         }
 
+        public static bool IsDelegateType(this IType type)
+        {
+            var basicType = type as IBasicType;
+            if (type != null && basicType.ResolvedType is ClassDefinition)
+            {
+                if ((basicType.ResolvedType as ClassDefinition).IsDelegate)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+
         public static IMethodReference FindMethodImplementation(this Host host, IBasicType receiverType, IMethodReference method)
         {
             var result = method;
@@ -567,5 +582,57 @@ namespace Backend.Utils
 
             return result;
         }
+       public static Backend.Model.ControlFlowGraph DoAnalysisPhases(this MethodDefinition method, Host host, bool inline = true)
+        {
+            var disassembler = new Disassembler(method);
+            var methodBody = disassembler.Execute();
+            method.Body = methodBody;
+
+            var cfAnalysis = new ControlFlowAnalysis(method.Body);
+            var cfg = cfAnalysis.GenerateNormalControlFlow();
+
+            var domAnalysis = new DominanceAnalysis(cfg);
+            domAnalysis.Analyze();
+            domAnalysis.GenerateDominanceTree();
+
+            var loopAnalysis = new NaturalLoopAnalysis(cfg);
+            loopAnalysis.Analyze();
+
+            var domFrontierAnalysis = new DominanceFrontierAnalysis(cfg);
+            domFrontierAnalysis.Analyze();
+
+            var splitter = new WebAnalysis(cfg);
+            splitter.Analyze();
+            splitter.Transform();
+
+            methodBody.UpdateVariables();
+
+
+            var analysis = new TypeInferenceAnalysis(cfg);
+            analysis.Analyze();
+
+            var copyProgapagtion = new ForwardCopyPropagationAnalysis(cfg);
+            copyProgapagtion.Analyze();
+            copyProgapagtion.Transform(methodBody);
+
+            var backwardCopyProgapagtion = new BackwardCopyPropagationAnalysis(cfg);
+            backwardCopyProgapagtion.Analyze();
+            backwardCopyProgapagtion.Transform(methodBody);
+
+            var liveVariables = new LiveVariablesAnalysis(cfg);
+            var resultLiveVar = liveVariables.Analyze();
+
+
+            var ssa = new StaticSingleAssignment(methodBody, cfg);
+            ssa.Transform();
+            ssa.Prune(liveVariables);
+            methodBody.UpdateVariables();
+
+            method.Body = methodBody;
+
+             // var dgml = DGMLSerializer.Serialize(cfg);
+            return cfg;
+        }
+
     }
 }
