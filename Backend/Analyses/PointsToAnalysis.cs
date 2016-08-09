@@ -21,10 +21,13 @@ namespace Backend.Analyses
         {
             private PointsToGraph ptg;
             private PointsToAnalysis ptAnalysis;
+            private bool analyzeNextDelegateCtor;
+
             internal PTAVisitor(PointsToGraph ptgNode, PointsToAnalysis ptAnalysis)
             {
                 this.ptg = ptgNode;
                 this.ptAnalysis = ptAnalysis;
+                this.analyzeNextDelegateCtor = false;
             }
             public override void Visit(LoadInstruction instruction)
             {
@@ -50,7 +53,22 @@ namespace Backend.Analyses
                     var access = load.Operand as InstanceFieldAccess;
                     ptAnalysis.ProcessLoad(ptg, offset, load.Result, access);
                 }
+                else if (instruction.Operand is VirtualMethodReference)
+                {
+                    var loadDelegateStmt = instruction.Operand as VirtualMethodReference;
+                    var methodRef = loadDelegateStmt.Method;
+                    var instance = loadDelegateStmt.Instance;
+                    ptAnalysis.ProcessDelegateAddr(ptg, instruction.Offset, load.Result, methodRef, instance);
+
+                }
+                else if (instruction.Operand is StaticMethodReference)
+                {
+
+                }
+
             }
+
+
             public override void Visit(StoreInstruction instruction)
             {
                 var store = instruction;
@@ -65,9 +83,14 @@ namespace Backend.Analyses
                 if (instruction is CreateObjectInstruction)
                 {
                     var allocation = instruction as CreateObjectInstruction;
+                    if(allocation.AllocationType.IsDelegateType())
+                    {
+                        this.analyzeNextDelegateCtor = true;
+                    }
                     ptAnalysis.ProcessObjectAllocation(ptg, allocation.Offset, allocation.Result);
                 }
             }
+
             public override void Visit(CreateArrayInstruction instruction)
             {
                 var allocation = instruction;
@@ -81,11 +104,42 @@ namespace Backend.Analyses
             public override void Visit(MethodCallInstruction instruction)
             {
                 var methodCall = instruction as MethodCallInstruction;
-                //if (methodCall.Method.Name.Equals(".ctor") && methodCall.HasResult)
-                //{
-                //    ptAnalysis.ProcessCopy(ptg, methodCall.Result, methodCall.Arguments[0]);
-                //}
+                // Hack for mapping delegates to nodes
+                if(methodCall.Method.Name==".ctor" && this.analyzeNextDelegateCtor)
+                {
+                    ProcessDelegateCtor(methodCall);
+                    this.analyzeNextDelegateCtor = false;
+                }
             }
+
+            private void ProcessDelegateCtor(MethodCallInstruction methodCall)
+            {
+                if (methodCall.Arguments.Any())
+                {
+                    var arg0Type = methodCall.Arguments[0].Type;
+                    if (arg0Type.IsDelegateType())
+                    {
+                        ptg.RemoveEdges(methodCall.Arguments[0]);
+                        if (methodCall.Arguments.Count == 3)
+                        {
+                            // instance delegate
+                            foreach(var dn in ptg.GetTargets(methodCall.Arguments[2]).OfType<DelegateNode>())
+                            {
+                                dn.Instance = methodCall.Arguments[1];
+                                ptg.PointsTo(methodCall.Arguments[0], dn);
+                            }
+                        }
+                        else
+                        {
+                            foreach (var dn in ptg.GetTargets(methodCall.Arguments[1]).OfType<DelegateNode>())
+                            {
+                                ptg.PointsTo(methodCall.Arguments[0], dn);
+                            }
+                        }
+                    }
+                }
+            }
+
             public override void Visit(PhiInstruction instruction)
             {
                 foreach(var v in instruction.Arguments)
@@ -106,7 +160,7 @@ namespace Backend.Analyses
         //private int nextPTGNodeId;
 		protected PointsToGraph initialGraph;
         private MethodDefinition method;
-
+  
         public IVariable ReturnVariable { get; private set; }
 
         public PointsToAnalysis(ControlFlowGraph cfg, MethodDefinition method)
@@ -176,7 +230,8 @@ namespace Backend.Analyses
                     //var node = ptg.GetNode(0, variable.Type, kind);
                     // ptg.Add(node);
 
-                    var node = new ParameterNode(counter--, variable.Name);
+                    var ptgId = new PTGID(new MethodContex(this.method), counter--);
+                    var node = new ParameterNode(ptgId, variable.Name);
                     ptg.Add(node);
 					ptg.PointsTo(variable, node);
 				}
@@ -200,7 +255,9 @@ namespace Backend.Analyses
 		{
 			if (dst.Type.TypeKind == TypeKind.ValueType) return;
 
-			var node = this.GetNode(ptg, offset, dst.Type);
+            var ptgId = new PTGID(new MethodContex(this.method), (int)offset);
+
+            var node = this.NewNode(ptg, ptgId, dst.Type);
 
             ptg.RemoveEdges(dst);
             ptg.PointsTo(dst, node);
@@ -210,7 +267,9 @@ namespace Backend.Analyses
         {
 			if (dst.Type.TypeKind == TypeKind.ValueType) return;
 
-			var node = this.GetNode(ptg, offset, dst.Type);
+            var ptgId = new PTGID(new MethodContex(this.method), (int)offset);
+
+            var node = this.NewNode(ptg, ptgId, dst.Type);
 
             ptg.RemoveEdges(dst);
             ptg.PointsTo(dst, node);
@@ -244,8 +303,10 @@ namespace Backend.Analyses
                     // ptg.PointsTo(node, access.Field, ptg.Null);
                     if (MayReacheableFromParameter(ptg, node))
                     {
+                        var ptgId = new PTGID(new MethodContex(this.method), (int)offset);
+                        // TODO: Should be a LOAD NODE
                         // Preventive assignement of a new Node unknown (should be only for parameters)
-                        var target = this.GetNode(ptg, offset, dst.Type, PTGNodeKind.Unknown);
+                        var target = this.NewNode(ptg, ptgId, dst.Type, PTGNodeKind.Unknown);
                         ptg.PointsTo(node, access.Field, target);
                     }
                 }
@@ -258,6 +319,16 @@ namespace Backend.Analyses
                 }
             }
         }
+
+        internal  void ProcessDelegateAddr(PointsToGraph ptg, uint offset, IVariable dst, IMethodReference methodRef, IVariable instance)
+        {
+            var ptgID = new PTGID(new MethodContex(this.method), (int)offset);
+            var delegateNode = new DelegateNode(ptgID, methodRef, instance);
+            ptg.Add(delegateNode);
+            ptg.RemoveEdges(dst);
+            ptg.PointsTo(dst, delegateNode);
+        }
+
         private bool MayReacheableFromParameter(PointsToGraph ptg, PTGNode n)
         {
             var result = method.Body.Parameters.Where(p => ptg.Reachable(p,n)).Any();
@@ -280,24 +351,10 @@ namespace Backend.Analyses
 				}
         }
 
-		private PTGNode GetNode(PointsToGraph ptg, uint offset, IType type, PTGNodeKind kind = PTGNodeKind.Object)
+		private PTGNode NewNode(PointsToGraph ptg, PTGID ptgID, IType type, PTGNodeKind kind = PTGNodeKind.Object)
 		{
 			PTGNode node;
-            node = ptg.GetNode(offset, type, kind);
-            //if (nodeIdAtOffset.ContainsKey(offset))
-            //{
-            //	var nodeId = nodeIdAtOffset[offset];
-            //	node = ptg.GetNode(nodeId);
-            //}
-            //else
-            //{
-            //	var nodeId = nextPTGNodeId++;
-            //	node = new PTGNode(nodeId, type, offset, kind);
-
-            //	ptg.Add(node);
-            //	nodeIdAtOffset.Add(offset, nodeId);
-            //}
-
+            node = ptg.GetNode(ptgID, type, kind);
             return node;
 		}
     }

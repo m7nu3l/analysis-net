@@ -11,6 +11,7 @@ using Backend.Analyses;
 using Model.Types;
 using Model;
 using Backend.Model;
+using Backend.Transformations;
 
 namespace Backend.Utils
 {
@@ -174,19 +175,19 @@ namespace Backend.Utils
 			return new Subset<T>(universe, true);
 		}
 
-		public static uint StartOffset(this IInstructionContainer block)
-		{
-			var instruction = block.Instructions.First();
-			return instruction.Offset;
-		}
+        public static uint StartOffset(this IInstructionContainer block)
+        {
+            var instruction = block.Instructions.First();
+            return instruction.Offset;
+        }
 
-		public static uint EndOffset(this IInstructionContainer block)
-		{
-			var instruction = block.Instructions.Last();
-			return instruction.Offset;
-		}
+        public static uint EndOffset(this IInstructionContainer block)
+        {
+            var instruction = block.Instructions.Last();
+            return instruction.Offset;
+        }
 
-		public static ISet<IVariable> GetVariables(this IInstructionContainer block)
+        public static ISet<IVariable> GetVariables(this IInstructionContainer block)
 		{
 			var result = from i in block.Instructions
 						 from v in i.Variables
@@ -329,49 +330,40 @@ namespace Backend.Utils
 
         public static IExpression ReplaceVariables<T>(this IExpression expr, IDictionary<IVariable, T> equalities) where T : IExpression
 		{
-			foreach (var variable in expr.Variables)
-			{
-				var isTemporal = variable is TemporalVariable;
+            foreach (var variable in expr.Variables)
+            {
+                if (variable.IsTemporal())
+                {
+                    var hasValue = equalities.ContainsKey(variable);
 
-				if (variable is DerivedVariable)
-				{
-					var derived = variable as DerivedVariable;
-					isTemporal = derived.Original is TemporalVariable;
-				}
+                    if (hasValue)
+                    {
+                        var value = equalities[variable];
+                        var isUnknown = value is UnknownValue;
+                        var isPhi = value is PhiExpression;
+                        var isMethodCall = value is MethodCallExpression;
 
-				if (isTemporal)
-				{
-					var hasValue = equalities.ContainsKey(variable);
+                        if (isUnknown || isPhi || isMethodCall)
+                            continue;
 
-					if (hasValue)
-					{
-						var value = equalities[variable];
-						var isUnknown = value is UnknownValue;
-						var isPhi = value is PhiExpression;
-						var isMethodCall = value is MethodCallExpression;
+                        expr = expr.Replace(variable, value);
+                    }
+                }
+            }
 
-						if (isUnknown || isPhi || isMethodCall)
-							continue;
+            return expr;
+        }
 
-						expr = expr.Replace(variable, value);
-					}
-				}
-			}
-
-			return expr;
-		}
-
-		public static void RemoveTemporalVariables(this PointsToGraph ptg)
-		{
-			foreach (var variable in ptg.Variables)
-			{
-				if (variable.IsTemporal())
-				{
-					ptg.Remove(variable);
-				}
-			}
-		}
-
+	    public static void RemoveTemporalVariables(this PointsToGraph ptg)
+        {
+            foreach (var variable in ptg.Variables.ToArray())
+            {
+                if (variable.IsTemporal())
+                {
+                    ptg.Remove(variable);
+                }
+            }
+        }
         public static void RemoveDerivedVariables(this PointsToGraph ptg)
         {
             var temporals = ptg.Variables.OfType<DerivedVariable>().ToArray();
@@ -401,7 +393,6 @@ namespace Backend.Utils
             return ptg.GetTargets(v2).Intersect(query).Any();
         }
         #endregion
-
         #region Reachability in PTG
         public static bool Reachable(this PointsToGraph ptg, IVariable v1, PTGNode n)
         {
@@ -453,90 +444,90 @@ namespace Backend.Utils
 			return result;
 		}
 
-		public static void Inline(this MethodBody callerBody, MethodCallInstruction methodCall, MethodBody calleeBody)
-		{
-			// TODO: Fix local variables (and parameters) name clashing
+        public static void Inline(this MethodBody callerBody, MethodCallInstruction methodCall, MethodBody calleeBody)
+        {
+            // TODO: Fix local variables (and parameters) name clashing
 
-			var index = callerBody.Instructions.IndexOf(methodCall);
-			callerBody.Instructions.RemoveAt(index);
+            var index = callerBody.Instructions.IndexOf(methodCall);
+            callerBody.Instructions.RemoveAt(index);
 
-			IInstruction nextInstruction = null;
+            IInstruction nextInstruction = null;
 
-			if (callerBody.Instructions.Count > index)
-			{
-				// The caller method has more instructions after the method call
-				nextInstruction = callerBody.Instructions[index];
-			}			
+            if (callerBody.Instructions.Count > index)
+            {
+                // The caller method has more instructions after the method call
+                nextInstruction = callerBody.Instructions[index];
+            }
 
-			for (var i = 0; i < calleeBody.Parameters.Count; ++i)
-			{
-				var parameter = calleeBody.Parameters[i];
-				var argument = methodCall.Arguments[i];
-				var copy = new LoadInstruction(methodCall.Offset, parameter, argument);
+            for (var i = 0; i < calleeBody.Parameters.Count; ++i)
+            {
+                var parameter = calleeBody.Parameters[i];
+                var argument = methodCall.Arguments[i];
+                var copy = new LoadInstruction(methodCall.Offset, parameter, argument);
 
-				copy.Label = string.Format("{0}_{1}", methodCall.Label, copy.Label);
-				callerBody.Instructions.Insert(index, copy);
-				index++;
-			}
+                copy.Label = string.Format("{0}_{1}", methodCall.Label, copy.Label);
+                callerBody.Instructions.Insert(index, copy);
+                index++;
+            }
 
-			var lastCalleeInstructionIndex = calleeBody.Instructions.Count - 1;
+            var lastCalleeInstructionIndex = calleeBody.Instructions.Count - 1;
 
-			for (var i = 0; i < calleeBody.Instructions.Count; ++i)
-			{
-				var instruction = calleeBody.Instructions[i];
+            for (var i = 0; i < calleeBody.Instructions.Count; ++i)
+            {
+                var instruction = calleeBody.Instructions[i];
 
-				if (instruction is ReturnInstruction)
-				{
-					var ret = instruction as ReturnInstruction;
+                if (instruction is ReturnInstruction)
+                {
+                    var ret = instruction as ReturnInstruction;
 
-					if (ret.HasOperand && methodCall.HasResult)
-					{
-						// Copy the return value of the callee to the result variable of the method call
-						var copy = new LoadInstruction(ret.Offset, methodCall.Result, ret.Operand);
+                    if (ret.HasOperand && methodCall.HasResult)
+                    {
+                        // Copy the return value of the callee to the result variable of the method call
+                        var copy = new LoadInstruction(ret.Offset, methodCall.Result, ret.Operand);
 
-						copy.Label = string.Format("{0}_{1}", methodCall.Label, copy.Label);
-						callerBody.Instructions.Insert(index, copy);
-						index++;
-					}
+                        copy.Label = string.Format("{0}_{1}", methodCall.Label, copy.Label);
+                        callerBody.Instructions.Insert(index, copy);
+                        index++;
+                    }
 
-					if (nextInstruction != null && i < lastCalleeInstructionIndex)
-					{
-						// Jump to the instruction after the method call
-						var branch = new UnconditionalBranchInstruction(ret.Offset, nextInstruction.Offset);
+                    if (nextInstruction != null && i < lastCalleeInstructionIndex)
+                    {
+                        // Jump to the instruction after the method call
+                        var branch = new UnconditionalBranchInstruction(ret.Offset, nextInstruction.Offset);
 
-						branch.Label = string.Format("{0}_{1}", methodCall.Label, branch.Label);
-						callerBody.Instructions.Insert(index, branch);
-						index++;
-					}
-				}
-				else
-				{
-					// TODO: Fix! We should clone the instruction
-					// so the original is not modified
-					// and calleeBody remain intacted
+                        branch.Label = string.Format("{0}_{1}", methodCall.Label, branch.Label);
+                        callerBody.Instructions.Insert(index, branch);
+                        index++;
+                    }
+                }
+                else
+                {
+                    // TODO: Fix! We should clone the instruction
+                    // so the original is not modified
+                    // and calleeBody remain intacted
 
-					if (instruction is BranchInstruction)
-					{
-						var branch = instruction as BranchInstruction;
-						branch.Target = string.Format("{0}_{1}", methodCall.Label, branch.Target);
-					}
-					else if (instruction is SwitchInstruction)
-					{
-						var branch = instruction as SwitchInstruction;
+                    if (instruction is BranchInstruction)
+                    {
+                        var branch = instruction as BranchInstruction;
+                        branch.Target = string.Format("{0}_{1}", methodCall.Label, branch.Target);
+                    }
+                    else if (instruction is SwitchInstruction)
+                    {
+                        var branch = instruction as SwitchInstruction;
 
-						for (var j = 0; j < branch.Targets.Count; ++j)
-						{
-							var target = branch.Targets[j];
-							branch.Targets[j] = string.Format("{0}_{1}", methodCall.Label, target);
-						}
-					}
+                        for (var j = 0; j < branch.Targets.Count; ++j)
+                        {
+                            var target = branch.Targets[j];
+                            branch.Targets[j] = string.Format("{0}_{1}", methodCall.Label, target);
+                        }
+                    }
 
-					instruction.Label = string.Format("{0}_{1}", methodCall.Label, instruction.Label);
-					callerBody.Instructions.Insert(index, instruction);
-					index++;
-				}
-			}
-		}
+                    instruction.Label = string.Format("{0}_{1}", methodCall.Label, instruction.Label);
+                    callerBody.Instructions.Insert(index, instruction);
+                    index++;
+                }
+            }
+        }
         // From Zvonimir to get the full name with all the containing types
         public static string FullPathName(this ITypeDefinition type)
         {
@@ -551,5 +542,97 @@ namespace Backend.Utils
         {
             return type.TypeKind == TypeKind.ValueType;
         }
+
+        public static bool IsDelegateType(this IType type)
+        {
+            var basicType = type as IBasicType;
+            if (type != null && basicType.ResolvedType is ClassDefinition)
+            {
+                if ((basicType.ResolvedType as ClassDefinition).IsDelegate)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+
+        public static IMethodReference FindMethodImplementation(this Host host, IBasicType receiverType, IMethodReference method)
+        {
+            var result = method;
+
+            while (receiverType != null && !method.ContainingType.Equals(receiverType))
+            {
+                var receiverTypeDef = receiverType.ResolvedType as ClassDefinition;
+                if (receiverTypeDef == null) break;
+
+                var matchingMethod = receiverTypeDef.Methods.SingleOrDefault(m => m.MatchSignature(method));
+
+                if (matchingMethod != null)
+                {
+                    result = matchingMethod;
+                    break;
+                }
+                else
+                {
+                    receiverType = receiverTypeDef.Base;
+                }
+
+            }
+
+            return result;
+        }
+       public static Backend.Model.ControlFlowGraph DoAnalysisPhases(this MethodDefinition method, Host host, bool inline = true)
+        {
+            var disassembler = new Disassembler(method);
+            var methodBody = disassembler.Execute();
+            method.Body = methodBody;
+
+            var cfAnalysis = new ControlFlowAnalysis(method.Body);
+            var cfg = cfAnalysis.GenerateNormalControlFlow();
+
+            var domAnalysis = new DominanceAnalysis(cfg);
+            domAnalysis.Analyze();
+            domAnalysis.GenerateDominanceTree();
+
+            var loopAnalysis = new NaturalLoopAnalysis(cfg);
+            loopAnalysis.Analyze();
+
+            var domFrontierAnalysis = new DominanceFrontierAnalysis(cfg);
+            domFrontierAnalysis.Analyze();
+
+            var splitter = new WebAnalysis(cfg);
+            splitter.Analyze();
+            splitter.Transform();
+
+            methodBody.UpdateVariables();
+
+
+            var analysis = new TypeInferenceAnalysis(cfg);
+            analysis.Analyze();
+
+            var copyProgapagtion = new ForwardCopyPropagationAnalysis(cfg);
+            copyProgapagtion.Analyze();
+            copyProgapagtion.Transform(methodBody);
+
+            var backwardCopyProgapagtion = new BackwardCopyPropagationAnalysis(cfg);
+            backwardCopyProgapagtion.Analyze();
+            backwardCopyProgapagtion.Transform(methodBody);
+
+            var liveVariables = new LiveVariablesAnalysis(cfg);
+            var resultLiveVar = liveVariables.Analyze();
+
+
+            var ssa = new StaticSingleAssignment(methodBody, cfg);
+            ssa.Transform();
+            ssa.Prune(liveVariables);
+            methodBody.UpdateVariables();
+
+            method.Body = methodBody;
+
+             // var dgml = DGMLSerializer.Serialize(cfg);
+            return cfg;
+        }
+
     }
 }
