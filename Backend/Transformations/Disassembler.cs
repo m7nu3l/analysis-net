@@ -951,7 +951,7 @@ namespace Backend.Transformations
 
 				var translator = new InstructionTranslator(stack, body, method.ReturnType);
 				var cfanalysis = new ControlFlowAnalysis(method.Body);
-				//var cfg = cfanalysis.GenerateNormalControlFlow();
+				// var cfg = cfanalysis.GenerateNormalControlFlow();
 				var cfg = cfanalysis.GenerateExceptionalControlFlow();
 				var stackSizeAtEntry = new ushort?[cfg.Nodes.Count];
 				var sorted_nodes = cfg.ForwardOrder;
@@ -970,7 +970,15 @@ namespace Backend.Transformations
 
 					foreach (var successor in node.Successors)
 					{
-						stackSize = stackSizeAtEntry[successor.Id];
+                        var successorIsHanderHeader = cfg.Regions.OfType<CFGExceptionHandlerRegion>().Where(r => r.Header.Equals(successor)).Any();
+                        if (successorIsHanderHeader)
+                        {
+                            stackSize = 1; stack.Size = 1;
+                        }
+                        else
+                        {
+                            stackSize = stackSizeAtEntry[successor.Id];
+                        }
 
 						if (!stackSize.HasValue)
 						{
