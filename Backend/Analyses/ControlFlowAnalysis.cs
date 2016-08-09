@@ -44,7 +44,7 @@ namespace Backend.Analyses
 			var cfg = ConnectNodes(instructions, leaders);
 
 			CreateExceptionHandlerRegions(cfg, leaders);
-			ConnectNodesWithExceptionHandlers(cfg);
+			// ConnectNodesWithExceptionHandlers(cfg);
 
 			return cfg;
 		}
