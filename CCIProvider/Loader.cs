@@ -61,7 +61,6 @@ namespace CCIProvider
 					pdbReader = new Cci.PdbReader(pdbStream, cciHost);
 				}
 			}
-
 			var assembly = this.ExtractAssembly(module, pdbReader);
 
 			if (pdbReader != null)
@@ -72,8 +71,68 @@ namespace CCIProvider
 			ourHost.Assemblies.Add(assembly);
 			return assembly;
 		}
+        public Assembly LoadAssemblyAndReferences(string fileName)
+        {
+            var module = cciHost.LoadUnitFrom(fileName) as Cci.IModule;
 
-		private Assembly ExtractAssembly(Cci.IModule module, Cci.PdbReader pdbReader)
+            if (module == null || module == Cci.Dummy.Module || module == Cci.Dummy.Assembly)
+                throw new Exception("The input is not a valid CLR module or assembly.");
+
+            var pdbFileName = Path.ChangeExtension(fileName, "pdb");
+            Cci.PdbReader pdbReader = null;
+
+            if (File.Exists(pdbFileName))
+            {
+                using (var pdbStream = File.OpenRead(pdbFileName))
+                {
+                    pdbReader = new Cci.PdbReader(pdbStream, cciHost);
+                }
+            }
+            var assembly = this.ExtractAssembly(module, pdbReader);
+
+            if (pdbReader != null)
+            {
+                pdbReader.Dispose();
+            }
+
+            ourHost.Assemblies.Add(assembly);
+            cciHost.AddLibPath(Path.GetDirectoryName(fileName));
+           
+            foreach (var assemblyReference in module.AssemblyReferences)
+            {
+                try
+                {
+                    var cciAssemblyFromReference = cciHost.LoadAssembly(assemblyReference.AssemblyIdentity);
+
+                    if (cciAssemblyFromReference == null || cciAssemblyFromReference == Cci.Dummy.Assembly)
+                        throw new Exception("The input is not a valid CLR module or assembly.");
+
+                    var pdbLocation = cciAssemblyFromReference.DebugInformationLocation;
+                    if (File.Exists(pdbFileName))
+                    {
+                        using (var pdbStream = File.OpenRead(pdbFileName))
+                        {
+                            pdbReader = new Cci.PdbReader(pdbStream, cciHost);
+                        }
+                    }
+                    var assemblyFromRef = this.ExtractAssembly(cciAssemblyFromReference, pdbReader);
+                    ourHost.Assemblies.Add(assemblyFromRef);
+                    if (pdbReader != null)
+                    {
+                        pdbReader.Dispose();
+                    }
+                }
+                catch(Exception e)
+                {
+
+                }
+            }
+            return assembly;
+
+        }
+
+
+        private Assembly ExtractAssembly(Cci.IModule module, Cci.PdbReader pdbReader)
 		{
 			var traverser = new AssemblyTraverser(ourHost, cciHost, pdbReader);
 			traverser.Traverse(module.ContainingAssembly);

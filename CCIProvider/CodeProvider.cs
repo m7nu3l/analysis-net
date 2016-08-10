@@ -531,7 +531,7 @@ namespace CCIProvider
 				//    break;
 
 				default:
-					Console.WriteLine("Unknown bytecode: {0}", operation.OperationCode);
+					//Console.WriteLine("Unknown bytecode: {0}", operation.OperationCode);
 					//throw new UnknownBytecodeException(op);
 					break;
 			}
