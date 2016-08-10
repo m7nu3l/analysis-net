@@ -17,11 +17,17 @@ namespace CCIProvider
 		private Host ourHost;
 		private Cci.MetadataReaderHost cciHost;
 
-		public Loader(Host host)
+        private IDictionary<Assembly, Cci.AssemblyIdentity> cciAssemblyMap;
+
+        private string assemblyFolder;
+        private string assemblyParentFolder;
+
+        public Loader(Host host)
 		{
 			this.ourHost = host;
 			this.cciHost = new Cci.PeReader.DefaultHost();
-		}
+            this.cciAssemblyMap = new Dictionary<Assembly, Cci.AssemblyIdentity>();
+        }
 
 		public void Dispose()
 		{
@@ -41,6 +47,9 @@ namespace CCIProvider
 			var assembly = this.ExtractAssembly(module, null);
 
 			ourHost.Assemblies.Add(assembly);
+
+            cciAssemblyMap[assembly] = module.ContainingAssembly.AssemblyIdentity;
+
 			return assembly;
 		}
 
@@ -69,68 +78,116 @@ namespace CCIProvider
 			}
 
 			ourHost.Assemblies.Add(assembly);
-			return assembly;
+            cciAssemblyMap[assembly] = module.ContainingAssembly.AssemblyIdentity;
+            
+            return assembly;
 		}
-        public Assembly LoadAssemblyAndReferences(string fileName)
+
+        public void SetMainAssembly(string fileName)
         {
-            var module = cciHost.LoadUnitFrom(fileName) as Cci.IModule;
+            this.assemblyFolder = Path.GetDirectoryName(fileName);
+            this.assemblyParentFolder = Directory.GetParent(Path.GetDirectoryName(fileName)).FullName;
+            cciHost.AddLibPath(assemblyFolder);
+            cciHost.AddLibPath(assemblyParentFolder);
+        }
+        //public Assembly LoadAssemblyAndReferences(string fileName)
+        //{
+        //    var module = cciHost.LoadUnitFrom(fileName) as Cci.IModule;
 
-            if (module == null || module == Cci.Dummy.Module || module == Cci.Dummy.Assembly)
-                throw new Exception("The input is not a valid CLR module or assembly.");
+        //    if (module == null || module == Cci.Dummy.Module || module == Cci.Dummy.Assembly)
+        //        throw new Exception("The input is not a valid CLR module or assembly.");
 
-            var pdbFileName = Path.ChangeExtension(fileName, "pdb");
-            Cci.PdbReader pdbReader = null;
+        //    var pdbFileName = Path.ChangeExtension(fileName, "pdb");
+        //    Cci.PdbReader pdbReader = null;
 
-            if (File.Exists(pdbFileName))
-            {
-                using (var pdbStream = File.OpenRead(pdbFileName))
-                {
-                    pdbReader = new Cci.PdbReader(pdbStream, cciHost);
-                }
-            }
-            var assembly = this.ExtractAssembly(module, pdbReader);
+        //    if (File.Exists(pdbFileName))
+        //    {
+        //        using (var pdbStream = File.OpenRead(pdbFileName))
+        //        {
+        //            pdbReader = new Cci.PdbReader(pdbStream, cciHost);
+        //        }
+        //    }
+        //    var assembly = this.ExtractAssembly(module, pdbReader);
 
-            if (pdbReader != null)
-            {
-                pdbReader.Dispose();
-            }
+        //    if (pdbReader != null)
+        //    {
+        //        pdbReader.Dispose();
+        //    }
 
-            ourHost.Assemblies.Add(assembly);
-            cciHost.AddLibPath(Path.GetDirectoryName(fileName));
-           
-            foreach (var assemblyReference in module.AssemblyReferences)
+        //    ourHost.Assemblies.Add(assembly);
+        //    this.assemblyFolder = Path.GetDirectoryName(fileName);
+        //    this.assemblyParentFolder = Directory.GetParent(Path.GetDirectoryName(fileName)).FullName;
+        //    cciHost.AddLibPath(assemblyFolder);
+        //    cciHost.AddLibPath(assemblyParentFolder);
+
+        //    foreach (var assemblyReference in module.AssemblyReferences)
+        //    {
+        //        try
+        //        {
+        //            Cci.IModule cciAssemblyFromReference = TryToLoadCCIAssembly(assemblyReference);
+
+        //            if (cciAssemblyFromReference == null || cciAssemblyFromReference == Cci.Dummy.Assembly)
+        //                throw new Exception("The input is not a valid CLR module or assembly.");
+
+        //            var pdbLocation = cciAssemblyFromReference.DebugInformationLocation;
+        //            if (File.Exists(pdbFileName))
+        //            {
+        //                using (var pdbStream = File.OpenRead(pdbFileName))
+        //                {
+        //                    pdbReader = new Cci.PdbReader(pdbStream, cciHost);
+        //                }
+        //            }
+        //            var assemblyFromRef = this.ExtractAssembly(cciAssemblyFromReference, pdbReader);
+        //            ourHost.Assemblies.Add(assemblyFromRef);
+        //            if (pdbReader != null)
+        //            {
+        //                pdbReader.Dispose();
+        //            }
+        //        }
+        //        catch (Exception e)
+        //        {
+
+        //        }
+        //    }
+        //    return assembly;
+
+        //}
+
+        public Assembly TryToLoadReferencedAssembly(IAssemblyReference reference)
+        {
+            var assembly = this.ourHost.Assemblies.SingleOrDefault(a => a.MatchReference(reference));
+            if (assembly == null)
             {
                 try
                 {
-                    var cciAssemblyFromReference = cciHost.LoadAssembly(assemblyReference.AssemblyIdentity);
-
-                    if (cciAssemblyFromReference == null || cciAssemblyFromReference == Cci.Dummy.Assembly)
-                        throw new Exception("The input is not a valid CLR module or assembly.");
-
-                    var pdbLocation = cciAssemblyFromReference.DebugInformationLocation;
-                    if (File.Exists(pdbFileName))
-                    {
-                        using (var pdbStream = File.OpenRead(pdbFileName))
-                        {
-                            pdbReader = new Cci.PdbReader(pdbStream, cciHost);
-                        }
-                    }
-                    var assemblyFromRef = this.ExtractAssembly(cciAssemblyFromReference, pdbReader);
-                    ourHost.Assemblies.Add(assemblyFromRef);
-                    if (pdbReader != null)
-                    {
-                        pdbReader.Dispose();
-                    }
+                    assembly = TryToLoadAssembly(reference.Name);
                 }
                 catch(Exception e)
                 {
-
+                    System.Console.WriteLine("We could not solve this reference: {0}", reference.Name);
                 }
             }
             return assembly;
-
         }
 
+        private Assembly TryToLoadAssembly(string assemblyReferenceName)
+        {
+            var extensions = new string[] { ".dll", ".exe" };
+            var referencePath = "";
+            foreach (var extension in extensions)
+            {
+                referencePath = Path.Combine(assemblyFolder, assemblyReferenceName) + extension;
+                if (File.Exists(referencePath))
+                    break;
+                referencePath = Path.Combine(assemblyParentFolder, assemblyReferenceName) + extension;
+                if (File.Exists(referencePath))
+                    break;
+            }
+            //var cciAssemblyFromReference = cciHost.LoadUnitFrom(referencePath) as Cci.IModule;
+            //// var cciAssemblyFromReference = cciHost.LoadUnit(assemblyReference.AssemblyIdentity) as Cci.IAssembly;
+            //return cciAssemblyFromReference;
+            return LoadAssembly(referencePath);
+        }
 
         private Assembly ExtractAssembly(Cci.IModule module, Cci.PdbReader pdbReader)
 		{
