@@ -173,7 +173,7 @@ namespace Backend.Model
     public class ParameterNode : PTGNode
     {
         public  string Parameter { get; private set;  }
-        public ParameterNode(PTGID id, string parameter, PTGNodeKind kind = PTGNodeKind.Null) : base(id, PTGNodeKind.Parameter)
+        public ParameterNode(PTGID id, string parameter, IType type, PTGNodeKind kind = PTGNodeKind.Null) : base(id, PTGNodeKind.Parameter)
         {
             this.Parameter = parameter;
         }
@@ -188,7 +188,7 @@ namespace Backend.Model
         }
         public override PTGNode Clone()
         {
-            var clone = new ParameterNode(this.Id, this.Parameter);
+            var clone = new ParameterNode(this.Id, this.Parameter, this.Type);
             return clone;
         }
 
