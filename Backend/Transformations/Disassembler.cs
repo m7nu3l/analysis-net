@@ -979,7 +979,7 @@ namespace Backend.Transformations
                         else
                         {
                             var successorIsFinally = cfg.Regions.OfType<CFGExceptionHandlerRegion>()
-                                                          .Where(r => r.Kind == CFGRegionKind.Finally && r.Header.Equals(successor)).Any();
+                                                          .Where(r => (r.Kind == CFGRegionKind.Finally || r.Kind == CFGRegionKind.Fault) && r.Header.Equals(successor)).Any();
                             if (successorIsFinally)
                             {
                                 stackSize = 0; stack.Size = 0;
