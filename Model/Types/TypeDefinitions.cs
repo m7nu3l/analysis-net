@@ -945,7 +945,25 @@ namespace Model.Types
 			result.AppendLine("}");
 			return result.ToString();
 		}
-	}
+        public override int GetHashCode()
+        {
+            return this.Name.GetHashCode();
+        }
+
+        public override bool Equals(object obj)
+        {
+            var other = obj as IBasicType;
+            var self = this as IBasicType;
+            // TODO: Maybe we should also compare the TypeKind?
+            var result = other != null && 
+                         self.ContainingAssembly.Equals(other.ContainingAssembly) &&
+                         self.ContainingNamespace.Equals(other.ContainingNamespace) &&
+                         self.Name == other.Name &&
+                         self.GenericArguments.SequenceEqual(other.GenericArguments);
+
+            return result;
+        }
+    }
 
 	public class MethodBody : IInstructionContainer
 	{

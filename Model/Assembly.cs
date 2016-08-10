@@ -35,7 +35,7 @@ namespace Model
 
 		public override bool Equals(object obj)
 		{
-			var other = obj as AssemblyReference;
+			var other = obj as IAssemblyReference;
 
 			var result = other != null &&
 						 this.Name == other.Name;
@@ -66,5 +66,19 @@ namespace Model
 		{
 			return string.Format("assembly {0}", this.Name);
 		}
-	}
+        public override int GetHashCode()
+        {
+            return this.Name.GetHashCode();
+        }
+
+        public override bool Equals(object obj)
+        {
+            var other = obj as IAssemblyReference;
+
+            var result = other != null &&
+                         this.Name == other.Name;
+
+            return result;
+        }
+    }
 }
