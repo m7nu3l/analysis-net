@@ -436,6 +436,42 @@ namespace Backend.Utils
             }
             return result;
         }
+
+        public static IEnumerable<PTGNode> ReachableNodesFromVariables(this PointsToGraph ptg)
+        {
+            var roots = new HashSet<PTGNode>(ptg.Variables.SelectMany(v => ptg.GetTargets(v, false)));
+            return ptg.ReachableNodes(roots);
+        }
+        public static IEnumerable<PTGNode> ReachableNodes(this PointsToGraph ptg, IEnumerable<PTGNode> roots)
+        {
+            // var result = new HashSet<PTGNode>();
+            ISet<PTGNode> visitedNodes = new HashSet<PTGNode>();
+            Queue<PTGNode> workList = new Queue<PTGNode>();
+            
+            foreach (var ptgNode in roots)
+            {
+                workList.Enqueue(ptgNode);
+            }
+            while (workList.Any())
+            {
+                var ptgNode = workList.Dequeue();
+                visitedNodes.Add(ptgNode);
+
+                foreach (var adjacents in ptgNode.Targets.Values)
+                {
+                    foreach (var adjacent in adjacents)
+                    {
+                        if (!visitedNodes.Contains(adjacent))
+                        {
+                            workList.Enqueue(adjacent);
+                        }
+                    }
+                }
+            }
+            return visitedNodes;
+        }
+               
+
         public static bool MayReacheableFromVariable(this PointsToGraph ptg, IVariable v1, IVariable v2)
         {
             var result = ptg.GetTargets(v2).Any(n => ptg.Reachable(v1, n));
