@@ -355,10 +355,15 @@ namespace Backend.Model
             return node;
 		}
 
-		public ISet<PTGNode> GetTargets(IVariable variable)
+		public ISet<PTGNode> GetTargets(IVariable variable, bool failIfNotExists = true)
 		{
-			return variables[variable];
-		}
+            if (failIfNotExists) return variables[variable];
+
+            if (variables.ContainsKey(variable))
+                return variables[variable];
+
+            return new HashSet<PTGNode>();
+        }
 
 		public void Remove(IVariable variable)
 		{
@@ -421,6 +426,17 @@ namespace Backend.Model
             return result;
         }
 
+        public void CleanUnreachableNodes()
+        {
+            var reacheableNodes = this.ReachableNodesFromVariables();
+            var unreacheableNodes = this.nodes.Values.Except(reacheableNodes);
+            foreach (var n in unreacheableNodes.ToList())
+            {
+                this.nodes.Remove(n.Id);
+            }
+        }
+
+
         public MapSet<IVariable, PTGNode> NewFrame(IEnumerable<KeyValuePair<IVariable, IVariable>> binding)
         {
             var oldFrame = NewFrame();
@@ -438,7 +454,7 @@ namespace Backend.Model
             return oldFrame;
         }
 
-        public void RestoreFrame()
+        public void RestoreFrame(bool cleanUnreachable = true)
         {
             var frame = stackFrame.Pop();
             variables = frame;
@@ -450,16 +466,20 @@ namespace Backend.Model
                     node.Variables.Add(entry.Key);
                 }
             }
+            if(cleanUnreachable)
+                CleanUnreachableNodes();
         }
 
-        public void RestoreFrame(IVariable retVariable, IVariable dest)
+        public void RestoreFrame(IVariable retVariable, IVariable dest, bool cleanUnreachable = true)
         {
             var nodes = GetTargets(retVariable);
-            RestoreFrame();
+            RestoreFrame(false);
             foreach (var node in nodes)
             {
                 PointsTo(dest,node);
             }
+            if (cleanUnreachable)
+                CleanUnreachableNodes();
         }
 
         public void PointsTo(IVariable variable, PTGNode target)
