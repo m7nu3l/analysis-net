@@ -63,7 +63,9 @@ namespace Backend.Analyses
                 }
                 else if (instruction.Operand is StaticMethodReference)
                 {
-
+                    var loadDelegateStmt = instruction.Operand as StaticMethodReference;
+                    var methodRef = loadDelegateStmt.Method;
+                    ptAnalysis.ProcessDelegateAddr(ptg, instruction.Offset, load.Result, methodRef, null);
                 }
 
             }
@@ -83,10 +85,12 @@ namespace Backend.Analyses
                 if (instruction is CreateObjectInstruction)
                 {
                     var allocation = instruction as CreateObjectInstruction;
+                    // hack for handling delegates
                     if(allocation.AllocationType.IsDelegateType())
                     {
                         this.analyzeNextDelegateCtor = true;
                     }
+                    // TODO: Check if we can avoid adding the node in case of delegate (it was already added in load address for method)
                     ptAnalysis.ProcessObjectAllocation(ptg, allocation.Offset, allocation.Result);
                 }
             }
@@ -225,11 +229,8 @@ namespace Backend.Analyses
 				if (variable.IsParameter)
 				{
 					var isThisParameter = variable.Name == "this";
-					var kind = isThisParameter ? PTGNodeKind.Object : PTGNodeKind.Unknown;
-                    // var node = new PTGNode(nextPTGNodeId++, variable.Type, 0, kind);
-                    //var node = ptg.GetNode(0, variable.Type, kind);
-                    // ptg.Add(node);
-
+					//var kind = isThisParameter ? PTGNodeKind.Object : PTGNodeKind.Unknown;
+ 
                     var ptgId = new PTGID(new MethodContex(this.method), counter--);
                     var node = new ParameterNode(ptgId, variable.Name);
                     ptg.Add(node);
@@ -243,7 +244,7 @@ namespace Backend.Analyses
 			this.initialGraph = ptg;
 		}
 
-		private void ProcessNull(PointsToGraph ptg, IVariable dst)
+		protected void ProcessNull(PointsToGraph ptg, IVariable dst)
 		{
 			if (dst.Type.TypeKind == TypeKind.ValueType) return;
 
@@ -251,7 +252,7 @@ namespace Backend.Analyses
 			ptg.PointsTo(dst, ptg.Null);
 		}
 
-        private void ProcessObjectAllocation(PointsToGraph ptg, uint offset, IVariable dst)
+        protected void ProcessObjectAllocation(PointsToGraph ptg, uint offset, IVariable dst)
 		{
 			if (dst.Type.TypeKind == TypeKind.ValueType) return;
 
@@ -263,7 +264,7 @@ namespace Backend.Analyses
             ptg.PointsTo(dst, node);
         }
 
-		private void ProcessArrayAllocation(PointsToGraph ptg, uint offset, IVariable dst)
+		protected void ProcessArrayAllocation(PointsToGraph ptg, uint offset, IVariable dst)
         {
 			if (dst.Type.TypeKind == TypeKind.ValueType) return;
 
@@ -275,7 +276,7 @@ namespace Backend.Analyses
             ptg.PointsTo(dst, node);
         }
 
-        private void ProcessCopy(PointsToGraph ptg, IVariable dst, IVariable src)
+        protected void ProcessCopy(PointsToGraph ptg, IVariable dst, IVariable src)
         {
 			if (dst.Type.TypeKind == TypeKind.ValueType || src.Type.TypeKind == TypeKind.ValueType) return;
 
@@ -288,7 +289,7 @@ namespace Backend.Analyses
             }
         }
 
-		private void ProcessLoad(PointsToGraph ptg, uint offset, IVariable dst, InstanceFieldAccess access)
+		protected void ProcessLoad(PointsToGraph ptg, uint offset, IVariable dst, InstanceFieldAccess access)
         {
 			if (dst.Type.TypeKind == TypeKind.ValueType || access.Type.TypeKind == TypeKind.ValueType) return;
 
@@ -320,7 +321,7 @@ namespace Backend.Analyses
             }
         }
 
-        internal  void ProcessDelegateAddr(PointsToGraph ptg, uint offset, IVariable dst, IMethodReference methodRef, IVariable instance)
+        protected  void ProcessDelegateAddr(PointsToGraph ptg, uint offset, IVariable dst, IMethodReference methodRef, IVariable instance)
         {
             var ptgID = new PTGID(new MethodContex(this.method), (int)offset);
             var delegateNode = new DelegateNode(ptgID, methodRef, instance);
@@ -329,7 +330,7 @@ namespace Backend.Analyses
             ptg.PointsTo(dst, delegateNode);
         }
 
-        private bool MayReacheableFromParameter(PointsToGraph ptg, PTGNode n)
+        protected bool MayReacheableFromParameter(PointsToGraph ptg, PTGNode n)
         {
             var result = method.Body.Parameters.Where(p => ptg.Reachable(p,n)).Any();
             // This version does not need the inverted mapping of nodes-> variables (which may be expensive to maintain)
@@ -337,7 +338,7 @@ namespace Backend.Analyses
             return result;
         }
 
-        private void ProcessStore(PointsToGraph ptg, InstanceFieldAccess access, IVariable src)
+        protected void ProcessStore(PointsToGraph ptg, InstanceFieldAccess access, IVariable src)
         {
 			if (access.Type.TypeKind == TypeKind.ValueType || src.Type.TypeKind == TypeKind.ValueType) return;
 
@@ -350,8 +351,7 @@ namespace Backend.Analyses
 					ptg.PointsTo(node, access.Field, target);
 				}
         }
-
-		private PTGNode NewNode(PointsToGraph ptg, PTGID ptgID, IType type, PTGNodeKind kind = PTGNodeKind.Object)
+		protected PTGNode NewNode(PointsToGraph ptg, PTGID ptgID, IType type, PTGNodeKind kind = PTGNodeKind.Object)
 		{
 			PTGNode node;
             node = ptg.GetNode(ptgID, type, kind);
