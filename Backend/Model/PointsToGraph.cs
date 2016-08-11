@@ -37,7 +37,15 @@ namespace Backend.Model
         {
             this.Method = method;
         }
-        public IMethodReference Method { get; set;  }  
+        public IMethodReference Method { get; set;  }
+        public override string ToString()
+        {
+            if (Method != null)
+            {
+                return Method.Name.ToString();
+            }
+            else return "--";
+        }
     }
 
     public class PTGID
@@ -51,7 +59,7 @@ namespace Backend.Model
         public int OffSet { get; set; }
         public override string ToString()
         {
-            return String.Format("{0}:{1}",Context,OffSet);
+            return String.Format("{0}:{1:X4}",Context,OffSet);
         }
         public override bool Equals(object obj)
         {
@@ -76,21 +84,25 @@ namespace Backend.Model
         public MapSet<IFieldReference, PTGNode> Sources { get; private set; }
         public MapSet<IFieldReference, PTGNode> Targets { get; private set; }
 
-		public PTGNode(PTGID id, PTGNodeKind kind = PTGNodeKind.Null)
-        {
-			this.Id = id;
+		//public PTGNode(PTGID id, PTGNodeKind kind = PTGNodeKind.Null)
+  //      {
+		//	this.Id = id;
+  //          this.Kind = kind;
+  //          this.Variables = new HashSet<IVariable>();
+  //          this.Sources = new MapSet<IFieldReference, PTGNode>();
+  //          this.Targets = new MapSet<IFieldReference, PTGNode>();
+  //      }
+
+		public PTGNode(PTGID id, IType type, PTGNodeKind kind = PTGNodeKind.Object)
+		//	: this(id, kind)
+		{
+            this.Id = id;
+			this.Type = type;
             this.Kind = kind;
             this.Variables = new HashSet<IVariable>();
             this.Sources = new MapSet<IFieldReference, PTGNode>();
             this.Targets = new MapSet<IFieldReference, PTGNode>();
         }
-
-		public PTGNode(PTGID id, IType type, PTGNodeKind kind = PTGNodeKind.Object)
-			: this(id, kind)
-		{
-            this.Id = id;
-			this.Type = type;
-		}
 
 		public bool SameEdges(PTGNode node)
 		{
@@ -130,7 +142,7 @@ namespace Backend.Model
 					break;
 
 				default:
-					result = string.Format("{0:X4}: {1}", this.Offset, this.Type);
+					result = string.Format("{0:X$}: {1}", this.Id, this.Type);
 					break;
 			}
 
@@ -147,7 +159,7 @@ namespace Backend.Model
     {
         public static PTGID nullID = new PTGID(null,  0);
 
-        public NullNode() : base(nullID, PTGNodeKind.Null)
+        public NullNode() : base(nullID, PlatformTypes.Object, PTGNodeKind.Null)
         {
         }
         public override bool Equals(object obj)
@@ -173,7 +185,7 @@ namespace Backend.Model
     public class ParameterNode : PTGNode
     {
         public  string Parameter { get; private set;  }
-        public ParameterNode(PTGID id, string parameter, IType type, PTGNodeKind kind = PTGNodeKind.Null) : base(id, PTGNodeKind.Parameter)
+        public ParameterNode(PTGID id, string parameter, IType type, PTGNodeKind kind = PTGNodeKind.Null) : base(id, type, PTGNodeKind.Parameter)
         {
             this.Parameter = parameter;
         }
@@ -200,7 +212,7 @@ namespace Backend.Model
         public  IVariable Instance { get; internal set; }
         public  bool IsStatic { get; private set; }
 
-        public DelegateNode(PTGID id, IMethodReference method, IVariable instance) : base(id, PTGNodeKind.Delegate)
+        public DelegateNode(PTGID id, IMethodReference method, IVariable instance) : base(id, method.ReturnType, PTGNodeKind.Delegate)
         {
             this.Method = method;
             this.Instance = instance;

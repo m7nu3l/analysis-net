@@ -222,7 +222,7 @@ namespace Backend.Serialization
 			switch (node.Kind)
 			{
 				case PTGNodeKind.Null: result = "null"; break;
-				default: result = String.Format("{0:X4}:{1}",node.Offset, node.Type); break;
+				default: result = String.Format("{0}:{1}",node.Id, node.Type); break;
                      
 			}
 
