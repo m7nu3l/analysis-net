@@ -136,8 +136,10 @@ namespace Model.Types
 	public interface IBasicType : IType
 	{
 		IAssemblyReference ContainingAssembly { get; }
-		string ContainingNamespace { get; }
-		string Name { get; }
+        // IBasicType ContainingType { get; set; }
+        string ContainingNamespace { get; }
+        string ContainingTypes { get; }
+        string Name { get; }
 		string GenericName { get; }
 		IList<IType> GenericArguments { get; }
 		ITypeDefinition ResolvedType { get; }
@@ -152,7 +154,8 @@ namespace Model.Types
 		public TypeKind TypeKind { get; set; }
 		public IAssemblyReference ContainingAssembly { get; set; }
 		public string ContainingNamespace { get; set; }
-		public string Name { get; set; }
+        public string ContainingTypes { get; set; }
+        public string Name { get; set; }
 		public IList<IType> GenericArguments { get; private set; }
 
 		public BasicType(string name, TypeKind kind = TypeKind.Unknown)

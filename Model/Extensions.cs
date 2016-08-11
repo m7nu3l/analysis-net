@@ -46,7 +46,19 @@ namespace Model
 			return new UnknownValueException<T>(self);
 		}
 
-		public static string GetFullName(this IBasicType type)
+        public static  string GetContainingTypes(this ITypeDefinition containingType)
+        {
+            var containingTypes = new StringBuilder();
+            containingType = containingType.ContainingType;
+            while (containingType!=null)
+            {
+                containingTypes.Insert(0, containingType.Name);
+                containingType = containingType.ContainingType;
+            }
+            return containingTypes.ToString();
+        }
+
+        public static string GetFullName(this IBasicType type)
 		{
 			var containingAssembly = string.Empty;
 			var containingNamespace = string.Empty;

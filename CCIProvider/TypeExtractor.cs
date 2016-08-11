@@ -192,12 +192,14 @@ namespace CCIProvider
 			{
 				string containingAssembly;
 				string containingNamespace;
-				var name = GetTypeName(typeref, out containingAssembly, out containingNamespace);
+                string containingTypes;
+				var name = GetTypeName(typeref, out containingAssembly, out containingNamespace, out containingTypes);
 				var kind = GetTypeKind(typeref);
 				var newType = new BasicType(name, kind);
 
 				newType.ContainingAssembly = new AssemblyReference(containingAssembly);
 				newType.ContainingNamespace = containingNamespace;
+                newType.ContainingTypes = containingTypes;
 
 				if (type == null)
 				{
@@ -398,11 +400,13 @@ namespace CCIProvider
 			return name;
 		}
 
-		private string GetTypeName(Cci.INamedTypeReference namedTyperef, out string containingAssembly, out string containingNamespace)
+		private string GetTypeName(Cci.INamedTypeReference namedTyperef, out string containingAssembly, out string containingNamespace, out string containingTypes)
 		{
-			var parts = new List<string>();
-			var name = namedTyperef.Name.Value;
+			var namespaceParts = new List<string>();
+            var typesParts = new List<string>();
+            var name = namedTyperef.Name.Value;
 			Cci.ITypeReference typeref = namedTyperef;
+            containingTypes = "";
 
 			while (typeref is Cci.INestedTypeReference ||
 				   typeref is Cci.IGenericTypeInstanceReference ||
@@ -411,19 +415,23 @@ namespace CCIProvider
 				if (typeref is Cci.INestedTypeReference)
 				{
 					var nestedTyperef = typeref as Cci.INestedTypeReference;
-					typeref = nestedTyperef.ContainingType;
-				}
+                    typeref = nestedTyperef.ContainingType;
+                }
 				else if (typeref is Cci.IGenericTypeInstanceReference)
 				{
 					var genericInstanceTyperef = typeref as Cci.IGenericTypeInstanceReference;
-					typeref = genericInstanceTyperef.GenericType;
+                    typeref = genericInstanceTyperef.GenericType;
 				}
 				else if (typeref is Cci.IGenericTypeParameterReference)
 				{
 					var genericParameterTyperef = typeref as Cci.IGenericTypeParameterReference;
-					typeref = genericParameterTyperef.DefiningType;
+                    typeref = genericParameterTyperef.DefiningType;
 				}
-			}
+                if (typeref is Cci.INamedTypeReference)
+                {
+                    typesParts.Insert(0, (typeref as Cci.INamedTypeReference).Name.Value);
+                }
+            }
 
 			var namespaceTyperef = typeref as Cci.INamespaceTypeReference;
 			var namespaceref = namespaceTyperef.ContainingUnitNamespace;
@@ -431,18 +439,19 @@ namespace CCIProvider
 			while (namespaceref is Cci.INestedUnitNamespaceReference)
 			{				
 				var nestedNamespaceref = namespaceref as Cci.INestedUnitNamespaceReference;
-				parts.Insert(0,nestedNamespaceref.Name.Value);
+				namespaceParts.Insert(0,nestedNamespaceref.Name.Value);
 				namespaceref = nestedNamespaceref.ContainingUnitNamespace;
 			}
 
 			var assemblyref = namespaceref as Cci.IUnitNamespaceReference;
 
 			containingAssembly = assemblyref.Unit.Name.Value;
-			containingNamespace = string.Join(".", parts);
-			return name;
+			containingNamespace = string.Join(".", namespaceParts);
+            containingTypes = string.Join(".", typesParts);
+            return name;
 		}
-
-		private TypeKind GetTypeKind(Cci.ITypeReference typeref)
+        
+        private TypeKind GetTypeKind(Cci.ITypeReference typeref)
 		{
 			var result = TypeKind.Unknown;
 

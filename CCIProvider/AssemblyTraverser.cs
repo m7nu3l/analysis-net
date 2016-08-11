@@ -104,13 +104,15 @@ namespace CCIProvider
 				result.ContainingNamespace = currentNamespace;
 				result.ContainingType = currentType;
 
-				if (currentType is ITypeDefinitionContainer)
-				{
-					var parentType = currentType as ITypeDefinitionContainer;
-					parentType.Types.Add(result);
-				}
-
-				currentNamespace.Types.Add(result);
+                if (currentType is ITypeDefinitionContainer)
+                {
+                    var parentType = currentType as ITypeDefinitionContainer;
+                    parentType.Types.Add(result);
+                }
+                else
+                {
+                    currentNamespace.Types.Add(result);
+                }
 				currentType = result;
 			}
 

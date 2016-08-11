@@ -20,10 +20,21 @@ namespace Test
 
 	class ExamplesPointsTo
 	{
+        class Second
+        {
+            string field2;
+            public class Third
+            {
+                string field3;
+            }
+        }
 		public void Example1()
 		{
 			var node = new Node(1);
 			node.Next = new Node(2);
+
+            var c2 = new Second();
+            var c3 = new Second.Third();
 
 			var first = node;
 			var second = first.Next;
