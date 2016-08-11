@@ -630,11 +630,16 @@ namespace Backend.Utils
 
             return result;
         }
-       public static Backend.Model.ControlFlowGraph DoAnalysisPhases(this MethodDefinition method, Host host, bool inline = true)
+       public static Backend.Model.ControlFlowGraph DoAnalysisPhases(this MethodDefinition method, Host host, bool inline = false)
         {
             var disassembler = new Disassembler(method);
             var methodBody = disassembler.Execute();
             method.Body = methodBody;
+
+            if(inline)
+            {
+                DoInlining(method, host, methodBody);
+            }
 
             var cfAnalysis = new ControlFlowAnalysis(method.Body);
             var cfg = cfAnalysis.GenerateNormalControlFlow();
@@ -680,6 +685,27 @@ namespace Backend.Utils
 
              // var dgml = DGMLSerializer.Serialize(cfg);
             return cfg;
+        }
+        private static void DoInlining(MethodDefinition method, Host host, MethodBody methodBody)
+        {
+            var methodCalls = methodBody.Instructions.OfType<MethodCallInstruction>().ToList();
+            foreach (var methodCall in methodCalls)
+            {
+                var calleeM = host.ResolveReference(methodCall.Method);
+                var callee = calleeM as MethodDefinition;
+                if (callee != null)
+                {
+                    // var calleeCFG = DoAnalysisPhases(callee, host);
+                    var disassemblerCallee = new Disassembler(callee);
+                    var methodBodyCallee = disassemblerCallee.Execute();
+                    callee.Body = methodBodyCallee;
+                    methodBody.Inline(methodCall, callee.Body);
+                }
+            }
+
+            methodBody.UpdateVariables();
+
+            method.Body = methodBody;
         }
 
     }
