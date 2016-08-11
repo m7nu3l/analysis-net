@@ -411,7 +411,7 @@ namespace Backend.Utils
             var result = false;
             ISet<PTGNode> visitedNodes = new HashSet<PTGNode>();
             Queue<PTGNode> workList = new Queue<PTGNode>();
-            var nodes = ptg.GetTargets(v1);
+            var nodes = ptg.GetTargets(v1, false);
             if (nodes.Contains(n)) return true;
 
             foreach (var ptgNode in nodes)
@@ -474,7 +474,7 @@ namespace Backend.Utils
 
         public static bool MayReacheableFromVariable(this PointsToGraph ptg, IVariable v1, IVariable v2)
         {
-            var result = ptg.GetTargets(v2).Any(n => ptg.Reachable(v1, n));
+            var result = ptg.GetTargets(v2, false).Any(n => ptg.Reachable(v1, n));
             return result;
         }
 
