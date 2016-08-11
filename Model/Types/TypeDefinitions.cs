@@ -221,6 +221,11 @@ namespace Model.Types
 			this.Type = type;
 			this.Attributes = new HashSet<CustomAttribute>();
 		}
+        public FieldReference(string name, IType type, IBasicType containingType) : this(name, type)
+        {
+            this.ContainingType = containingType;
+        }
+
 
         public override bool Equals(object obj)
         {
