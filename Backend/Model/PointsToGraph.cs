@@ -209,7 +209,7 @@ namespace Backend.Model
     public class DelegateNode : PTGNode
     {
         public  IMethodReference Method { get; private set; }
-        public  IVariable Instance { get; internal set; }
+        public  IVariable Instance { get; set; }
         public  bool IsStatic { get; private set; }
 
         public DelegateNode(PTGID id, IMethodReference method, IVariable instance) : base(id, method.ReturnType, PTGNodeKind.Delegate)
@@ -235,7 +235,6 @@ namespace Backend.Model
             var node = new DelegateNode(this.Id, this.Method, this.Instance);
             return node;
         }
-
     }
     public class PointsToGraph
     {
