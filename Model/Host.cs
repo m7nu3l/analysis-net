@@ -32,7 +32,7 @@ namespace Model
 			}			
 		}
 
-		public ITypeDefinition ResolveReference(IBasicType type)
+		public virtual ITypeDefinition ResolveReference(IBasicType type)
 		{
 			var assembly = this.Assemblies.SingleOrDefault(a => a.MatchReference(type.ContainingAssembly));
 			if (assembly == null) return null;
@@ -45,12 +45,13 @@ namespace Model
                 containingNamespace = containingNamespace.Namespaces.SingleOrDefault(n => n.Name == name);
                 if (containingNamespace == null) return null;
             }
-			
-			var result = containingNamespace.Types.SingleOrDefault(t => t.MatchReference(type));
-			return result;
+
+            var result = containingNamespace.Types.SingleOrDefault(t => t.MatchReference(type));
+
+            return result;
 		}
 
-		public ITypeMemberDefinition ResolveReference(ITypeMemberReference member)
+		public virtual ITypeMemberDefinition ResolveReference(ITypeMemberReference member)
 		{
 			var typedef = ResolveReference(member.ContainingType);
 			if (typedef == null) return null;
