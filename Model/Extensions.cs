@@ -58,7 +58,7 @@ namespace Model
             return containingTypes.ToString();
         }
 
-        public static string GetFullName(this IBasicType type)
+        public static string GetFullNameWithAssembly(this IBasicType type)
 		{
 			var containingAssembly = string.Empty;
 			var containingNamespace = string.Empty;
@@ -75,5 +75,21 @@ namespace Model
 
 			return string.Format("{0}{1}{2}", containingAssembly, containingNamespace, type.GenericName);
 		}
-	}
+        public static string GetFullName(this IBasicType type)
+        {
+            var containingNamespace = string.Empty;
+            var containingTypes = string.Empty;
+
+            if (type.ContainingNamespace != null)
+            {
+                containingNamespace = string.Format("{0}.", type.ContainingNamespace);
+            }
+            if(!String.IsNullOrEmpty(type.ContainingTypes))
+            {
+                containingTypes = type.ContainingTypes + ".";
+            }
+
+            return string.Format("{0}{1}{2}", containingNamespace, containingTypes, type.GenericName);
+        }
+    }
 }
