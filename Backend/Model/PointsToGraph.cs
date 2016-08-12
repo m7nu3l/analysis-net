@@ -493,11 +493,20 @@ namespace Backend.Model
 
         public void RestoreFrame(IVariable retVariable, IVariable dest, bool cleanUnreachable = true)
         {
-            var nodes = GetTargets(retVariable);
+            ISet<PTGNode> nodes = null;
+
+            var validReturn =  (retVariable.Type != null && retVariable.Type.TypeKind == TypeKind.ReferenceType);
+
+            if (validReturn)
+                nodes = GetTargets(retVariable);
+
             RestoreFrame(false);
-            foreach (var node in nodes)
+            if (validReturn)
             {
-                PointsTo(dest,node);
+                foreach (var node in nodes)
+                {
+                    PointsTo(dest, node);
+                }
             }
             if (cleanUnreachable)
                 CleanUnreachableNodes();
