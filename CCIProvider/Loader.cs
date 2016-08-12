@@ -19,8 +19,6 @@ namespace CCIProvider
 
         protected IDictionary<Assembly, Cci.AssemblyIdentity> cciAssemblyMap;
 
-        
-
         public Loader(Host host)
 		{
 			this.ourHost = host;
@@ -37,7 +35,7 @@ namespace CCIProvider
 			GC.SuppressFinalize(this);
 		}
 
-		public Assembly LoadCoreAssembly()
+		public virtual Assembly LoadCoreAssembly()
 		{
 			var module = cciHost.LoadUnit(cciHost.CoreAssemblySymbolicIdentity) as Cci.IModule;
 
@@ -53,7 +51,7 @@ namespace CCIProvider
 			return assembly;
 		}
 
-		public Assembly LoadAssembly(string fileName)
+		public virtual Assembly LoadAssembly(string fileName)
 		{
 			var module = cciHost.LoadUnitFrom(fileName) as Cci.IModule;
 
@@ -83,8 +81,7 @@ namespace CCIProvider
             return assembly;
 		}
       
-
-        private Assembly ExtractAssembly(Cci.IModule module, Cci.PdbReader pdbReader)
+        protected virtual Assembly ExtractAssembly(Cci.IModule module, Cci.PdbReader pdbReader)
 		{
 			var traverser = new AssemblyTraverser(ourHost, cciHost, pdbReader);
 			traverser.Traverse(module.ContainingAssembly);
