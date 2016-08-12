@@ -443,6 +443,16 @@ namespace Backend.Model
             var unreacheableNodes = this.nodes.Values.Except(reacheableNodes);
             foreach (var n in unreacheableNodes.ToList())
             {
+
+                foreach(var target in n.Targets.SelectMany(t => t.Value))
+                {
+                    var keysOfSourcesToRemove = target.Sources.Where(kv => kv.Value.Contains(n)).Select(kv => kv.Key);
+                    foreach(var edgeKey in keysOfSourcesToRemove)
+                    {
+                        target.Sources[edgeKey].Remove(n);
+                    }
+                    
+                }
                 this.nodes.Remove(n.Id);
             }
         }
