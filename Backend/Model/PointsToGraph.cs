@@ -495,7 +495,7 @@ namespace Backend.Model
         {
             ISet<PTGNode> nodes = null;
 
-            var validReturn =  (retVariable.Type != null && retVariable.Type.TypeKind == TypeKind.ReferenceType);
+            var validReturn =  (dest.Type != null && dest.Type.TypeKind == TypeKind.ReferenceType);
 
             if (validReturn)
                 nodes = GetTargets(retVariable);
