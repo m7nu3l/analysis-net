@@ -22,7 +22,8 @@ namespace Backend.Model
         Object,
 		Unknown,
         Parameter,
-        Delegate
+        Delegate,
+        Global
     }
 
     
@@ -46,6 +47,12 @@ namespace Backend.Model
             }
             else return "--";
         }
+    }
+
+    public class GlobalContext : PTGContext
+    {
+        public static GlobalContext NullNodeContext = new GlobalContext();
+        public static GlobalContext GlobalNodeContext = new GlobalContext();
     }
 
     public class PTGID
@@ -119,7 +126,7 @@ namespace Backend.Model
 			var other = obj as PTGNode;
 
 			return other != null &&
-				this.Id == other.Id &&
+				this.Id.Equals(other.Id) &&
 				this.Kind == other.Kind &&
 				//this.Offset == other.Offset &&
 				object.Equals(this.Type, other.Type);
@@ -157,7 +164,7 @@ namespace Backend.Model
 
     public class NullNode : PTGNode
     {
-        public static PTGID nullID = new PTGID(null,  0);
+        public static PTGID nullID = new PTGID(GlobalContext.NullNodeContext,  0);
 
         public NullNode() : base(nullID, PlatformTypes.Object, PTGNodeKind.Null)
         {
@@ -174,6 +181,32 @@ namespace Backend.Model
         public override string ToString()
         {
             return "Null";
+        }
+        public override PTGNode Clone()
+        {
+            return this;
+        }
+    }
+
+    public class GlobalNode : PTGNode
+    {
+        public static PTGID nullID = new PTGID(GlobalContext.GlobalNodeContext, 0);
+
+        public GlobalNode() : base(nullID, PlatformTypes.Object, PTGNodeKind.Global)
+        {
+        }
+        public override bool Equals(object obj)
+        {
+            var oth = obj as GlobalNode;
+            return oth != null;
+        }
+        public override int GetHashCode()
+        {
+            return 0;
+        }
+        public override string ToString()
+        {
+            return "Global";
         }
         public override PTGNode Clone()
         {
@@ -243,6 +276,7 @@ namespace Backend.Model
 		private IDictionary<PTGID, PTGNode> nodes;
 
         public static PTGNode NullNode = new NullNode(); // { get; private set; }
+        public static PTGNode GlobalNode = new GlobalNode();
 
         public PointsToGraph()
         {
@@ -267,7 +301,8 @@ namespace Backend.Model
 			get { return nodes.Values; }
 		}
 
-		public PointsToGraph Clone()
+
+        public PointsToGraph Clone()
 		{
 			var ptg = new PointsToGraph();
             ptg.Union(this);
@@ -322,9 +357,13 @@ namespace Backend.Model
                 foreach (var entry in node.Targets)
                     foreach (var target in entry.Value)
                     {
-                        var target_clone = nodes[target.Id];
+                        // TODO: Sometime this fail meaning the PTG invariant may be broken
+                        if (nodes.ContainsKey(target.Id))
+                        {
+                            var target_clone = nodes[target.Id];
 
-                        clone.Targets.Add(entry.Key, target_clone);
+                            clone.Targets.Add(entry.Key, target_clone);
+                        }
                     }
             }
 		}
@@ -438,9 +477,10 @@ namespace Backend.Model
         }
 
         public void CleanUnreachableNodes()
-        {
+       {
             var reacheableNodes = this.ReachableNodesFromVariables();
             var unreacheableNodes = this.nodes.Values.Except(reacheableNodes);
+            //var nodesRemove = new Dictionary<PTGID, PTGNode>();
             foreach (var n in unreacheableNodes.ToList())
             {
                 foreach (var entry in n.Targets)
@@ -451,6 +491,7 @@ namespace Backend.Model
                     }
                 }
                 this.nodes.Remove(n.Id);
+                //nodesRemove.Add(n.Id, n);
                 //foreach(var target in n.Targets.SelectMany(t => t.Value))
                 //{
                 //    var keysOfSourcesToRemove = target.Sources.Where(kv => kv.Value.Contains(n)).Select(kv => kv.Key);
@@ -462,6 +503,7 @@ namespace Backend.Model
                 //}
                 //this.nodes.Remove(n.Id);
             }
+            //nodes.RemoveAll(nodesRemove);
         }
 
 
@@ -510,8 +552,7 @@ namespace Backend.Model
         {
             ISet<PTGNode> nodes = null;
 
-            var validReturn =  (retVariable.Type != null && retVariable.Type.TypeKind == TypeKind.ReferenceType) 
-                                && (dest.Type != null && dest.Type.TypeKind == TypeKind.ReferenceType);
+            var validReturn = (dest.Type != null && dest.Type.TypeKind == TypeKind.ReferenceType); //(retVariable.Type != null && retVariable.Type.TypeKind == TypeKind.ReferenceType)  &&
 
             if (validReturn)
                 nodes = GetTargets(retVariable);
@@ -519,10 +560,7 @@ namespace Backend.Model
             RestoreFrame(false);
             if (validReturn)
             {
-                foreach (var node in nodes)
-                {
-                    PointsTo(dest, node);
-                }
+                PointsTo(dest, nodes);
             }
             if (cleanUnreachable)
                 CleanUnreachableNodes();

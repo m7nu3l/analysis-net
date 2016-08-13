@@ -412,7 +412,9 @@ namespace Backend.Utils
             ISet<PTGNode> visitedNodes = new HashSet<PTGNode>();
             Queue<PTGNode> workList = new Queue<PTGNode>();
             var nodes = ptg.GetTargets(v1, false);
-            if (nodes.Contains(n)) return true;
+
+            if (nodes.Contains(n) && !n.Equals(PointsToGraph.NullNode) )
+                return true;
 
             foreach (var ptgNode in nodes)
             {
@@ -422,6 +424,10 @@ namespace Backend.Utils
             {
                 var ptgNode = workList.Dequeue();
                 visitedNodes.Add(ptgNode);
+                if (ptgNode.Equals(PointsToGraph.NullNode))
+                {
+                    continue;
+                }
                 if (ptgNode.Equals(n)) return true;
                 foreach(var adjacents in ptgNode.Targets.Values)
                 {
@@ -457,7 +463,10 @@ namespace Backend.Utils
             {
                 var ptgNode = workList.Dequeue();
                 visitedNodes.Add(ptgNode);
-
+                if (ptgNode.Equals(PointsToGraph.NullNode))
+                {
+                    continue;
+                }
                 foreach (var adjacents in ptgNode.Targets.Values)
                 {
                     foreach (var adjacent in adjacents)

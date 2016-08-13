@@ -256,7 +256,7 @@ namespace Model.Types
         public override bool Equals(object obj)
         {
             var oth = obj as FieldReference;
-            return oth.Name.Equals(Name) && oth.Type.Equals(Type) && oth.ContainingType.Equals(ContainingType);
+            return oth!=null && oth.Name.Equals(Name) && oth.Type.Equals(Type) && oth.ContainingType.Equals(ContainingType);
         }
         public override int GetHashCode()
         {
@@ -504,7 +504,7 @@ namespace Model.Types
 
         public IMethodReference GenericMethod
         {
-            get { return this.GenericMethod; }
+            get { return null; }
         }
 
         #endregion
@@ -633,7 +633,41 @@ namespace Model.Types
 
 			return result.ToString();
 		}
-	}
+
+        public  string ToSignatureString()
+        {
+            var result = new StringBuilder();
+
+            if (this.IsStatic)
+            {
+                result.Append("static ");
+            }
+
+            if (this.IsAbstract)
+            {
+                result.Append("abstract ");
+            }
+
+            if (this.IsVirtual)
+            {
+                result.Append("virtual ");
+            }
+
+            result.AppendFormat("{0} {1}::{2}", this.ReturnType, this.ContainingType.Name, this.Name);
+
+            if (this.GenericParameters.Count > 0)
+            {
+                var gparameters = string.Join(", ", this.GenericParameters);
+                result.AppendFormat("<{0}>", gparameters);
+            }
+
+            var parameters = string.Join(", ", this.Parameters);
+            result.AppendFormat("({0})", parameters);
+
+            return result.ToString();
+        }
+
+    }
 
 	public class EnumDefinition : IValueTypeDefinition
 	{
