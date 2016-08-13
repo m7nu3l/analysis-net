@@ -48,8 +48,11 @@ namespace Model
 
         public static  string GetContainingTypes(this ITypeDefinition containingType)
         {
-            var containingTypes = new StringBuilder();
             containingType = containingType.ContainingType;
+            if (containingType == null)
+                return null;
+
+            var containingTypes = new StringBuilder();
             while (containingType!=null)
             {
                 containingTypes.Insert(0, containingType.Name);
