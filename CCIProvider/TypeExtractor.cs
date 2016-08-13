@@ -19,14 +19,14 @@ namespace CCIProvider
 		// The problem is related with type references (IType) having attributes.
 		// We cannot only add them to type definitions because the user may need
 		// to know the attributes of a type defined in an external library.
-		private static IDictionary<Cci.ITypeReference, IBasicType> attributesCache;
+		private static IDictionary<Cci.ITypeReference, BasicType> attributesCache;
 
 		private Host host;
 
 		public TypeExtractor(Host host)
 		{
 			this.host = host;
-			attributesCache = new Dictionary<Cci.ITypeReference, IBasicType>();
+			attributesCache = new Dictionary<Cci.ITypeReference, BasicType>();
 		}
 
 		public EnumDefinition ExtractEnum(Cci.INamedTypeDefinition typedef)
@@ -168,7 +168,8 @@ namespace CCIProvider
 		public IBasicType ExtractType(Cci.IGenericTypeInstanceReference typeref)
 		{
 			var type = ExtractType(typeref.GenericType, false);
-			ExtractGenericType(type, typeref);
+            type.GenericType = ExtractType(typeref.GenericType, false);
+            ExtractGenericType(type, typeref);
 
 			return type;
 		}
@@ -178,7 +179,7 @@ namespace CCIProvider
 			return ExtractType(typeref, true);
 		}
 
-		private IBasicType ExtractType(Cci.INamedTypeReference typeref, bool canReturnFromCache)
+		private BasicType ExtractType(Cci.INamedTypeReference typeref, bool canReturnFromCache)
 		{
 			//string containingAssembly;
 			//string containingNamespace;
@@ -186,7 +187,7 @@ namespace CCIProvider
 			//var kind = GetTypeKind(typeref);
 			//var type = new IBasicType(name, kind);
 
-			IBasicType type = null;
+			BasicType type = null;
 
 			if (!attributesCache.TryGetValue(typeref, out type) || !canReturnFromCache)
 			{
@@ -200,6 +201,7 @@ namespace CCIProvider
 				newType.ContainingAssembly = new AssemblyReference(containingAssembly);
 				newType.ContainingNamespace = containingNamespace;
                 newType.ContainingTypes = containingTypes;
+                newType.GenericParameterCount = typeref.GenericParameterCount;
 
 				if (type == null)
 				{
@@ -322,7 +324,7 @@ namespace CCIProvider
 
 		public IMethodReference ExtractReference(Cci.IMethodReference methodref)
 		{
-			var returnType = ExtractType(methodref.Type);
+            var returnType = ExtractType(methodref.Type);
 			var method = new MethodReference(methodref.Name.Value, returnType);
 
 			ExtractAttributes(method.Attributes, methodref.Attributes);
@@ -332,7 +334,19 @@ namespace CCIProvider
 			method.ContainingType = (IBasicType)ExtractType(methodref.ContainingType);
 			method.IsStatic = methodref.IsStatic;
 
-			return method;
+            if (methodref is Cci.IGenericMethodInstanceReference)
+            {
+                var genericMethodref = methodref as Cci.IGenericMethodInstanceReference;
+                method.GenericMethod = ExtractReference(genericMethodref.GenericMethod);
+
+                foreach (var typeParameterref in genericMethodref.GenericArguments)
+                {
+                    var typeArgumentref = ExtractType(methodref.ContainingType);
+                    method.GenericArguments.Add(typeArgumentref);
+                }
+            }
+
+            return method;
 		}
 
 		private void ExtractAttributes(ISet<CustomAttribute> dest, IEnumerable<Cci.ICustomAttribute> source)
@@ -385,7 +399,7 @@ namespace CCIProvider
 			}
 		}
 
-		private void ExtractGenericType(IBasicType type, Cci.IGenericTypeInstanceReference typeref)
+		private void ExtractGenericType(BasicType type, Cci.IGenericTypeInstanceReference typeref)
 		{
 			foreach (var argumentref in typeref.GenericArguments)
 			{

@@ -91,5 +91,24 @@ namespace Model
 
             return string.Format("{0}{1}{2}", containingNamespace, containingTypes, type.GenericName);
         }
+
+        public static bool MatchType(this IType definitionType, IType referenceType, IDictionary<IType, IType> typeParameterBinding)
+        {
+            var result = false;
+
+            if (definitionType is TypeVariable)
+            {
+                IType typeArgument;
+
+                if (typeParameterBinding != null &&
+                    typeParameterBinding.TryGetValue(definitionType, out typeArgument))
+                {
+                    definitionType = typeArgument;
+                }
+            }
+
+            result = definitionType.Equals(referenceType);
+            return result;
+        }
     }
 }

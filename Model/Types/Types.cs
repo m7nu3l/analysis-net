@@ -141,9 +141,11 @@ namespace Model.Types
         string ContainingTypes { get; }
         string Name { get; }
 		string GenericName { get; }
-		IList<IType> GenericArguments { get; }
+        int GenericParameterCount { get; }
+        IList<IType> GenericArguments { get; }
+        IBasicType GenericType { get; }
 		ITypeDefinition ResolvedType { get; }
-	}
+    }
 
 	public class BasicType : IBasicType
 	{
@@ -156,9 +158,11 @@ namespace Model.Types
 		public string ContainingNamespace { get; set; }
         public string ContainingTypes { get; set; }
         public string Name { get; set; }
-		public IList<IType> GenericArguments { get; private set; }
+        public int GenericParameterCount { get; set; }
+        public IList<IType> GenericArguments { get; private set; }
+        public IBasicType GenericType { get; set; }
 
-		public BasicType(string name, TypeKind kind = TypeKind.Unknown)
+        public BasicType(string name, TypeKind kind = TypeKind.Unknown)
 		{
 			this.Name = name;
 			this.TypeKind = kind;
@@ -185,6 +189,11 @@ namespace Model.Types
 					arguments = string.Join(", ", this.GenericArguments);
 					arguments = string.Format("<{0}>", arguments);
 				}
+                else if (this.GenericParameterCount > 0)
+                {
+                    arguments = string.Join(", T", Enumerable.Range(1, this.GenericParameterCount));
+                    arguments = string.Format("<T{0}>", arguments);
+                }
 
 				return string.Format("{0}{1}", this.Name, arguments);
 			}
@@ -203,13 +212,13 @@ namespace Model.Types
 			}
 		}
 
-		//public ITypeDefinition Resolve(Host host)
-		//{
-		//	this.ResolvedType = host.ResolveReference(this);
-		//	return this.ResolvedType;
-		//}
+        //public ITypeDefinition Resolve(Host host)
+        //{
+        //	this.ResolvedType = host.ResolveReference(this);
+        //	return this.ResolvedType;
+        //}
 
-		public void Resolve(Host host)
+        public void Resolve(Host host)
 		{
 			ResolveType = () => host.ResolveReference(this);
 		}
@@ -232,6 +241,7 @@ namespace Model.Types
 						 this.ContainingAssembly.Equals(other.ContainingAssembly) &&
 						 this.ContainingNamespace == other.ContainingNamespace &&
 						 this.Name == other.Name &&
+                         this.GenericParameterCount == other.GenericParameterCount &&
 						 this.GenericArguments.SequenceEqual(other.GenericArguments);
 
 			return result;
