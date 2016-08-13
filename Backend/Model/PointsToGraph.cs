@@ -348,16 +348,20 @@ namespace Backend.Model
                 foreach (var entry in node.Sources)
                     foreach (var source in entry.Value)
                     {
-                        var source_clone = nodes[source.Id];
+                        // TODO: Sometimes this fail meaning the PTG invariant may be broken
+                        if (nodes.ContainsKey(source.Id))
+                        {
+                            var source_clone = nodes[source.Id];
 
-                        clone.Sources.Add(entry.Key, source_clone);
+                            clone.Sources.Add(entry.Key, source_clone);
+                        }
                     }
 
                 // add node -field-> target edges
                 foreach (var entry in node.Targets)
                     foreach (var target in entry.Value)
                     {
-                        // TODO: Sometime this fail meaning the PTG invariant may be broken
+                        // TODO: Sometimes this fail meaning the PTG invariant may be broken
                         if (nodes.ContainsKey(target.Id))
                         {
                             var target_clone = nodes[target.Id];
