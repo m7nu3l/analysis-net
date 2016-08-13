@@ -63,7 +63,7 @@ namespace Backend.Model
 
 	public class Graph<N,F>
 	{
-		private Node<N>[] forwardOrder;
+		private Node<N>[] forwardOrder ;
 		private Node<N>[] backwardOrder;
 
         public IDictionary<N, Node<N>> mapNodes;
@@ -75,7 +75,9 @@ namespace Backend.Model
 		public Graph()
 		{
 			this.mapNodes = new Dictionary<N,Node<N>>();
-		}
+            this.forwardOrder = null;
+            this.backwardOrder = null;
+        }
 
 		public Node<N>[] ForwardOrder
 		{
