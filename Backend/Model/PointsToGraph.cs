@@ -485,6 +485,14 @@ namespace Backend.Model
         public void RestoreFrame(bool cleanUnreachable = true)
         {
             var frame = stackFrame.Pop();
+            foreach (var entry in variables)
+            {
+                var nodes = entry.Value;
+                foreach (var node in nodes)
+                {
+                    node.Variables.Clear();
+                }
+            }
             variables = frame;
             foreach (var entry in variables)
             {
