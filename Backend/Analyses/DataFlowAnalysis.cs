@@ -123,7 +123,7 @@ namespace Backend.Analyses
 				node_result.Input = this.InitialValue(node);
 				result[node.Id] = node_result;
 
-				if (node.Successors.Count > 0)
+				if (node.Successors.Count() > 0)
 				{
 					pending_nodes.Enqueue(node);
 				}

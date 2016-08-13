@@ -607,7 +607,28 @@ namespace Backend.Transformations
 				body.Instructions.Add(instruction);
 			}
 
-			public override void Visit(Bytecode.CreateObjectInstruction op)
+            public override void Visit(Bytecode.GetArrayInstruction op)
+            {
+                var indices = new List<IVariable>();
+
+                for (uint i = 0; i < op.Type.Rank; i++)
+                {
+                    var operand = stack.Pop();
+                    indices.Add(operand);
+                }
+
+                var array = stack.Pop(); 
+
+                indices.Reverse();
+
+                var dest = stack.Push();
+                var source = new ArrayElementAccess(array, indices);
+                var instruction = new Tac.LoadInstruction(op.Offset, dest, source);
+                body.Instructions.Add(instruction);
+            }
+
+
+            public override void Visit(Bytecode.CreateObjectInstruction op)
 			{
 				stack.IncrementCapacity();
 
@@ -954,47 +975,45 @@ namespace Backend.Transformations
 				// var cfg = cfanalysis.GenerateNormalControlFlow();
 				var cfg = cfanalysis.GenerateExceptionalControlFlow();
 				var stackSizeAtEntry = new ushort?[cfg.Nodes.Count];
-				var sorted_nodes = cfg.ForwardOrder;
 
+                foreach(var handler in cfg.Regions.OfType<CFGExceptionHandlerRegion>())
+                {
+                    if (handler.Kind == CFGRegionKind.Catch  )
+                    {
+                        stackSizeAtEntry[handler.Header.Id] = 1;
+                    }
+                    else
+                    {
+                        stackSizeAtEntry[handler.Header.Id] = 0;
+                    }
+                }
+
+				var sorted_nodes = cfg.ForwardOrder;
 				foreach (var node in sorted_nodes)
 				{
 					var stackSize = stackSizeAtEntry[node.Id];
 
 					if (!stackSize.HasValue)
 					{
-						stackSizeAtEntry[node.Id] = 0;
+                        // Console.WriteLine("{0}->={1}", node.Id, 0);
+                        stackSizeAtEntry[node.Id] = 0;
 					}
 
 					stack.Size = stackSizeAtEntry[node.Id].Value;
+                    var prevStackSize = stack.Size;
 					this.ProcessBasicBlock(body, node, translator);
 
-					foreach (var successor in node.Successors)
+					foreach (var successor in node.NormalSuccessors)
 					{
-                        var successorIsHanderHeader = cfg.Regions.OfType<CFGExceptionHandlerRegion>()
-                                                      .Where(r => r.Kind==CFGRegionKind.Catch && r.Header.Equals(successor)).Any();
-                        if (successorIsHanderHeader)
-                        {
-                            stackSize = 1; stack.Size = 1;
-                        }
-                        else
-                        {
-                            var successorIsFinally = cfg.Regions.OfType<CFGExceptionHandlerRegion>()
-                                                          .Where(r => (r.Kind == CFGRegionKind.Finally || r.Kind == CFGRegionKind.Fault) && r.Header.Equals(successor)).Any();
-                            if (successorIsFinally)
-                            {
-                                stackSize = 0; stack.Size = 0;
-                            }
-                            else
-                            {
-                                stackSize = stackSizeAtEntry[successor.Id];
-                            }
-                        }
-
-						if (!stackSize.HasValue)
+                        // var successorIsHanderHeader = cfg.Regions.OfType<CFGExceptionHandlerRegion>().Where(r => r.Header.Equals(successor)).Any();
+                            
+                        stackSize = stackSizeAtEntry[successor.Id];
+                        if (!stackSize.HasValue)
 						{
+                            // Console.WriteLine("{0}->{1}={2}", node.Id, successor.Id, stack.Size);
 							stackSizeAtEntry[successor.Id] = stack.Size;
 						}
-						else if (stackSize.Value != stack.Size)
+						else if (stackSize.Value != stack.Size) // && !successorIsHanderHeader
 						{
 							// Check that the already saved stack size is the same as the current stack size
 							throw new Exception("Basic block with different stack size at entry!");

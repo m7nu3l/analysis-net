@@ -40,6 +40,8 @@ namespace CCIProvider
 		public void ExtractBody(MethodBody ourBody, Cci.IMethodBody cciBody)
 		{
 			ourBody.MaxStack = cciBody.MaxStack;
+            if (cciBody.MethodDefinition.Name.Value.Contains("AddRow"))
+            { }
 			ExtractParameters(cciBody.MethodDefinition, ourBody.Parameters);
 			ExtractLocalVariables(cciBody.LocalVariables, ourBody.LocalVariables);
 			ExtractExceptionInformation(cciBody.OperationExceptionInformation, ourBody.ExceptionInformation);
@@ -178,7 +180,10 @@ namespace CCIProvider
 					break;
 
 				case Cci.OperationCode.Array_Get:
-				case Cci.OperationCode.Ldelem:
+                    instruction = ProcessGetArray(operation);
+                    break;
+
+                case Cci.OperationCode.Ldelem:
 				case Cci.OperationCode.Ldelem_I:
 				case Cci.OperationCode.Ldelem_I1:
 				case Cci.OperationCode.Ldelem_I2:
@@ -558,7 +563,17 @@ namespace CCIProvider
 			return instruction;
 		}
 
-		private IInstruction ProcessCreateObject(Cci.IOperation op)
+        private IInstruction ProcessGetArray(Cci.IOperation op)
+        {
+            //var getArray = OperationHelper.GetArrayWithLowerBounds(op.OperationCode);
+            var cciArrayType = op.Value as Cci.IArrayTypeReference;
+            var ourArrayType = typeExtractor.ExtractType(cciArrayType);
+            var instruction = new GetArrayInstruction(op.Offset, ourArrayType);
+            //instruction.WithLowerBound = withLowerBound;
+            return instruction;
+        }
+
+        private IInstruction ProcessCreateObject(Cci.IOperation op)
 		{
 			var cciMethod = op.Value as Cci.IMethodReference;
 			var ourMethod = typeExtractor.ExtractReference(cciMethod);
