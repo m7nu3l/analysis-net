@@ -151,7 +151,7 @@ namespace Model.Types
 
         string IBasicType.ContainingTypes
         {
-            get { return this.ContainingType.GetContainingTypes(); }
+            get { return this.GetContainingTypes(); }
         }
         #endregion
 
@@ -621,7 +621,7 @@ namespace Model.Types
 		}
         string IBasicType.ContainingTypes
         {
-            get { return this.ContainingType.GetContainingTypes(); }
+            get { return this.GetContainingTypes(); }
         }
         #endregion
 
@@ -767,7 +767,7 @@ namespace Model.Types
 		}
         string IBasicType.ContainingTypes
         {
-            get { return this.ContainingType.GetContainingTypes(); }
+            get { return this.GetContainingTypes(); }
         }
         #endregion
 
@@ -891,7 +891,9 @@ namespace Model.Types
 		}
         string IBasicType.ContainingTypes
         {
-            get { return this.ContainingType.GetContainingTypes(); }
+            //            get { return this.ContainingType.GetContainingTypes(); }
+            get { return this.GetContainingTypes(); }
+
         }
 
         IList<IType> IBasicType.GenericArguments
