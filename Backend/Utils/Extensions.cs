@@ -663,6 +663,7 @@ namespace Backend.Utils
 
             var cfAnalysis = new ControlFlowAnalysis(method.Body);
             var cfg = cfAnalysis.GenerateExceptionalControlFlow();
+            // var cfg = cfAnalysis.GenerateNormalControlFlow();
 
             var domAnalysis = new DominanceAnalysis(cfg);
             domAnalysis.Analyze();

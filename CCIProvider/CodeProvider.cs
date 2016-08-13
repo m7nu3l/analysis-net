@@ -40,9 +40,8 @@ namespace CCIProvider
 		public void ExtractBody(MethodBody ourBody, Cci.IMethodBody cciBody)
 		{
 			ourBody.MaxStack = cciBody.MaxStack;
-            if (cciBody.MethodDefinition.Name.Value.Contains("AddRow"))
-            { }
-			ExtractParameters(cciBody.MethodDefinition, ourBody.Parameters);
+
+            ExtractParameters(cciBody.MethodDefinition, ourBody.Parameters);
 			ExtractLocalVariables(cciBody.LocalVariables, ourBody.LocalVariables);
 			ExtractExceptionInformation(cciBody.OperationExceptionInformation, ourBody.ExceptionInformation);
 			ExtractInstructions(cciBody.Operations, ourBody.Instructions);
