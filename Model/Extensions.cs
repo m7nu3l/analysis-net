@@ -52,13 +52,13 @@ namespace Model
             if (containingType == null)
                 return null;
 
-            var containingTypes = new StringBuilder();
+            var containingTypes = new List<string>();
             while (containingType!=null)
             {
                 containingTypes.Insert(0, containingType.Name);
                 containingType = containingType.ContainingType;
             }
-            return containingTypes.ToString();
+            return string.Join(".", containingTypes);
         }
 
         public static string GetFullNameWithAssembly(this IBasicType type)

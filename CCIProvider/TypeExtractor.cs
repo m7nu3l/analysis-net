@@ -420,7 +420,7 @@ namespace CCIProvider
             var typesParts = new List<string>();
             var name = namedTyperef.Name.Value;
 			Cci.ITypeReference typeref = namedTyperef;
-            containingTypes = "";
+            containingTypes = null;
 
 			while (typeref is Cci.INestedTypeReference ||
 				   typeref is Cci.IGenericTypeInstanceReference ||
@@ -461,7 +461,10 @@ namespace CCIProvider
 
 			containingAssembly = assemblyref.Unit.Name.Value;
 			containingNamespace = string.Join(".", namespaceParts);
-            containingTypes = string.Join(".", typesParts);
+            if (typesParts.Count>0)
+            {
+                containingTypes = string.Join(".", typesParts);
+            }
             return name;
 		}
         
