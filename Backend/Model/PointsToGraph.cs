@@ -242,14 +242,14 @@ namespace Backend.Model
 		private MapSet<IVariable, PTGNode> variables;
 		private IDictionary<PTGID, PTGNode> nodes;
 
-        public PTGNode Null { get; private set; }
+        public static PTGNode NullNode = new NullNode(); // { get; private set; }
 
         public PointsToGraph()
         {
-            this.Null = new NullNode();
+            //this.Null = new NullNode();
             this.variables = new MapSet<IVariable, PTGNode>();            
 			this.nodes = new Dictionary<PTGID, PTGNode>();
-            this.Add(this.Null);
+            this.Add(NullNode);
 
             //this.nodeIdAtOffset = new Dictionary<uint, int>();
             //nextPTGNodeId=1;
@@ -443,17 +443,24 @@ namespace Backend.Model
             var unreacheableNodes = this.nodes.Values.Except(reacheableNodes);
             foreach (var n in unreacheableNodes.ToList())
             {
-
-                foreach(var target in n.Targets.SelectMany(t => t.Value))
+                foreach (var entry in n.Targets)
                 {
-                    var keysOfSourcesToRemove = target.Sources.Where(kv => kv.Value.Contains(n)).Select(kv => kv.Key);
-                    foreach(var edgeKey in keysOfSourcesToRemove)
+                    foreach(var target in entry.Value)
                     {
-                        target.Sources[edgeKey].Remove(n);
+                        target.Sources[entry.Key].Remove(n);
                     }
-                    
                 }
                 this.nodes.Remove(n.Id);
+                //foreach(var target in n.Targets.SelectMany(t => t.Value))
+                //{
+                //    var keysOfSourcesToRemove = target.Sources.Where(kv => kv.Value.Contains(n)).Select(kv => kv.Key);
+                //    foreach(var edgeKey in keysOfSourcesToRemove)
+                //    {
+                //        target.Sources[edgeKey].Remove(n);
+                //    }
+
+                //}
+                //this.nodes.Remove(n.Id);
             }
         }
 
@@ -495,7 +502,8 @@ namespace Backend.Model
         {
             ISet<PTGNode> nodes = null;
 
-            var validReturn =  (retVariable.Type != null && retVariable.Type.TypeKind == TypeKind.ReferenceType);
+            var validReturn =  (retVariable.Type != null && retVariable.Type.TypeKind == TypeKind.ReferenceType) 
+                                && (dest.Type != null && dest.Type.TypeKind == TypeKind.ReferenceType);
 
             if (validReturn)
                 nodes = GetTargets(retVariable);

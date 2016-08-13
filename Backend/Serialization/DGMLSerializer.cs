@@ -143,6 +143,10 @@ namespace Backend.Serialization
 					{
 						xmlWriter.WriteAttributeString("Background", "Yellow");
 					}
+                    else if(node.Kind == PTGNodeKind.Null)
+                    {
+                        xmlWriter.WriteAttributeString("Background", "cyan");
+                    }
 					else if (node.Kind == PTGNodeKind.Unknown)
 					{
 						xmlWriter.WriteAttributeString("Background", "#FFB445");

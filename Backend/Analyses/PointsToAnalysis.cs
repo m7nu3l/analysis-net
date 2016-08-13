@@ -249,7 +249,7 @@ namespace Backend.Analyses
 			if (dst.Type.TypeKind == TypeKind.ValueType) return;
 
 			ptg.RemoveEdges(dst);
-			ptg.PointsTo(dst, ptg.Null);
+			ptg.PointsTo(dst, PointsToGraph.NullNode);
 		}
 
         protected void ProcessObjectAllocation(PointsToGraph ptg, uint offset, IVariable dst)

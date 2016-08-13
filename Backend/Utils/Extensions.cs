@@ -440,6 +440,7 @@ namespace Backend.Utils
         public static IEnumerable<PTGNode> ReachableNodesFromVariables(this PointsToGraph ptg)
         {
             var roots = new HashSet<PTGNode>(ptg.Variables.SelectMany(v => ptg.GetTargets(v, false)));
+            roots.Add(PointsToGraph.NullNode);
             return ptg.ReachableNodes(roots);
         }
         public static IEnumerable<PTGNode> ReachableNodes(this PointsToGraph ptg, IEnumerable<PTGNode> roots)
@@ -477,6 +478,16 @@ namespace Backend.Utils
             var result = ptg.GetTargets(v2, false).Any(n => ptg.Reachable(v1, n));
             return result;
         }
+        public static  ISet<IVariable> GetAliases(this PointsToGraph ptg, IVariable v)
+        {
+            var res = new HashSet<IVariable>() { v };
+            foreach (var ptgNode in ptg.GetTargets(v, false)) // GetPtgNodes(v))
+            {
+                res.UnionWith(ptgNode.Variables);
+            }
+            return res;
+        }
+
 
         #endregion
 
@@ -642,7 +653,7 @@ namespace Backend.Utils
             }
 
             var cfAnalysis = new ControlFlowAnalysis(method.Body);
-            var cfg = cfAnalysis.GenerateNormalControlFlow();
+            var cfg = cfAnalysis.GenerateExceptionalControlFlow();
 
             var domAnalysis = new DominanceAnalysis(cfg);
             domAnalysis.Analyze();
