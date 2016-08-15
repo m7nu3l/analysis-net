@@ -190,9 +190,9 @@ namespace Backend.Model
 
     public class GlobalNode : PTGNode
     {
-        public static PTGID nullID = new PTGID(GlobalContext.GlobalNodeContext, 0);
+        public static PTGID globalID = new PTGID(GlobalContext.GlobalNodeContext, 0);
 
-        public GlobalNode() : base(nullID, PlatformTypes.Object, PTGNodeKind.Global)
+        public GlobalNode() : base(globalID, PlatformTypes.Object, PTGNodeKind.Global)
         {
         }
         public override bool Equals(object obj)
