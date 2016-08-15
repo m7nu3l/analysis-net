@@ -537,6 +537,9 @@ namespace Model.Types
 
                 if (method.GenericMethod != null)
                 {
+                    if (this.GenericParameters.Count != method.GenericParameterCount)
+                        return false;
+
                     for (var i = 0; i < this.GenericParameters.Count; ++i)
                     {
                         var typeParameter = this.GenericParameters[i];
