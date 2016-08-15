@@ -321,8 +321,8 @@ namespace Backend.Model
             foreach (var node in ptg.Nodes)
 			{
 				if (this.Contains(node)) continue;
-				var clone = node.Clone();
-
+                //var clone = node.Clone();
+                var clone = node;
 				nodes.Add(clone.Id, clone);
 			}
 
@@ -484,6 +484,9 @@ namespace Backend.Model
        {
             var reacheableNodes = this.ReachableNodesFromVariables();
             var unreacheableNodes = this.nodes.Values.Except(reacheableNodes);
+
+            unreacheableNodes = new HashSet<PTGNode>();
+
             //var nodesRemove = new Dictionary<PTGID, PTGNode>();
             foreach (var n in unreacheableNodes.ToList())
             {
@@ -572,10 +575,13 @@ namespace Backend.Model
 
         public void PointsTo(IVariable variable, PTGNode target)
         {
-#if DEBUG
-			if (!this.Contains(target))
-				throw new ArgumentException("Target node does not belong to this Points-to graph.", "target");
-#endif
+//#if DEBUG
+            if (!this.Contains(target))
+            {
+                this.nodes.Add(target.Id, target);
+                //throw new ArgumentException("Target node does not belong to this Points-to graph.", "target");
+            }
+//#endif
 
             target.Variables.Add(variable);
             this.variables.Add(variable, target);

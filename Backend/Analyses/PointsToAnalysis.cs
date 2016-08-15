@@ -146,11 +146,9 @@ namespace Backend.Analyses
 
             public override void Visit(PhiInstruction instruction)
             {
-                foreach(var v in instruction.Arguments)
-                {
-                    ptAnalysis.ProcessCopy(ptg, instruction.Result, v);
-                }
+                ptAnalysis.ProcessCopy(ptg, instruction.Result, instruction.Arguments);
             }
+
             public override void Visit(ReturnInstruction instruction)
             {
                 if (instruction.HasOperand)
@@ -276,20 +274,34 @@ namespace Backend.Analyses
             ptg.PointsTo(dst, node);
         }
 
-        protected void ProcessCopy(PointsToGraph ptg, IVariable dst, IVariable src)
+        private void ProcessCopy(PointsToGraph ptg, IVariable dst, IEnumerable<IVariable> srcs)
         {
-			if (dst.Type.TypeKind == TypeKind.ValueType || src.Type.TypeKind == TypeKind.ValueType) return;
-
             ptg.RemoveEdges(dst);
-            var targets = ptg.GetTargets(src);
+
+            if (dst.Type.TypeKind == TypeKind.ValueType) return;
+
+            var targets = srcs.Where(src => src.Type.TypeKind == TypeKind.ValueType).SelectMany(src => ptg.GetTargets(src));
 
             foreach (var target in targets)
             {
                 ptg.PointsTo(dst, target);
             }
         }
+        private void ProcessCopy(PointsToGraph ptg, IVariable dst, IVariable src)
+        {
+            ProcessCopy(ptg, dst, new HashSet<IVariable>() { src });
+            //if (dst.Type.TypeKind == TypeKind.ValueType || src.Type.TypeKind == TypeKind.ValueType) return;
 
-		protected void ProcessLoad(PointsToGraph ptg, uint offset, IVariable dst, InstanceFieldAccess access)
+            //         ptg.RemoveEdges(dst);
+            //         var targets = ptg.GetTargets(src);
+
+            //         foreach (var target in targets)
+            //         {
+            //             ptg.PointsTo(dst, target);
+            //         }
+        }
+
+        protected void ProcessLoad(PointsToGraph ptg, uint offset, IVariable dst, InstanceFieldAccess access)
         {
 			if (dst.Type.TypeKind == TypeKind.ValueType || access.Type.TypeKind == TypeKind.ValueType) return;
 
