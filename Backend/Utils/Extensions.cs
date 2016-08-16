@@ -650,15 +650,15 @@ namespace Backend.Utils
 
             return result;
         }
-       public static Backend.Model.ControlFlowGraph DoAnalysisPhases(this MethodDefinition method, Host host, bool inline = false)
+       public static Backend.Model.ControlFlowGraph DoAnalysisPhases(this MethodDefinition method, Host host, IEnumerable<IMethodReference> methodsToTryToInline = null)
         {
             var disassembler = new Disassembler(method);
             var methodBody = disassembler.Execute();
             method.Body = methodBody;
-
-            if(inline)
+            
+            if(methodsToTryToInline != null)
             {
-                DoInlining(method, host, methodBody);
+                DoInlining(method, host, methodBody, methodsToTryToInline);
             }
 
             var cfAnalysis = new ControlFlowAnalysis(method.Body);
@@ -707,9 +707,20 @@ namespace Backend.Utils
              // var dgml = DGMLSerializer.Serialize(cfg);
             return cfg;
         }
-        private static void DoInlining(MethodDefinition method, Host host, MethodBody methodBody)
+
+        public static IEnumerable<IMethodReference> GetMethodsInvoked(this MethodDefinition method)
         {
-            var methodCalls = methodBody.Instructions.OfType<MethodCallInstruction>().ToList();
+            var disassembler = new Disassembler(method);
+            var methodBody = disassembler.Execute();
+            return methodBody.Instructions.OfType<MethodCallInstruction>().Select(ins => ins.Method);
+        }
+
+        private static void DoInlining(MethodDefinition method, Host host, MethodBody methodBody, IEnumerable<IMethodReference> methodsToTryToInline = null)
+        {
+            if (methodsToTryToInline == null)
+                methodsToTryToInline = new HashSet<IMethodReference>();
+
+            var methodCalls = methodBody.Instructions.OfType<MethodCallInstruction>().Where(ins => methodsToTryToInline.Contains(ins.Method)).ToList();
             foreach (var methodCall in methodCalls)
             {
                 var calleeM = host.ResolveReference(methodCall.Method);
