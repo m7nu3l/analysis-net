@@ -140,8 +140,10 @@ namespace Backend.Model
 		public int BackwardIndex { get; set; }
 		public CFGNodeKind Kind { get; private set; }
 		public ISet<CFGNode> Predecessors { get; private set; }
-		public ISet<CFGNode> Successors { get; private set; }
-		public IList<IInstruction> Instructions { get; private set; }
+		public IEnumerable<CFGNode> Successors { get { return NormalSuccessors.Union(ExceptionalSuccessors); } }
+        public ISet<CFGNode> NormalSuccessors { get ; private set; }
+        public ISet<CFGNode> ExceptionalSuccessors { get; private set; }
+        public IList<IInstruction> Instructions { get; private set; }
 		public CFGNode ImmediateDominator { get; set; }
 		public ISet<CFGNode> ImmediateDominated { get; private set; }
 		public ISet<CFGNode> DominanceFrontier { get; private set; }
@@ -153,8 +155,9 @@ namespace Backend.Model
 			this.ForwardIndex = -1;
 			this.BackwardIndex = -1;
 			this.Predecessors = new HashSet<CFGNode>();
-			this.Successors = new HashSet<CFGNode>();
-			this.Instructions = new List<IInstruction>();
+			this.NormalSuccessors = new HashSet<CFGNode>();
+            this.ExceptionalSuccessors = new HashSet<CFGNode>();
+            this.Instructions = new List<IInstruction>();
 			this.ImmediateDominated = new HashSet<CFGNode>();
 			this.DominanceFrontier = new HashSet<CFGNode>();
 		}
@@ -230,8 +233,8 @@ namespace Backend.Model
 				this.ExceptionalExit
 			};
 
-			this.ConnectNodes(this.NormalExit, this.Exit);
-			this.ConnectNodes(this.ExceptionalExit, this.Exit);
+			this.ConnectNormalNodes(this.NormalExit, this.Exit);
+			this.ConnectNormalNodes(this.ExceptionalExit, this.Exit);
 		}
 
 		public IEnumerable<CFGNode> Entries
@@ -251,7 +254,7 @@ namespace Backend.Model
 			get
 			{
 				var result = from node in this.Nodes
-							 where node.Successors.Count == 0
+							 where node.Successors.Count() == 0
 							 select node;
 
 				return result;
@@ -284,50 +287,57 @@ namespace Backend.Model
 			}
 		}
 
-		public void ConnectNodes(CFGNode predecessor, CFGNode successor)
+		public void ConnectNormalNodes(CFGNode predecessor, CFGNode successor)
 		{
 			successor.Predecessors.Add(predecessor);
-			predecessor.Successors.Add(successor);
+			predecessor.NormalSuccessors.Add(successor);
 			this.Nodes.Add(predecessor);
 			this.Nodes.Add(successor);
 		}
+        public void ConnecExceptionalNodes(CFGNode predecessor, CFGNode successor)
+        {
+            successor.Predecessors.Add(predecessor);
+            predecessor.ExceptionalSuccessors.Add(successor);
+            this.Nodes.Add(predecessor);
+            this.Nodes.Add(successor);
+        }
 
-		#region Topological Sort
+        #region Topological Sort
 
-		//private CFGNode[] ComputeForwardTopologicalSort()
-		//{
-		//	var result = new CFGNode[this.Nodes.Count];
-		//	var visited = new bool[this.Nodes.Count];
-		//	var index = this.Nodes.Count - 1;
+        //private CFGNode[] ComputeForwardTopologicalSort()
+        //{
+        //	var result = new CFGNode[this.Nodes.Count];
+        //	var visited = new bool[this.Nodes.Count];
+        //	var index = this.Nodes.Count - 1;
 
-		//	foreach (var node in this.Entries)
-		//	{
-		//		ControlFlowGraph.DepthFirstSearch(result, visited, node, ref index);
-		//	}
+        //	foreach (var node in this.Entries)
+        //	{
+        //		ControlFlowGraph.DepthFirstSearch(result, visited, node, ref index);
+        //	}
 
-		//	return result;
-		//}
+        //	return result;
+        //}
 
-		//private static void DepthFirstSearch(CFGNode[] result, bool[] visited, CFGNode node, ref int index)
-		//{
-		//	var alreadyVisited = visited[node.Id];
+        //private static void DepthFirstSearch(CFGNode[] result, bool[] visited, CFGNode node, ref int index)
+        //{
+        //	var alreadyVisited = visited[node.Id];
 
-		//	if (!alreadyVisited)
-		//	{
-		//		visited[node.Id] = true;
+        //	if (!alreadyVisited)
+        //	{
+        //		visited[node.Id] = true;
 
-		//		foreach (var succ in node.Successors)
-		//		{
-		//			ControlFlowGraph.DepthFirstSearch(result, visited, succ, ref index);
-		//		}
+        //		foreach (var succ in node.Successors)
+        //		{
+        //			ControlFlowGraph.DepthFirstSearch(result, visited, succ, ref index);
+        //		}
 
-		//		node.ForwardIndex = index;
-		//		result[index] = node;
-		//		index--;
-		//	}
-		//}
+        //		node.ForwardIndex = index;
+        //		result[index] = node;
+        //		index--;
+        //	}
+        //}
 
-		private enum TopologicalSortNodeStatus
+        private enum TopologicalSortNodeStatus
 		{
 			NeverVisited, // never pushed into stack
 			FirstVisit, // pushed into stack for the first time

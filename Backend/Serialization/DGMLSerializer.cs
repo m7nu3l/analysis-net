@@ -143,7 +143,16 @@ namespace Backend.Serialization
 					{
 						xmlWriter.WriteAttributeString("Background", "Yellow");
 					}
-					else if (node.Kind == PTGNodeKind.Unknown)
+                    else if(node.Kind == PTGNodeKind.Delegate)
+                    {
+                        xmlWriter.WriteAttributeString("Background", "Cyan");
+                    }
+                    else if (node.Kind == PTGNodeKind.Parameter)
+                    {
+                        xmlWriter.WriteAttributeString("Background", "Red");
+                        xmlWriter.WriteAttributeString("StrokeDashArray", "6,6");
+                    }
+                    else if (node.Kind == PTGNodeKind.Unknown)
 					{
 						xmlWriter.WriteAttributeString("Background", "#FFB445");
 						xmlWriter.WriteAttributeString("StrokeDashArray", "6,6");

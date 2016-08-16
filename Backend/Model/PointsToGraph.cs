@@ -22,7 +22,8 @@ namespace Backend.Model
         Object,
 		Unknown,
         Parameter,
-        Delegate
+        Delegate,
+        Global
     }
 
     
@@ -46,6 +47,12 @@ namespace Backend.Model
             }
             else return "--";
         }
+    }
+
+    public class GlobalContext : PTGContext
+    {
+        public static GlobalContext NullNodeContext = new GlobalContext();
+        public static GlobalContext GlobalNodeContext = new GlobalContext();
     }
 
     public class PTGID
@@ -119,7 +126,7 @@ namespace Backend.Model
 			var other = obj as PTGNode;
 
 			return other != null &&
-				this.Id == other.Id &&
+				this.Id.Equals(other.Id) &&
 				this.Kind == other.Kind &&
 				//this.Offset == other.Offset &&
 				object.Equals(this.Type, other.Type);
@@ -157,7 +164,7 @@ namespace Backend.Model
 
     public class NullNode : PTGNode
     {
-        public static PTGID nullID = new PTGID(null,  0);
+        public static PTGID nullID = new PTGID(GlobalContext.NullNodeContext,  0);
 
         public NullNode() : base(nullID, PlatformTypes.Object, PTGNodeKind.Null)
         {
@@ -174,6 +181,32 @@ namespace Backend.Model
         public override string ToString()
         {
             return "Null";
+        }
+        public override PTGNode Clone()
+        {
+            return this;
+        }
+    }
+
+    public class GlobalNode : PTGNode
+    {
+        public static PTGID globalID = new PTGID(GlobalContext.GlobalNodeContext, 0);
+
+        public GlobalNode() : base(globalID, PlatformTypes.Object, PTGNodeKind.Global)
+        {
+        }
+        public override bool Equals(object obj)
+        {
+            var oth = obj as GlobalNode;
+            return oth != null;
+        }
+        public override int GetHashCode()
+        {
+            return 0;
+        }
+        public override string ToString()
+        {
+            return "Global";
         }
         public override PTGNode Clone()
         {
@@ -209,7 +242,7 @@ namespace Backend.Model
     public class DelegateNode : PTGNode
     {
         public  IMethodReference Method { get; private set; }
-        public  IVariable Instance { get; internal set; }
+        public  IVariable Instance { get; set; }
         public  bool IsStatic { get; private set; }
 
         public DelegateNode(PTGID id, IMethodReference method, IVariable instance) : base(id, method.ReturnType, PTGNodeKind.Delegate)
@@ -235,7 +268,6 @@ namespace Backend.Model
             var node = new DelegateNode(this.Id, this.Method, this.Instance);
             return node;
         }
-
     }
     public class PointsToGraph
     {
@@ -243,14 +275,15 @@ namespace Backend.Model
 		private MapSet<IVariable, PTGNode> variables;
 		private IDictionary<PTGID, PTGNode> nodes;
 
-        public PTGNode Null { get; private set; }
+        public static PTGNode NullNode = new NullNode(); // { get; private set; }
+        public static PTGNode GlobalNode = new GlobalNode();
 
         public PointsToGraph()
         {
-            this.Null = new NullNode();
+            //this.Null = new NullNode();
             this.variables = new MapSet<IVariable, PTGNode>();            
 			this.nodes = new Dictionary<PTGID, PTGNode>();
-            this.Add(this.Null);
+            this.Add(NullNode);
 
             //this.nodeIdAtOffset = new Dictionary<uint, int>();
             //nextPTGNodeId=1;
@@ -268,7 +301,8 @@ namespace Backend.Model
 			get { return nodes.Values; }
 		}
 
-		public PointsToGraph Clone()
+
+        public PointsToGraph Clone()
 		{
 			var ptg = new PointsToGraph();
             ptg.Union(this);
@@ -287,8 +321,8 @@ namespace Backend.Model
             foreach (var node in ptg.Nodes)
 			{
 				if (this.Contains(node)) continue;
-				var clone = node.Clone();
-
+                //var clone = node.Clone();
+                var clone = node;
 				nodes.Add(clone.Id, clone);
 			}
 
@@ -314,6 +348,11 @@ namespace Backend.Model
                 foreach (var entry in node.Sources)
                     foreach (var source in entry.Value)
                     {
+                        // TODO: Sometimes this fail meaning the PTG invariant may be broken
+                        if (!nodes.ContainsKey(source.Id))
+                        {
+                            nodes.Add(source.Id, source);
+                        }
                         var source_clone = nodes[source.Id];
 
                         clone.Sources.Add(entry.Key, source_clone);
@@ -323,9 +362,15 @@ namespace Backend.Model
                 foreach (var entry in node.Targets)
                     foreach (var target in entry.Value)
                     {
+                        // TODO: Sometimes this fail meaning the PTG invariant may be broken
+                        if (!nodes.ContainsKey(target.Id))
+                        { 
+                            nodes.Add(target.Id, target);
+                        }
                         var target_clone = nodes[target.Id];
 
                         clone.Targets.Add(entry.Key, target_clone);
+                        
                     }
             }
 		}
@@ -439,13 +484,34 @@ namespace Backend.Model
         }
 
         public void CleanUnreachableNodes()
-        {
+       {
             var reacheableNodes = this.ReachableNodesFromVariables();
             var unreacheableNodes = this.nodes.Values.Except(reacheableNodes);
+
+            //var nodesRemove = new Dictionary<PTGID, PTGNode>();
             foreach (var n in unreacheableNodes.ToList())
             {
+                foreach (var entry in n.Targets)
+                {
+                    foreach(var target in entry.Value)
+                    {
+                        target.Sources[entry.Key].Remove(n);
+                    }
+                }
                 this.nodes.Remove(n.Id);
+                //nodesRemove.Add(n.Id, n);
+                //foreach(var target in n.Targets.SelectMany(t => t.Value))
+                //{
+                //    var keysOfSourcesToRemove = target.Sources.Where(kv => kv.Value.Contains(n)).Select(kv => kv.Key);
+                //    foreach(var edgeKey in keysOfSourcesToRemove)
+                //    {
+                //        target.Sources[edgeKey].Remove(n);
+                //    }
+
+                //}
+                //this.nodes.Remove(n.Id);
             }
+            //nodes.RemoveAll(nodesRemove);
         }
 
 
@@ -469,6 +535,14 @@ namespace Backend.Model
         public void RestoreFrame(bool cleanUnreachable = true)
         {
             var frame = stackFrame.Pop();
+            foreach (var entry in variables)
+            {
+                var nodes = entry.Value;
+                foreach (var node in nodes)
+                {
+                    node.Variables.Clear();
+                }
+            }
             variables = frame;
             foreach (var entry in variables)
             {
@@ -484,11 +558,17 @@ namespace Backend.Model
 
         public void RestoreFrame(IVariable retVariable, IVariable dest, bool cleanUnreachable = true)
         {
-            var nodes = GetTargets(retVariable);
+            ISet<PTGNode> nodes = null;
+
+            var validReturn = (dest.Type != null && dest.Type.TypeKind == TypeKind.ReferenceType); //(retVariable.Type != null && retVariable.Type.TypeKind == TypeKind.ReferenceType)  &&
+
+            if (validReturn)
+                nodes = GetTargets(retVariable);
+
             RestoreFrame(false);
-            foreach (var node in nodes)
+            if (validReturn)
             {
-                PointsTo(dest,node);
+                PointsTo(dest, nodes);
             }
             if (cleanUnreachable)
                 CleanUnreachableNodes();
@@ -496,10 +576,13 @@ namespace Backend.Model
 
         public void PointsTo(IVariable variable, PTGNode target)
         {
-#if DEBUG
-			if (!this.Contains(target))
-				throw new ArgumentException("Target node does not belong to this Points-to graph.", "target");
-#endif
+//#if DEBUG
+            if (!this.Contains(target))
+            {
+                this.nodes.Add(target.Id, target);
+                //throw new ArgumentException("Target node does not belong to this Points-to graph.", "target");
+            }
+//#endif
 
             target.Variables.Add(variable);
             this.variables.Add(variable, target);

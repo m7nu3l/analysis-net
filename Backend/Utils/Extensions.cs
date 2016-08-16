@@ -411,8 +411,10 @@ namespace Backend.Utils
             var result = false;
             ISet<PTGNode> visitedNodes = new HashSet<PTGNode>();
             Queue<PTGNode> workList = new Queue<PTGNode>();
-            var nodes = ptg.GetTargets(v1);
-            if (nodes.Contains(n)) return true;
+            var nodes = ptg.GetTargets(v1, false);
+
+            if (nodes.Contains(n) && !n.Equals(PointsToGraph.NullNode) )
+                return true;
 
             foreach (var ptgNode in nodes)
             {
@@ -422,6 +424,10 @@ namespace Backend.Utils
             {
                 var ptgNode = workList.Dequeue();
                 visitedNodes.Add(ptgNode);
+                if (ptgNode.Equals(PointsToGraph.NullNode))
+                {
+                    continue;
+                }
                 if (ptgNode.Equals(n)) return true;
                 foreach(var adjacents in ptgNode.Targets.Values)
                 {
@@ -440,6 +446,7 @@ namespace Backend.Utils
         public static IEnumerable<PTGNode> ReachableNodesFromVariables(this PointsToGraph ptg)
         {
             var roots = new HashSet<PTGNode>(ptg.Variables.SelectMany(v => ptg.GetTargets(v, false)));
+            roots.Add(PointsToGraph.NullNode);
             return ptg.ReachableNodes(roots);
         }
         public static IEnumerable<PTGNode> ReachableNodes(this PointsToGraph ptg, IEnumerable<PTGNode> roots)
@@ -456,7 +463,10 @@ namespace Backend.Utils
             {
                 var ptgNode = workList.Dequeue();
                 visitedNodes.Add(ptgNode);
-
+                if (ptgNode.Equals(PointsToGraph.NullNode))
+                {
+                    continue;
+                }
                 foreach (var adjacents in ptgNode.Targets.Values)
                 {
                     foreach (var adjacent in adjacents)
@@ -474,9 +484,19 @@ namespace Backend.Utils
 
         public static bool MayReacheableFromVariable(this PointsToGraph ptg, IVariable v1, IVariable v2)
         {
-            var result = ptg.GetTargets(v2).Any(n => ptg.Reachable(v1, n));
+            var result = ptg.GetTargets(v2, false).Any(n => ptg.Reachable(v1, n));
             return result;
         }
+        public static  ISet<IVariable> GetAliases(this PointsToGraph ptg, IVariable v)
+        {
+            var res = new HashSet<IVariable>() { v };
+            foreach (var ptgNode in ptg.GetTargets(v, false)) // GetPtgNodes(v))
+            {
+                res.UnionWith(ptgNode.Variables);
+            }
+            return res;
+        }
+
 
         #endregion
 
@@ -630,19 +650,20 @@ namespace Backend.Utils
 
             return result;
         }
-       public static Backend.Model.ControlFlowGraph DoAnalysisPhases(this MethodDefinition method, Host host, bool inline = false)
+       public static Backend.Model.ControlFlowGraph DoAnalysisPhases(this MethodDefinition method, Host host, IEnumerable<IMethodReference> methodsToTryToInline = null)
         {
             var disassembler = new Disassembler(method);
             var methodBody = disassembler.Execute();
             method.Body = methodBody;
-
-            if(inline)
+            
+            if(methodsToTryToInline != null)
             {
-                DoInlining(method, host, methodBody);
+                DoInlining(method, host, methodBody, methodsToTryToInline);
             }
 
             var cfAnalysis = new ControlFlowAnalysis(method.Body);
-            var cfg = cfAnalysis.GenerateNormalControlFlow();
+            var cfg = cfAnalysis.GenerateExceptionalControlFlow();
+            // var cfg = cfAnalysis.GenerateNormalControlFlow();
 
             var domAnalysis = new DominanceAnalysis(cfg);
             domAnalysis.Analyze();
@@ -686,9 +707,20 @@ namespace Backend.Utils
              // var dgml = DGMLSerializer.Serialize(cfg);
             return cfg;
         }
-        private static void DoInlining(MethodDefinition method, Host host, MethodBody methodBody)
+
+        public static IEnumerable<IMethodReference> GetMethodsInvoked(this MethodDefinition method)
         {
-            var methodCalls = methodBody.Instructions.OfType<MethodCallInstruction>().ToList();
+            var disassembler = new Disassembler(method);
+            var methodBody = disassembler.Execute();
+            return methodBody.Instructions.OfType<MethodCallInstruction>().Select(ins => ins.Method);
+        }
+
+        private static void DoInlining(MethodDefinition method, Host host, MethodBody methodBody, IEnumerable<IMethodReference> methodsToTryToInline = null)
+        {
+            if (methodsToTryToInline == null)
+                methodsToTryToInline = new HashSet<IMethodReference>();
+
+            var methodCalls = methodBody.Instructions.OfType<MethodCallInstruction>().Where(ins => methodsToTryToInline.Contains(ins.Method)).ToList();
             foreach (var methodCall in methodCalls)
             {
                 var calleeM = host.ResolveReference(methodCall.Method);

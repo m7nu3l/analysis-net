@@ -128,12 +128,13 @@ namespace Console
 
 			var loader = new Loader(host);
 			loader.LoadAssembly(input);
-			//loader.LoadCoreAssembly();
+            //loader.LoadCoreAssembly();
 
-			var type = new BasicType("ExamplesPointsTo")
-			{
-				ContainingAssembly = new AssemblyReference("Test"),
-				ContainingNamespace = "Test"
+            var type = new BasicType("ExamplesPointsTo")
+            {
+                ContainingAssembly = new AssemblyReference("Test"),
+                ContainingNamespace = "Test",
+                ContainingTypes = ""
 			};
 
 			var typeDefinition = host.ResolveReference(type);

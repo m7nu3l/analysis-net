@@ -169,7 +169,7 @@ namespace Backend.Analyses
 					// of the node's leader instruction
 					if (connectWithPreviousNode && previous.Id != current.Id)
 					{
-						cfg.ConnectNodes(previous, current);
+						cfg.ConnectNormalNodes(previous, current);
 					}
 				}
 
@@ -186,17 +186,17 @@ namespace Backend.Analyses
 					{
 						var target = leaders[label];
 
-						cfg.ConnectNodes(current, target);
+						cfg.ConnectNormalNodes(current, target);
 					}
 				}
 				else if (isExitingMethod)
 				{
 					//TODO: not always connect to exit, could exists a catch or finally block
-					cfg.ConnectNodes(current, cfg.NormalExit);
+					cfg.ConnectNormalNodes(current, cfg.NormalExit);
 				}
 			}
 
-			cfg.ConnectNodes(current, cfg.NormalExit);
+			cfg.ConnectNormalNodes(current, cfg.NormalExit);
 			return cfg;
 		}
 
@@ -285,7 +285,7 @@ namespace Backend.Analyses
 				{
 					if (protectedRegion.Handler.Header != null)
 					{
-						cfg.ConnectNodes(node, protectedRegion.Handler.Header);
+						cfg.ConnecExceptionalNodes(node, protectedRegion.Handler.Header);
 					}
 				}
 			}

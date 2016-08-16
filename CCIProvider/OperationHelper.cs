@@ -458,5 +458,10 @@ namespace CCIProvider
 			var result = opcode == Cci.OperationCode.Array_Create_WithLowerBound;
 			return result;
 		}
-	}
+        public static bool GetArrayWithLowerBounds(Cci.OperationCode opcode)
+        {
+            var result = opcode == Cci.OperationCode.Array_Get;
+            return result;
+        }
+    }
 }
