@@ -349,12 +349,13 @@ namespace Backend.Model
                     foreach (var source in entry.Value)
                     {
                         // TODO: Sometimes this fail meaning the PTG invariant may be broken
-                        if (nodes.ContainsKey(source.Id))
+                        if (!nodes.ContainsKey(source.Id))
                         {
-                            var source_clone = nodes[source.Id];
-
-                            clone.Sources.Add(entry.Key, source_clone);
+                            nodes.Add(source.Id, source);
                         }
+                        var source_clone = nodes[source.Id];
+
+                        clone.Sources.Add(entry.Key, source_clone);
                     }
 
                 // add node -field-> target edges
@@ -362,12 +363,14 @@ namespace Backend.Model
                     foreach (var target in entry.Value)
                     {
                         // TODO: Sometimes this fail meaning the PTG invariant may be broken
-                        if (nodes.ContainsKey(target.Id))
-                        {
-                            var target_clone = nodes[target.Id];
-
-                            clone.Targets.Add(entry.Key, target_clone);
+                        if (!nodes.ContainsKey(target.Id))
+                        { 
+                            nodes.Add(target.Id, target);
                         }
+                        var target_clone = nodes[target.Id];
+
+                        clone.Targets.Add(entry.Key, target_clone);
+                        
                     }
             }
 		}
@@ -484,8 +487,6 @@ namespace Backend.Model
        {
             var reacheableNodes = this.ReachableNodesFromVariables();
             var unreacheableNodes = this.nodes.Values.Except(reacheableNodes);
-
-            unreacheableNodes = new HashSet<PTGNode>();
 
             //var nodesRemove = new Dictionary<PTGID, PTGNode>();
             foreach (var n in unreacheableNodes.ToList())
