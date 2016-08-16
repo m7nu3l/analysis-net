@@ -516,6 +516,9 @@ namespace Model.Types
 
             if (method != null)
             {
+                if(!MatchBasicSignature(method))
+                    return false;
+
                 var typeParameterBinding = new Dictionary<IType, IType>();
                 var containingType = method.ContainingType;
 
@@ -565,10 +568,17 @@ namespace Model.Types
             return result;
         }
 
+        public bool MatchBasicSignature(IMethodReference method)
+        {
+            var result = this.Name == method.Name &&
+                         this.IsStatic == method.IsStatic &&
+                         this.GenericParameters.Count == method.GenericParameterCount;
+            return result;
+        }
+
         public bool MatchSignature(IMethodReference method, IDictionary<IType, IType> typeParameterBinding)
 		{
-            var result = this.Name == method.Name &&
-						 this.IsStatic == method.IsStatic &&
+            var result = MatchBasicSignature(method) && 
 						 this.GenericParameters.Count == method.GenericParameterCount &&
                          this.ReturnType.MatchType(method.ReturnType, typeParameterBinding) &&
 						 this.MatchParameters(method, typeParameterBinding);
