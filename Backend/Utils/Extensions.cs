@@ -492,7 +492,10 @@ namespace Backend.Utils
             var res = new HashSet<IVariable>() { v };
             foreach (var ptgNode in ptg.GetTargets(v, false)) // GetPtgNodes(v))
             {
-                res.UnionWith(ptgNode.Variables);
+                if (ptgNode != PointsToGraph.NullNode)
+                {
+                    res.UnionWith(ptgNode.Variables);
+                }
             }
             return res;
         }
