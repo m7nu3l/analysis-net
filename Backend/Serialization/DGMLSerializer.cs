@@ -119,7 +119,7 @@ namespace Backend.Serialization
 				xmlWriter.WriteAttributeString("xmlns", "http://schemas.microsoft.com/vs/2009/dgml");
 				xmlWriter.WriteStartElement("Nodes");
 
-				foreach (var variable in ptg.Variables)
+				foreach (var variable in ptg.Roots)
 				{
 					var label = variable.Name;
 

@@ -123,7 +123,7 @@ namespace Backend.Analyses
                     var arg0Type = methodCall.Arguments[0].Type;
                     if (arg0Type.IsDelegateType())
                     {
-                        ptg.RemoveEdges(methodCall.Arguments[0]);
+                        ptg.RemoveRootEdges(methodCall.Arguments[0]);
                         if (methodCall.Arguments.Count == 3)
                         {
                             // instance delegate
@@ -246,7 +246,7 @@ namespace Backend.Analyses
 		{
 			if (dst.Type.TypeKind == TypeKind.ValueType) return;
 
-			ptg.RemoveEdges(dst);
+			ptg.RemoveRootEdges(dst);
 			ptg.PointsTo(dst, PointsToGraph.NullNode);
 		}
 
@@ -258,7 +258,7 @@ namespace Backend.Analyses
 
             var node = this.NewNode(ptg, ptgId, dst.Type);
 
-            ptg.RemoveEdges(dst);
+            ptg.RemoveRootEdges(dst);
             ptg.PointsTo(dst, node);
         }
 
@@ -270,13 +270,13 @@ namespace Backend.Analyses
 
             var node = this.NewNode(ptg, ptgId, dst.Type);
 
-            ptg.RemoveEdges(dst);
+            ptg.RemoveRootEdges(dst);
             ptg.PointsTo(dst, node);
         }
 
         private void ProcessCopy(PointsToGraph ptg, IVariable dst, IEnumerable<IVariable> srcs)
         {
-            ptg.RemoveEdges(dst);
+            ptg.RemoveRootEdges(dst);
 
             if (dst.Type.TypeKind == TypeKind.ValueType) return;
 
@@ -305,7 +305,7 @@ namespace Backend.Analyses
         {
 			if (dst.Type.TypeKind == TypeKind.ValueType || access.Type.TypeKind == TypeKind.ValueType) return;
 
-            ptg.RemoveEdges(dst);
+            ptg.RemoveRootEdges(dst);
 			var nodes = ptg.GetTargets(access.Instance);
             foreach (var node in nodes)
             {
@@ -338,7 +338,7 @@ namespace Backend.Analyses
             var ptgID = new PTGID(new MethodContex(this.method), (int)offset);
             var delegateNode = new DelegateNode(ptgID, methodRef, instance);
             ptg.Add(delegateNode);
-            ptg.RemoveEdges(dst);
+            ptg.RemoveRootEdges(dst);
             ptg.PointsTo(dst, delegateNode);
         }
 

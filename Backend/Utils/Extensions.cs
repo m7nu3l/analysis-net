@@ -368,7 +368,7 @@ namespace Backend.Utils
 
 	    public static void RemoveTemporalVariables(this PointsToGraph ptg)
         {
-            foreach (var variable in ptg.Variables.ToArray())
+            foreach (var variable in ptg.Roots.ToArray())
             {
                 if (variable.IsTemporal())
                 {
@@ -378,7 +378,7 @@ namespace Backend.Utils
         }
         public static void RemoveDerivedVariables(this PointsToGraph ptg)
         {
-            var temporals = ptg.Variables.OfType<DerivedVariable>().ToArray();
+            var temporals = ptg.Roots.OfType<DerivedVariable>().ToArray();
 
             foreach (var temporal in temporals)
             {
@@ -445,7 +445,7 @@ namespace Backend.Utils
 
         public static IEnumerable<PTGNode> ReachableNodesFromVariables(this PointsToGraph ptg)
         {
-            var roots = new HashSet<PTGNode>(ptg.Variables.SelectMany(v => ptg.GetTargets(v, false)));
+            var roots = new HashSet<PTGNode>(ptg.Roots.SelectMany(v => ptg.GetTargets(v, false)));
             roots.Add(PointsToGraph.NullNode);
             return ptg.ReachableNodes(roots);
         }

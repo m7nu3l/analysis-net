@@ -291,7 +291,7 @@ namespace Backend.Model
             //this.stackFrame = new Stack<MapSet<IVariable, PTGNode>>();
         }
 
-        public IEnumerable<IVariable> Variables
+        public IEnumerable<IVariable> Roots
         {
             get { return this.variables.Keys; }
         }
@@ -327,13 +327,13 @@ namespace Backend.Model
 			}
 
             // add all variables
-			foreach (var variable in ptg.Variables)
+			foreach (var variable in ptg.Roots)
 			{
 				this.variables.Add(variable);
 			}
 
 			// add all edges
-            foreach (var node in ptg.Nodes)
+            foreach (var node in ptg.Nodes.ToList())
             {
                 var clone = nodes[node.Id];
 
@@ -424,35 +424,35 @@ namespace Backend.Model
 
 		public void Remove(IVariable variable)
 		{
-			this.RemoveEdges(variable);
+			this.RemoveRootEdges(variable);
 			variables.Remove(variable);
 		}
 
-        public void Rename(IVariable oldVar, IVariable newVar)
-        {
-            var nodes = this.GetTargets(oldVar);
-            foreach(var node in nodes)
-            {
-                node.Variables.Remove(oldVar);
-                node.Variables.Add(newVar);
-            }
-            variables.AddRange(newVar, nodes);
+        //public void Rename(IVariable oldVar, IVariable newVar)
+        //{
+        //    var nodes = this.GetTargets(oldVar);
+        //    foreach(var node in nodes)
+        //    {
+        //        node.Variables.Remove(oldVar);
+        //        node.Variables.Add(newVar);
+        //    }
+        //    variables.AddRange(newVar, nodes);
 
-            variables.Remove(oldVar);
-            variables.Add(newVar);
-        }
+        //    variables.Remove(oldVar);
+        //    variables.Add(newVar);
+        //}
 
-        public void RenameVariables(IEnumerable<KeyValuePair<IVariable,IVariable>> binding)
-        {
-            foreach(var entry in binding)
-            {
-                Rename(entry.Key, entry.Value);
-            }
-        }
+        //public void RenameVariables(IEnumerable<KeyValuePair<IVariable,IVariable>> binding)
+        //{
+        //    foreach(var entry in binding)
+        //    {
+        //        Rename(entry.Key, entry.Value);
+        //    }
+        //}
 
         public void RemoveLocalVariables()
         {
-            foreach (var variable in Variables.ToArray())
+            foreach (var variable in Roots.ToArray())
             {
                 if (!variable.IsParameter)
                 {
@@ -618,7 +618,7 @@ namespace Backend.Model
             }
             return result;
         }
-        public void RemoveEdges(IVariable variable)
+        public void RemoveRootEdges(IVariable variable)
         {
 			var hasVariable = this.Contains(variable);
 			if (!hasVariable) return;
