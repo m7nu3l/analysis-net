@@ -406,7 +406,12 @@ namespace Backend.Model
 
 		public void Add(PTGNode node)
 		{
-			nodes.Add(node.Id, node);
+            if (!nodes.ContainsKey(node.Id))
+            {
+                nodes.Add(node.Id, node);
+            }
+            else
+            { }
 		}
 
 		public PTGNode GetNode(PTGID ptgId, IType type, PTGNodeKind kind = PTGNodeKind.Object)
