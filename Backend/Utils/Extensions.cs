@@ -461,7 +461,8 @@ namespace Backend.Utils
             roots.Add(PointsToGraph.NullNode);
             return ptg.ReachableNodes(roots);
         }
-        public static IEnumerable<PTGNode> ReachableNodes(this PointsToGraph ptg, IEnumerable<PTGNode> roots)
+        public static IEnumerable<PTGNode> ReachableNodes(this PointsToGraph ptg, IEnumerable<PTGNode> roots, 
+                                                          Predicate<Tuple<PTGNode, IFieldReference>> filter = null )
         {
             // var result = new HashSet<PTGNode>();
             ISet<PTGNode> visitedNodes = new HashSet<PTGNode>();
@@ -479,9 +480,16 @@ namespace Backend.Utils
                 {
                     continue;
                 }
-                foreach (var adjacents in ptgNode.Targets.Values)
+                foreach (var adjacents in ptgNode.Targets)
                 {
-                    foreach (var adjacent in adjacents)
+                    if (filter != null)
+                    {
+                        var node_filter = Tuple.Create(ptgNode, adjacents.Key);
+                        if (!filter(node_filter))
+                            continue;
+                    }
+                   
+                    foreach (var adjacent in adjacents.Value)
                     {
                         if (!visitedNodes.Contains(adjacent))
                         {
