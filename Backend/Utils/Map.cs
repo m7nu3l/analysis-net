@@ -95,6 +95,7 @@ namespace Backend.Utils
 			return this.DictionaryEquals(other, ValueEquals);
 		}
 
+
 		protected abstract bool ValueEquals(TCollection a, TCollection b);
 		protected abstract TCollection ValueIntersect(TCollection a, IEnumerable<TValue> b);
 

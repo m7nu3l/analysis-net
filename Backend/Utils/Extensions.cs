@@ -17,7 +17,19 @@ namespace Backend.Utils
 {
 	public static class Extensions
 	{
-		public static bool DictionaryEquals<K,V>(this IDictionary<K,V> self, IDictionary<K,V> other, Func<V, V, bool> valueEquals = null)
+        public static bool MapLessEquals<K, V>(this MapSet<K, V> left, MapSet<K, V> right)
+        {
+            var result = false;
+            if (!left.Keys.Except(right.Keys).Any() && left.Keys.Count() <= right.Keys.Count())
+            {
+                return left.All(kv => kv.Value.All(n => right[kv.Key].Contains(n)));
+                    //&& right.All(kv => kv.Value.IsSubsetOf(left[kv.Key]));
+            }
+            return result;
+        }
+
+
+        public static bool DictionaryEquals<K,V>(this IDictionary<K,V> self, IDictionary<K,V> other, Func<V, V, bool> valueEquals = null)
 		{
 			if (object.ReferenceEquals(self, other)) return true;
 			if (self.Count != other.Count) return false;
@@ -688,13 +700,13 @@ namespace Backend.Utils
             var analysis = new TypeInferenceAnalysis(cfg);
             analysis.Analyze();
 
-            var copyProgapagtion = new ForwardCopyPropagationAnalysis(cfg);
-            copyProgapagtion.Analyze();
-            copyProgapagtion.Transform(methodBody);
+            //var copyProgapagtion = new ForwardCopyPropagationAnalysis(cfg);
+            //copyProgapagtion.Analyze();
+            //copyProgapagtion.Transform(methodBody);
 
-            var backwardCopyProgapagtion = new BackwardCopyPropagationAnalysis(cfg);
-            backwardCopyProgapagtion.Analyze();
-            backwardCopyProgapagtion.Transform(methodBody);
+            //var backwardCopyProgapagtion = new BackwardCopyPropagationAnalysis(cfg);
+            //backwardCopyProgapagtion.Analyze();
+            //backwardCopyProgapagtion.Transform(methodBody);
 
             var liveVariables = new LiveVariablesAnalysis(cfg);
             var resultLiveVar = liveVariables.Analyze();

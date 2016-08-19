@@ -47,6 +47,15 @@ namespace Backend.Model
             }
             else return "--";
         }
+        public override bool Equals(object obj)
+        {
+            var oth = obj as MethodContex;
+            return oth.Method.Equals(Method);
+        }
+        public override int GetHashCode()
+        {
+            return this.Method.GetHashCode();
+        }
     }
 
     public class GlobalContext : PTGContext
@@ -129,13 +138,13 @@ namespace Backend.Model
 				this.Id.Equals(other.Id) &&
 				this.Kind == other.Kind &&
 				//this.Offset == other.Offset &&
-				object.Equals(this.Type, other.Type);
+				this.Type.Equals(other.Type);
 		}
 
 		public override int GetHashCode()
 		{
             //return this.Id.GetHashCode();
-            return this.Id.GetHashCode() + this.Kind.GetHashCode();
+            return this.Id.GetHashCode() + this.Type.GetHashCode() + this.Kind.GetHashCode();
         }
 
 		public override string ToString()
@@ -312,11 +321,11 @@ namespace Backend.Model
 		public void Union(PointsToGraph ptg)
 		{
             // We assume they have the same stack frame
-            if (this.stackFrame == null)
+            if (this.stackFrame == null && ptg.stackFrame!=null)
             {
-                this.stackFrame = ptg.stackFrame;
+                this.stackFrame = new Stack<MapSet<IVariable, PTGNode>>(ptg.stackFrame);
             }
-            System.Diagnostics.Debug.Assert(this.stackFrame == ptg.stackFrame);
+            //System.Diagnostics.Debug.Assert(this.stackFrame == ptg.stackFrame);
             // add all new nodes
             foreach (var node in ptg.Nodes)
 			{
@@ -495,7 +504,8 @@ namespace Backend.Model
                 {
                     foreach(var target in entry.Value)
                     {
-                        target.Sources[entry.Key].Remove(n);
+                        if(target.Sources.ContainsKey(entry.Key))
+                            target.Sources[entry.Key].Remove(n);
                     }
                 }
                 this.nodes.Remove(n.Id);
@@ -605,16 +615,26 @@ namespace Backend.Model
 				throw new ArgumentException("Target node does not belong to this Points-to graph.", "target");
 #endif
 
-            source.Targets.Add(field, target);
+            if(source.Targets.ContainsKey(field) && source.Targets[field].Count==1 && source.Targets[field].Single()==PointsToGraph.NullNode)
+            {
+                source.Targets.Remove(field);
+                PointsToGraph.NullNode.Sources.Remove(field);
+            }
+
+                source.Targets.Add(field, target);
             target.Sources.Add(field, source);
         }
 
         public ISet<PTGNode> GetTargets(IVariable variable, IFieldReference field)
         {
             var result = new HashSet<PTGNode>();
-            foreach(var ptg in variables[variable])
+            //foreach (var ptg in variables[variable])
+            foreach (var node in GetTargets(variable,false))
             {
-                result.AddRange(ptg.Targets[field]);
+                if(node.Targets.ContainsKey(field))
+                    result.AddRange(node.Targets[field]);
+                else
+                { }
             }
             return result;
         }
@@ -640,6 +660,19 @@ namespace Backend.Model
 			targets.Clear();
         }
 
+        public bool GraphLessEquals(PointsToGraph other)
+        {
+            if (object.ReferenceEquals(this, other)) return true;
+
+            Func<PTGNode, PTGNode, bool> nodeEquals = (a, b) => a.Equals(b) && a.SameEdges(b);
+
+            return other != null &&
+                this.variables.MapLessEquals(other.variables) &&
+                // this.nodes.DictionaryEquals(other.nodes, nodeEquals);
+                nodes.All(n => other.nodes.Contains(n));
+        }
+
+
         public bool GraphEquals(object obj)
         {
 			if (object.ReferenceEquals(this, obj)) return true;
@@ -647,9 +680,11 @@ namespace Backend.Model
 
 			Func<PTGNode, PTGNode, bool> nodeEquals = (a, b) => a.Equals(b) && a.SameEdges(b);
 
-			return other != null &&
-				this.variables.MapEquals(other.variables) &&
-				this.nodes.DictionaryEquals(other.nodes, nodeEquals);
+            return other != null &&
+                this.variables.MapEquals(other.variables) &&
+                // this.nodes.DictionaryEquals(other.nodes, nodeEquals);
+                nodes.All(n => other.nodes.Contains(n)) &&
+                this.nodes.All(n => this.nodes.Contains(n));
         }
     }
 }
