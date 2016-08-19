@@ -323,7 +323,7 @@ namespace Backend.Model
             // We assume they have the same stack frame
             if (this.stackFrame == null && ptg.stackFrame!=null)
             {
-                this.stackFrame = new Stack<MapSet<IVariable, PTGNode>>(ptg.stackFrame);
+                this.stackFrame = new Stack<MapSet<IVariable, PTGNode>>(ptg.stackFrame.Reverse());
             }
             //System.Diagnostics.Debug.Assert(this.stackFrame == ptg.stackFrame);
             // add all new nodes
