@@ -708,9 +708,9 @@ namespace Backend.Utils
             var analysis = new TypeInferenceAnalysis(cfg);
             analysis.Analyze();
 
-            //var copyProgapagtion = new ForwardCopyPropagationAnalysis(cfg);
-            //copyProgapagtion.Analyze();
-            //copyProgapagtion.Transform(methodBody);
+            var copyProgapagtion = new ForwardCopyPropagationAnalysis(cfg);
+            copyProgapagtion.Analyze();
+            copyProgapagtion.Transform(methodBody);
 
             //var backwardCopyProgapagtion = new BackwardCopyPropagationAnalysis(cfg);
             //backwardCopyProgapagtion.Analyze();

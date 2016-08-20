@@ -185,7 +185,7 @@ namespace Backend.Analyses
 
 			var isCopy = instruction.IsCopy(out left, out right);
 
-			if (isCopy)
+            if (isCopy)
 			{
 				// Only replace temporal variables
 				if (right.IsTemporal() &&
@@ -200,13 +200,18 @@ namespace Backend.Analyses
 				this.RemoveCopiesWithVariable(copies, variable);
 			}
 
+            var firstAdded = false;
+
 			if (isCopy)
 			{
 				this.RemoveCopiesWithVariable(copies, left);
+                if (!copies.Values.Contains(right))
+                    firstAdded = true;
+
 				copies.Add(left, right);
 			}
 
-			var result = isCopy && left.IsTemporal();
+			var result = isCopy && left.IsTemporal() && !firstAdded;
 			return result;
 		}
 	}
