@@ -637,7 +637,7 @@ namespace Backend.Utils
         public static bool IsDelegateType(this IType type)
         {
             var basicType = type as IBasicType;
-            if (type != null && basicType.ResolvedType is ClassDefinition)
+            if (basicType != null && basicType.ResolvedType is ClassDefinition)
             {
                 if ((basicType.ResolvedType as ClassDefinition).IsDelegate)
                 {
@@ -652,7 +652,8 @@ namespace Backend.Utils
         {
             var result = method;
 
-            while (receiverType != null && !method.ContainingType.Equals(receiverType))
+
+            while (receiverType != null)
             {
                 var receiverTypeDef = receiverType.ResolvedType as ClassDefinition;
                 if (receiverTypeDef == null) break;
