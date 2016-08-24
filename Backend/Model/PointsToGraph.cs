@@ -278,7 +278,7 @@ namespace Backend.Model
             return node;
         }
     }
-    public class PointsToGraph
+    public class PointsToGraph // : IPointsToGraph
     {
         private Stack<MapSet<IVariable, PTGNode>> stackFrame;
 		private MapSet<IVariable, PTGNode> variables;
@@ -318,7 +318,36 @@ namespace Backend.Model
 			return ptg;
 		}
 
-		public void Union(PointsToGraph ptg)
+        public PointsToGraph Join(PointsToGraph right)
+        {
+            var ptg = this.Clone();
+            ptg.Union(right);
+            return ptg;
+        }
+
+        public PointsToGraph ShalowClone()
+        {
+            var ptg = new PointsToGraph();
+            // We assume they have the same stack frame
+            if (ptg.stackFrame == null && this.stackFrame != null)
+            {
+                ptg.stackFrame = new Stack<MapSet<IVariable, PTGNode>>(this.stackFrame.Reverse());
+            }
+
+            ptg.nodes = new Dictionary<PTGID, PTGNode>(this.nodes);
+
+            ptg.variables = new MapSet<IVariable, PTGNode>(this.variables);
+            return ptg;
+        }
+
+        public PointsToGraph ShalowJoin(PointsToGraph  right)
+        {
+            var ptg = this.ShalowClone();
+            ptg.Union(right);
+            return ptg;
+        }
+
+        public void Union(PointsToGraph ptg)
 		{
             // We assume they have the same stack frame
             if (this.stackFrame == null && ptg.stackFrame!=null)
@@ -426,7 +455,7 @@ namespace Backend.Model
             return node;
 		}
 
-		public ISet<PTGNode> GetTargets(IVariable variable, bool failIfNotExists = true)
+		public ISet<PTGNode> GetTargets(IVariable variable, bool failIfNotExists = false)
 		{
             if (failIfNotExists) return variables[variable];
 
@@ -613,11 +642,20 @@ namespace Backend.Model
         public void PointsTo(PTGNode source, IFieldReference field, PTGNode target)
         {
 #if DEBUG
-			if (!this.Contains(source))
-				throw new ArgumentException("Source node does not belong to this Points-to graph.", "source");
+            if (!this.Contains(source))
+            {
+                this.nodes.Add(source.Id, source);
+            }
+    //        if (!this.Contains(source))
+				//throw new ArgumentException("Source node does not belong to this Points-to graph.", "source");
 
-			if (!this.Contains(target))
-				throw new ArgumentException("Target node does not belong to this Points-to graph.", "target");
+            if (!this.Contains(target))
+            {
+                this.nodes.Add(target.Id, target);
+            }
+
+    //        if (!this.Contains(target))
+				//throw new ArgumentException("Target node does not belong to this Points-to graph.", "target");
 #endif
 
             if(source.Targets.ContainsKey(field) && source.Targets[field].Count==1 && source.Targets[field].Single()==PointsToGraph.NullNode)
