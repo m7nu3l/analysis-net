@@ -17,8 +17,9 @@ namespace Backend.Analyses
 	public abstract class DataFlowAnalysis<T>
 	{
 		protected ControlFlowGraph cfg;
+        protected DataFlowAnalysisResult<T>[] previousResult;
 
-		public DataFlowAnalysis(ControlFlowGraph cfg)
+        public DataFlowAnalysis(ControlFlowGraph cfg)
 		{
 			this.cfg = cfg;
 		}
@@ -32,6 +33,11 @@ namespace Backend.Analyses
 		protected abstract T Join(T left, T right);
 
 		protected abstract T Flow(CFGNode node, T input);
+
+        public virtual void SetPreviousResult(DataFlowAnalysisResult<T>[] results)
+        {
+            this.previousResult = results;
+        }
 	}
 
 	public abstract class ForwardDataFlowAnalysis<T> : DataFlowAnalysis<T>
@@ -45,15 +51,28 @@ namespace Backend.Analyses
 		{
 			var sorted_nodes = this.cfg.ForwardOrder;
 			var pending_nodes = new Queue<CFGNode>();
-			var result = new DataFlowAnalysisResult<T>[sorted_nodes.Length];
+            DataFlowAnalysisResult<T>[] result; 
+
+            if(previousResult!=null)
+            {
+                result = previousResult;
+            }
+            else
+            {
+                result = new DataFlowAnalysisResult<T>[sorted_nodes.Length];
+            }
 
 			for (var i = 0; i < sorted_nodes.Length; ++i)
 			{
 				var node = sorted_nodes[i];
-				var node_result = new DataFlowAnalysisResult<T>();
+				var node_result = result[node.Id]==null? new DataFlowAnalysisResult<T>(): result[node.Id];
 
-				node_result.Output = this.InitialValue(node);
-				result[node.Id] = node_result;
+                if(node_result.Output !=null) 
+                    this.Join(node_result.Output,this.InitialValue(node));
+                else
+                    node_result.Output = this.InitialValue(node);
+
+                result[node.Id] = node_result;
 
 				if (node.Predecessors.Count > 0)
 				{
@@ -71,6 +90,7 @@ namespace Backend.Analyses
 					var first_pred = node.Predecessors.First();
 					var other_predecessors = node.Predecessors.Skip(1);
 					var pred_result = result[first_pred.Id];
+
 					var node_input = pred_result.Output;
 
 					foreach (var pred in other_predecessors)
@@ -79,7 +99,10 @@ namespace Backend.Analyses
 						node_input = this.Join(node_input, pred_result.Output);
 					}
 
-					node_result.Input = node_input;
+                    if (node_result.Input != null)
+                        node_result.Input = this.Join(node_result.Input, node_input);
+                    else
+                        node_result.Input = node_input;
 				}				
 
 				var old_output = node_result.Output;
