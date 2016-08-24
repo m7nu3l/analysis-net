@@ -83,7 +83,7 @@ namespace Model
             var containingNamespace = string.Empty;
             var containingTypes = string.Empty;
 
-            if (type.ContainingNamespace != null)
+            if (type.ContainingNamespace != null && type.ContainingNamespace.Any())
             {
                 containingNamespace = string.Format("{0}.", type.ContainingNamespace);
             }
