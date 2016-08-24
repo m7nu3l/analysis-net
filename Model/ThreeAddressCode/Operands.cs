@@ -339,8 +339,9 @@ namespace Model.ThreeAddressCode.Values
 	public class TemporalVariable : IVariable
 	{
 		private string name;
+        private string _fullName;
 
-		public IType Type { get; set; }
+        public IType Type { get; set; }
 		public uint Index { get; set; }
 
 		public TemporalVariable(string name, uint index)
@@ -356,7 +357,13 @@ namespace Model.ThreeAddressCode.Values
 
 		public string Name
 		{
-			get { return string.Format("{0}{1}", this.name, this.Index); }
+			get {
+                if (_fullName == null)
+                {
+                    _fullName = string.Format("{0}{1}", this.name, this.Index);
+                }
+                return _fullName;
+            }
 		}
 
 		public bool IsParameter
@@ -409,6 +416,8 @@ namespace Model.ThreeAddressCode.Values
 		public IVariable Original { get; set; }
 		public uint Index { get; set; }
 
+        private string _name;
+
 		public DerivedVariable(IVariable original, uint index)
 		{
 			this.Original = original;
@@ -419,14 +428,17 @@ namespace Model.ThreeAddressCode.Values
 		{
 			get
 			{
-				var result = this.Original.Name;
+                if (_name == null)
+                {
+                    var result = this.Original.Name;
 
-				if (this.Index > 0)
-				{
-					result = string.Format("{0}{1}", result, this.Index);
-				}
-
-				return result;
+                    if (this.Index > 0)
+                    {
+                        result = string.Format("{0}{1}", result, this.Index);
+                    }
+                    _name = result;
+                }
+				return _name;
 			}
 		}
 
