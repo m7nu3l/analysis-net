@@ -313,9 +313,10 @@ namespace Backend.Model
 
         public PointsToGraph Clone()
 		{
-			var ptg = new PointsToGraph();
+            var ptg = new PointsToGraph();
             ptg.Union(this);
-			return ptg;
+            return ptg;
+            //return this;
 		}
 
         public PointsToGraph Join(PointsToGraph right)
@@ -333,9 +334,7 @@ namespace Backend.Model
             {
                 ptg.stackFrame = new Stack<MapSet<IVariable, PTGNode>>(this.stackFrame.Reverse());
             }
-
             ptg.nodes = new Dictionary<PTGID, PTGNode>(this.nodes);
-
             ptg.variables = new MapSet<IVariable, PTGNode>(this.variables);
             return ptg;
         }
@@ -347,8 +346,20 @@ namespace Backend.Model
             return ptg;
         }
 
+        public PointsToGraph FakeJoin(PointsToGraph right)
+        {
+            var ptg = this;
+            ptg.Union(right);
+            return ptg;
+        }
+
+
         public void Union(PointsToGraph ptg)
 		{
+            if (this == ptg)
+                return;
+
+
             // We assume they have the same stack frame
             if (this.stackFrame == null && ptg.stackFrame!=null)
             {
@@ -604,7 +615,7 @@ namespace Backend.Model
         {
             ISet<PTGNode> nodes = null;
 
-            var validReturn = (dest.Type != null && dest.Type.TypeKind == TypeKind.ReferenceType); //(retVariable.Type != null && retVariable.Type.TypeKind == TypeKind.ReferenceType)  &&
+            var validReturn = (dest.Type != null && dest.Type.IsClassOrStruct()); //(retVariable.Type != null && retVariable.Type.TypeKind == TypeKind.ReferenceType)  &&
 
             if (validReturn)
                 nodes = GetTargets(retVariable);
@@ -666,6 +677,16 @@ namespace Backend.Model
 
                 source.Targets.Add(field, target);
             target.Sources.Add(field, source);
+        }
+
+        public ISet<PTGNode> GetTargets(PTGNode node, IFieldReference field)
+        {
+            var result = new HashSet<PTGNode>();
+
+            if (node.Targets.ContainsKey(field))
+                result.AddRange(node.Targets[field]);
+
+            return result;
         }
 
         public ISet<PTGNode> GetTargets(IVariable variable, IFieldReference field)

@@ -535,6 +535,27 @@ namespace Backend.Utils
 			return result;
 		}
 
+        public static bool IsConstructorCall(this Instruction ins)
+        {
+            if(ins is MethodCallInstruction)
+            {
+                var call = ins as MethodCallInstruction;
+                if (call.Method.Name == ".ctor")
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+        public static bool IsConstructor(this IMethodReference method)
+        {
+            if (method.Name == ".ctor")
+            {
+                return true;
+            }
+            return false;
+        }
+
         public static void Inline(this MethodBody callerBody, MethodCallInstruction methodCall, MethodBody calleeBody)
         {
             // TODO: Fix local variables (and parameters) name clashing
@@ -629,6 +650,38 @@ namespace Backend.Utils
         {
             return type.TypeKind == TypeKind.ReferenceType;
         }
+
+        public static bool IsClassOrStruct(this IType type)
+        {
+            var isRefType = type.TypeKind == TypeKind.ReferenceType;
+            if(!isRefType)
+            {
+                var basicType = type as IBasicType;
+                if (basicType != null)
+                {
+                    if (basicType.ResolvedType != null && ((basicType.ResolvedType is ClassDefinition) || (basicType.ResolvedType is StructDefinition)))
+                    {
+                        return true;
+                    }
+                }
+            }
+            return isRefType;
+        }
+
+        public static bool IsScalar(this IType type)
+        {
+            var isValueType = type.TypeKind == TypeKind.ValueType;
+            if (isValueType)
+            {
+                var basicType = type as IBasicType;
+                if (basicType.ResolvedType != null && (basicType.ResolvedType is StructDefinition))
+                {
+                    return false;
+                }
+            }
+            return isValueType;
+        }
+
         public static bool IsValueType(this IType type)
         {
             return type.TypeKind == TypeKind.ValueType;
@@ -709,9 +762,9 @@ namespace Backend.Utils
             var analysis = new TypeInferenceAnalysis(cfg);
             analysis.Analyze();
 
-            //var copyProgapagtion = new ForwardCopyPropagationAnalysis(cfg);
-            //copyProgapagtion.Analyze();
-            //copyProgapagtion.Transform(methodBody);
+            var copyProgapagtion = new ForwardCopyPropagationAnalysis(cfg);
+            copyProgapagtion.Analyze();
+            copyProgapagtion.Transform(methodBody);
 
             //var backwardCopyProgapagtion = new BackwardCopyPropagationAnalysis(cfg);
             //backwardCopyProgapagtion.Analyze();
