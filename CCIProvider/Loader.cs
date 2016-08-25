@@ -56,7 +56,7 @@ namespace CCIProvider
 			var module = cciHost.LoadUnitFrom(fileName) as Cci.IModule;
 
 			if (module == null || module == Cci.Dummy.Module || module == Cci.Dummy.Assembly)
-				throw new Exception("The input is not a valid CLR module or assembly.");
+				throw new AnalysisNetException("The input is not a valid CLR module or assembly.");
 
 			var pdbFileName = Path.ChangeExtension(fileName, "pdb");
 			Cci.PdbReader pdbReader = null;
