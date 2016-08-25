@@ -76,6 +76,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AnalysisNetException.cs" />
     <Compile Include="AssemblyTraverser.cs" />
     <Compile Include="CodeProvider.cs" />
     <Compile Include="Loader.cs" />
