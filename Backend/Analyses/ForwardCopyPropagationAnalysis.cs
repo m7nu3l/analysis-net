@@ -14,205 +14,238 @@ using Model.Types;
 
 namespace Backend.Analyses
 {
-	public class ForwardCopyPropagationAnalysis : ForwardDataFlowAnalysis<IDictionary<IVariable, IVariable>>
-	{
-		private DataFlowAnalysisResult<IDictionary<IVariable, IVariable>>[] result;
-		private IDictionary<IVariable, IVariable>[] GEN;
-		private ISet<IVariable>[] KILL;
+    public class ForwardCopyPropagationAnalysis : ForwardDataFlowAnalysis<IDictionary<IVariable, IVariable>>
+    {
+        #region struct InstructionLocation
 
-		public ForwardCopyPropagationAnalysis(ControlFlowGraph cfg)
-			: base(cfg)
-		{
-		}
+        private struct InstructionLocation
+        {
+            public CFGNode CFGNode;
+            public IInstruction Instruction;
+        }
 
-		public void Transform(MethodBody body)
-		{
-			if (this.result == null) throw new InvalidOperationException("Analysis result not available.");
+        #endregion
 
-			foreach (var node in this.cfg.Nodes)
-			{
-				var node_result = this.result[node.Id];
-				var copies = new Dictionary<IVariable, IVariable>();
+        private DataFlowAnalysisResult<IDictionary<IVariable, IVariable>>[] result;
+        private IDictionary<IVariable, IVariable>[] GEN;
+        private ISet<IVariable>[] KILL;
 
-				if (node_result.Input != null)
-				{
-					copies.AddRange(node_result.Input);
-				}
+        public ForwardCopyPropagationAnalysis(ControlFlowGraph cfg)
+            : base(cfg)
+        {
+        }
 
-				for (var i = 0; i < node.Instructions.Count; ++i)
-				{
-					var instruction = node.Instructions[i];
+        public void Transform(MethodBody body)
+        {
+            if (this.result == null) throw new InvalidOperationException("Analysis result not available.");
+            var copiesToRemove = new Dictionary<IVariable, InstructionLocation>();
 
-					foreach (var variable in instruction.UsedVariables)
-					{
-						// Only replace temporal variables
-						if (variable.IsTemporal() &&
-							copies.ContainsKey(variable))
-						{
-							var operand = copies[variable];
+            foreach (var node in this.cfg.Nodes)
+            {
+                var node_result = this.result[node.Id];
+                var copies = new Dictionary<IVariable, IVariable>();
 
-							instruction.Replace(variable, operand);
-						}
-					}
+                if (node_result.Input != null)
+                {
+                    copies.AddRange(node_result.Input);
+                }
 
-					var isTemporalCopy = this.Flow(instruction, copies);
+                for (var i = 0; i < node.Instructions.Count; ++i)
+                {
+                    var instruction = node.Instructions[i];
 
-					// Only replace temporal variables
-					if (isTemporalCopy)
-					{
-						// Remove the copy instruction
-						if (i == 0)
-						{
-							// The copy is the first instruction of the basic block
-							// Replace the copy instruction with a nop to preserve branch targets
-							var nop = new NopInstruction(instruction.Offset);
-							var index = body.Instructions.IndexOf(instruction);
-							body.Instructions[index] = nop;
-							node.Instructions[i] = nop;
-						}
-						else
-						{
-							// The copy is not the first instruction of the basic block
-							body.Instructions.Remove(instruction);
-							node.Instructions.RemoveAt(i);
-							--i;
-						}
-					}
-				}
-			}
+                    foreach (var variable in instruction.UsedVariables)
+                    {
+                        // If the variable definition is marked to be removed
+                        // but it is not a copy reaching this instruction,
+                        // then we cannot remove the definition because the
+                        // variable cannot be replaced with a copy.
+                        if (copiesToRemove.ContainsKey(variable) &&
+                            !copies.ContainsKey(variable))
+                        {
+                            copiesToRemove.Remove(variable);
+                        }
+                        // Only replace temporal variables
+                        else if (variable.IsTemporal() &&
+                            copies.ContainsKey(variable))
+                        {
+                            var operand = copies[variable];
 
-			body.UpdateVariables();
-		}
+                            instruction.Replace(variable, operand);
+                        }
+                    }
 
-		public override DataFlowAnalysisResult<IDictionary<IVariable, IVariable>>[] Analyze()
-		{
-			this.ComputeGen();
-			this.ComputeKill();
+                    var isTemporalCopy = this.Flow(instruction, copies);
 
-			var result = base.Analyze();
+                    // Only replace temporal variables
+                    if (isTemporalCopy)
+                    {
+                        var definition = instruction as DefinitionInstruction;
 
-			this.result = result;
-			this.GEN = null;
-			this.KILL = null;
+                        // Mark the copy instruction to be removed later
+                        var location = new InstructionLocation()
+                        {
+                            CFGNode = node,
+                            Instruction = instruction
+                        };
 
-			return result;
-		}
+                        if(!copiesToRemove.ContainsKey(definition.Result))
+                            copiesToRemove.Add(definition.Result, location);
+                    }
+                }
+            }
 
-		protected override IDictionary<IVariable, IVariable> InitialValue(CFGNode node)
-		{
-			return GEN[node.Id];
-		}
+            // Remove unnecessary copy instructions
+            foreach (var location in copiesToRemove.Values)
+            {
+                var bodyIndex = body.Instructions.IndexOf(location.Instruction);
+                var nodeIndex = location.CFGNode.Instructions.IndexOf(location.Instruction);
 
-		protected override bool Compare(IDictionary<IVariable, IVariable> left, IDictionary<IVariable, IVariable> right)
-		{
-			return left.DictionaryEquals(right);
-		}
+                if (nodeIndex == 0)
+                {
+                    // The copy is the first instruction of the basic block
+                    // Replace the copy instruction with a nop to preserve branch targets
+                    var nop = new NopInstruction(location.Instruction.Offset);
+                    body.Instructions[bodyIndex] = nop;
+                    location.CFGNode.Instructions[nodeIndex] = nop;
+                }
+                else
+                {
+                    // The copy is not the first instruction of the basic block
+                    body.Instructions.RemoveAt(bodyIndex);
+                    location.CFGNode.Instructions.RemoveAt(nodeIndex);
+                }
+            }
 
-		protected override IDictionary<IVariable, IVariable> Join(IDictionary<IVariable, IVariable> left, IDictionary<IVariable, IVariable> right)
-		{
-			Func<IVariable, IVariable, IVariable> intersectVariables = (a, b) => a.Equals(b) ? a : null;
-			var result = left.Intersect(right, intersectVariables);
-			return result;
-		}
+            body.UpdateVariables();
+        }
 
-		protected override IDictionary<IVariable, IVariable> Flow(CFGNode node, IDictionary<IVariable, IVariable> input)
-		{
-			var output = new Dictionary<IVariable, IVariable>(input);
-			var kill = KILL[node.Id];
-			var gen = GEN[node.Id];
+        public override DataFlowAnalysisResult<IDictionary<IVariable, IVariable>>[] Analyze()
+        {
+            this.ComputeGen();
+            this.ComputeKill();
 
-			foreach (var variable in kill)
-			{
-				this.RemoveCopiesWithVariable(output, variable);
-			}
+            var result = base.Analyze();
 
-			output.SetRange(gen);
-			return output;
-		}
+            this.result = result;
+            this.GEN = null;
+            this.KILL = null;
 
-		private void ComputeGen()
-		{
-			GEN = new IDictionary<IVariable, IVariable>[this.cfg.Nodes.Count];
+            return result;
+        }
 
-			foreach (var node in this.cfg.Nodes)
-			{
-				var gen = new Dictionary<IVariable, IVariable>();
+        protected override IDictionary<IVariable, IVariable> InitialValue(CFGNode node)
+        {
+            return GEN[node.Id];
+        }
 
-				foreach (var instruction in node.Instructions)
-				{
-					this.Flow(instruction, gen);
-				}
+        protected override bool Compare(IDictionary<IVariable, IVariable> left, IDictionary<IVariable, IVariable> right)
+        {
+            return left.DictionaryEquals(right);
+        }
 
-				GEN[node.Id] = gen;
-			}
-		}
+        protected override IDictionary<IVariable, IVariable> Join(IDictionary<IVariable, IVariable> left, IDictionary<IVariable, IVariable> right)
+        {
+            Func<IVariable, IVariable, IVariable> intersectVariables = (a, b) => a.Equals(b) ? a : null;
+            var result = left.Intersect(right, intersectVariables);
+            return result;
+        }
 
-		private void ComputeKill()
-		{
-			KILL = new ISet<IVariable>[this.cfg.Nodes.Count];
+        protected override IDictionary<IVariable, IVariable> Flow(CFGNode node, IDictionary<IVariable, IVariable> input)
+        {
+            var output = new Dictionary<IVariable, IVariable>(input);
+            var kill = KILL[node.Id];
+            var gen = GEN[node.Id];
 
-			foreach (var node in this.cfg.Nodes)
-			{
-				var kill = new HashSet<IVariable>();
+            foreach (var variable in kill)
+            {
+                this.RemoveCopiesWithVariable(output, variable);
+            }
 
-				foreach (var instruction in node.Instructions)
-				{
-					kill.UnionWith(instruction.ModifiedVariables);
-				}
+            output.SetRange(gen);
+            return output;
+        }
 
-				KILL[node.Id] = kill;
-			}
-		}
+        private void ComputeGen()
+        {
+            GEN = new IDictionary<IVariable, IVariable>[this.cfg.Nodes.Count];
 
-		private void RemoveCopiesWithVariable(IDictionary<IVariable, IVariable> copies, IVariable variable)
-		{
-			var array = copies.ToArray();
+            foreach (var node in this.cfg.Nodes)
+            {
+                var gen = new Dictionary<IVariable, IVariable>();
 
-			foreach (var copy in array)
-			{
-				if (copy.Key == variable ||
-					copy.Value == variable)
-				{
-					copies.Remove(copy.Key);
-				}
-			}
-		}
+                foreach (var instruction in node.Instructions)
+                {
+                    this.Flow(instruction, gen);
+                }
 
-		private bool Flow(IInstruction instruction, IDictionary<IVariable, IVariable> copies)
-		{
-			IVariable left;
-			IVariable right;
+                GEN[node.Id] = gen;
+            }
+        }
 
-			var isCopy = instruction.IsCopy(out left, out right);
+        private void ComputeKill()
+        {
+            KILL = new ISet<IVariable>[this.cfg.Nodes.Count];
+
+            foreach (var node in this.cfg.Nodes)
+            {
+                var kill = new HashSet<IVariable>();
+
+                foreach (var instruction in node.Instructions)
+                {
+                    kill.UnionWith(instruction.ModifiedVariables);
+                }
+
+                KILL[node.Id] = kill;
+            }
+        }
+
+        private void RemoveCopiesWithVariable(IDictionary<IVariable, IVariable> copies, IVariable variable)
+        {
+            var array = copies.ToArray();
+
+            foreach (var copy in array)
+            {
+                if (copy.Key == variable ||
+                    copy.Value == variable)
+                {
+                    copies.Remove(copy.Key);
+                }
+            }
+        }
+
+        private bool Flow(IInstruction instruction, IDictionary<IVariable, IVariable> copies)
+        {
+            IVariable left;
+            IVariable right;
+
+            var isCopy = instruction.IsCopy(out left, out right);
 
             if (isCopy)
-			{
-				// Only replace temporal variables
-				if (right.IsTemporal() &&
-					copies.ContainsKey(right))
-				{
-					right = copies[right];
-				}
-			}
+            {
+                // Only replace temporal variables
+                if (right.IsTemporal() &&
+                    copies.ContainsKey(right))
+                {
+                    right = copies[right];
+                }
+            }
 
-			foreach (var variable in instruction.ModifiedVariables)
-			{
-				this.RemoveCopiesWithVariable(copies, variable);
-			}
+            // Here we are also removing 'left'.
+            foreach (var variable in instruction.ModifiedVariables)
+            {
+                this.RemoveCopiesWithVariable(copies, variable);
+            }
 
-            var firstAdded = false;
+            if (isCopy)
+            {
+                // 'left' should be already removed.
+                //this.RemoveCopiesWithVariable(copies, left);
+                copies.Add(left, right);
+            }
 
-			if (isCopy)
-			{
-				this.RemoveCopiesWithVariable(copies, left);
-                if (!copies.Values.Contains(right))
-                    firstAdded = true;
-
-				copies.Add(left, right);
-			}
-
-			var result = isCopy && left.IsTemporal() && !firstAdded;
-			return result;
-		}
-	}
+            var result = isCopy && left.IsTemporal();
+            return result;
+        }
+    }
 }
