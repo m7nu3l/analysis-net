@@ -661,7 +661,8 @@ namespace Backend.Utils
                 {
                     if (basicType.ResolvedType != null && ((basicType.ResolvedType is ClassDefinition) || (basicType.ResolvedType is StructDefinition)))
                     {
-                        return true;
+                        if(basicType.ResolvedType.Name!="Double")
+                            return true;
                     }
                 }
             }
