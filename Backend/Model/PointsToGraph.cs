@@ -394,8 +394,8 @@ namespace Backend.Model
                 }
 
                 // add source -field-> node edges
-                foreach (var entry in node.Sources)
-                    foreach (var source in entry.Value)
+                foreach (var entry in node.Sources.ToList())
+                    foreach (var source in entry.Value.ToList())
                     {
                         // TODO: Sometimes this fail meaning the PTG invariant may be broken
                         if (!nodes.ContainsKey(source.Id))
@@ -408,8 +408,8 @@ namespace Backend.Model
                     }
 
                 // add node -field-> target edges
-                foreach (var entry in node.Targets)
-                    foreach (var target in entry.Value)
+                foreach (var entry in node.Targets.ToList())
+                    foreach (var target in entry.Value.ToList())
                     {
                         // TODO: Sometimes this fail meaning the PTG invariant may be broken
                         if (!nodes.ContainsKey(target.Id))
