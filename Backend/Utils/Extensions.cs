@@ -653,6 +653,7 @@ namespace Backend.Utils
 
         public static bool IsClassOrStruct(this IType type)
         {
+            string[] primitiveTypes = { "Double", "Integer", "Boolean", "Char", "Int32", "Int16", "Int64" };
             var isRefType = type.TypeKind == TypeKind.ReferenceType;
             if(!isRefType)
             {
@@ -661,7 +662,7 @@ namespace Backend.Utils
                 {
                     if (basicType.ResolvedType != null && ((basicType.ResolvedType is ClassDefinition) || (basicType.ResolvedType is StructDefinition)))
                     {
-                        if(basicType.ResolvedType.Name!="Double")
+                        if(!primitiveTypes.Contains(basicType.ResolvedType.Name))
                             return true;
                     }
                 }

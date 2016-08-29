@@ -25,13 +25,17 @@ namespace Backend.Model
         private MapSet<NodeField,PTGNode> edges;
         private ISet<PTGNode> nodes;
 
+        public static PTGNode NullNode = new NullNode(); // { get; private set; }
+        public static PTGNode GlobalNode = new GlobalNode();
+
+
         public SimplePointsToGraph()
         {
             this.stackFrame = new Stack<MapSet<IVariable, PTGNode>>();
             this.roots = new MapSet<IVariable, PTGNode>();
             this.nodes = new HashSet<PTGNode>();
             this.edges = new MapSet<NodeField, PTGNode>();
-            this.Add(PointsToGraph.NullNode);
+            this.Add(SimplePointsToGraph.NullNode);
         }
 
         public IEnumerable<IVariable> Roots
@@ -93,6 +97,8 @@ namespace Backend.Model
 
         public void Union(SimplePointsToGraph ptg)
         {
+            if(stackFrame.Count!=ptg.stackFrame.Count)
+            { }
             // We assume they have the same stack frame
             if (this.stackFrame == null && ptg.stackFrame != null)
             {
@@ -155,7 +161,7 @@ namespace Backend.Model
             this.nodes.Add(source);
 
             var currentTargets = GetTargets(source, field);
-            if (currentTargets.Count == 1 && currentTargets.Single() == PointsToGraph.NullNode)
+            if (currentTargets.Count == 1 && currentTargets.Single() == SimplePointsToGraph.NullNode)
             {
                 this.RemoveTargets(source, field);
             }
@@ -264,7 +270,8 @@ namespace Backend.Model
             {
                 this.edges.Remove(entry);
             }
-            this.nodes.ExceptWith(unreacheableNodes);
+            //this.nodes.ExceptWith(unreacheableNodes);
+            this.nodes = new HashSet<PTGNode>(this.nodes.Except(unreacheableNodes));
         }
 
 
@@ -334,7 +341,7 @@ namespace Backend.Model
         {
             var ptg = this;
             var roots = new HashSet<PTGNode>(ptg.Roots.SelectMany(v => ptg.GetTargets(v, false)));
-            roots.Add(PointsToGraph.NullNode);
+            roots.Add(SimplePointsToGraph.NullNode);
             return ptg.ReachableNodes(roots);
         }
         public IEnumerable<PTGNode> ReachableNodes(IEnumerable<PTGNode> roots,
@@ -353,7 +360,7 @@ namespace Backend.Model
             {
                 var ptgNode = workList.Dequeue();
                 visitedNodes.Add(ptgNode);
-                if (ptgNode.Equals(PointsToGraph.NullNode))
+                if (ptgNode.Equals(SimplePointsToGraph.NullNode))
                 {
                     continue;
                 }
@@ -394,7 +401,7 @@ namespace Backend.Model
             Queue<PTGNode> workList = new Queue<PTGNode>();
             var nodes = ptg.GetTargets(v1, false);
 
-            if (nodes.Contains(n) && !n.Equals(PointsToGraph.NullNode))
+            if (nodes.Contains(n) && !n.Equals(SimplePointsToGraph.NullNode))
                 return true;
 
             foreach (var ptgNode in nodes)
@@ -405,7 +412,7 @@ namespace Backend.Model
             {
                 var ptgNode = workList.Dequeue();
                 visitedNodes.Add(ptgNode);
-                if (ptgNode.Equals(PointsToGraph.NullNode))
+                if (ptgNode.Equals(SimplePointsToGraph.NullNode))
                 {
                     continue;
                 }
@@ -430,7 +437,7 @@ namespace Backend.Model
             var res = new HashSet<IVariable>() { v };
             foreach (var ptgNode in ptg.GetTargets(v, false)) // GetPtgNodes(v))
             {
-                if (ptgNode != PointsToGraph.NullNode)
+                if (ptgNode != SimplePointsToGraph.NullNode)
                 {
                     res.UnionWith(ptgNode.Variables);
                 }
