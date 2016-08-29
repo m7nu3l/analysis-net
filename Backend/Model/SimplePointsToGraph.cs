@@ -197,6 +197,18 @@ namespace Backend.Model
             }
             return result;
         }
+        public MapSet<IFieldReference, PTGNode> GetTargets(PTGNode ptgNode)
+        {
+            //var result = this.edges.Where(kv => kv.Key.Source.Equals(ptgNode)).GroupBy(kv => kv.Key.Field, kv=> kv.Value);
+            //return result.ToDictionary( kv => kv.Key, kv => kv.SelectMany(kv => kv.));
+            var result = new MapSet<IFieldReference, PTGNode>();
+            foreach (var edge in this.edges.Where(kv => kv.Key.Source.Equals(ptgNode)))
+            {
+                result.AddRange(edge.Key.Field, edge.Value);
+            }
+            return result;
+        }
+
         public void RemoveTargets(PTGNode source, IFieldReference field)
         {
             var nodeField = new NodeField(source, field);
