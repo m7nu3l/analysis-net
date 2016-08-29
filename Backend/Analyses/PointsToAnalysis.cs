@@ -164,6 +164,7 @@ namespace Backend.Analyses
         private MethodDefinition method;
   
         public IVariable ReturnVariable { get; private set; }
+        public static IVariable GlobalVariable = new LocalVariable("$Global") { Type = PlatformTypes.Object };  //   { get; private set; }
 
         public PointsToAnalysis(ControlFlowGraph cfg, MethodDefinition method)
 			: base(cfg)
@@ -216,6 +217,7 @@ namespace Backend.Analyses
 		{
             this.ReturnVariable = new LocalVariable("$RV");
             this.ReturnVariable.Type = PlatformTypes.Object;
+
 			var ptg = new PointsToGraph();
 			var variables = cfg.GetVariables();
 
@@ -280,7 +282,7 @@ namespace Backend.Analyses
 
             if (dst.Type.TypeKind == TypeKind.ValueType) return;
 
-            var targets = srcs.Where(src => src.Type.TypeKind == TypeKind.ValueType).SelectMany(src => ptg.GetTargets(src));
+            var targets = srcs.Where(src => src.Type.TypeKind != TypeKind.ValueType).SelectMany(src => ptg.GetTargets(src));
 
             foreach (var target in targets)
             {
@@ -309,7 +311,7 @@ namespace Backend.Analyses
 			var nodes = ptg.GetTargets(access.Instance);
             foreach (var node in nodes)
             {
-                var hasField = node.Targets.ContainsKey(access.Field);
+                var hasField = ptg.GetTargets(node,access.Field).Any();
 
                 if (!hasField)
 				{
@@ -324,7 +326,7 @@ namespace Backend.Analyses
                     }
                 }
 
-                var targets = node.Targets[access.Field];
+                var targets = ptg.GetTargets(node, access.Field);
 
                 foreach (var target in targets)
                 {
@@ -366,7 +368,8 @@ namespace Backend.Analyses
 		protected PTGNode NewNode(PointsToGraph ptg, PTGID ptgID, IType type, PTGNodeKind kind = PTGNodeKind.Object)
 		{
 			PTGNode node;
-            node = ptg.GetNode(ptgID, type, kind);
+            //node = ptg.GetNode(ptgID, type, kind);
+            node = new PTGNode(ptgID, type, kind);
             return node;
 		}
     }

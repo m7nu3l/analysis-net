@@ -81,7 +81,7 @@ namespace Backend.Model
         {
             var ptgID = obj as PTGID;
             return ptgID!=null && ptgID.OffSet==OffSet 
-                && ptgID.Context==Context || ptgID.Context.Equals(Context);
+                && (ptgID.Context==Context || ptgID.Context.Equals(Context));
         }
         public override int GetHashCode()
         {
@@ -749,6 +749,11 @@ namespace Backend.Model
                 // this.nodes.DictionaryEquals(other.nodes, nodeEquals);
                 nodes.All(n => other.nodes.Contains(n)) &&
                 this.nodes.All(n => this.nodes.Contains(n));
+        }
+
+        public MapSet<IFieldReference,PTGNode> GetTargets(PTGNode ptgNode)
+        {
+            return ptgNode.Targets;
         }
     }
 }
