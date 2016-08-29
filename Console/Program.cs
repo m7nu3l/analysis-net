@@ -93,13 +93,18 @@ namespace Console
 
 			methodBody.UpdateVariables();
 
-			//var dot = DOTSerializer.Serialize(cfg);
-			//var dgml = DGMLSerializer.Serialize(cfg);
 
-			//dgml = DGMLSerializer.Serialize(host, typeDefinition);
-		}
+            var pta = new PointsToAnalysis(cfg, method);
+            var results = pta.Analyze();
+            var ptgDGML = DGMLSerializer.Serialize(results[cfg.Exit.Id].Output);
 
-		static void Main(string[] args)
+            //var dot = DOTSerializer.Serialize(cfg);
+            //var dgml = DGMLSerializer.Serialize(cfg);
+
+            //dgml = DGMLSerializer.Serialize(host, typeDefinition);
+        }
+
+        static void Main(string[] args)
 		{
 			const string root = @"..\..\..";
 			//const string root = @"C:"; // casa
@@ -134,7 +139,7 @@ namespace Console
             {
                 ContainingAssembly = new AssemblyReference("Test"),
                 ContainingNamespace = "Test",
-                ContainingTypes = ""
+                ContainingTypes = null
 			};
 
 			var typeDefinition = host.ResolveReference(type);
@@ -153,15 +158,15 @@ namespace Console
 			var methodDefinition = host.ResolveReference(method) as MethodDefinition;
 			var methodCalls = methodDefinition.Body.Instructions.OfType<MethodCallInstruction>().ToList();
 
-			foreach (var methodCall in methodCalls)
-			{
-				var callee = host.ResolveReference(methodCall.Method) as MethodDefinition;
-				methodDefinition.Body.Inline(methodCall, callee.Body);
-			}
+			//foreach (var methodCall in methodCalls)
+			//{
+			//	var callee = host.ResolveReference(methodCall.Method) as MethodDefinition;
+			//	methodDefinition.Body.Inline(methodCall, callee.Body);
+			//}
 
 			methodDefinition.Body.UpdateVariables();
 
-			type = new BasicType("ExamplesCallGraph")
+			type = new BasicType("ExamplesPointsTo")
 			{
 				ContainingAssembly = new AssemblyReference("Test"),
 				ContainingNamespace = "Test"
@@ -174,15 +179,17 @@ namespace Console
 
 			methodDefinition = host.ResolveReference(method) as MethodDefinition;
 
-			var ch = new ClassHierarchyAnalysis(host);
-			ch.Analyze();
+            //var ch = new ClassHierarchyAnalysis(host);
+            //ch.Analyze();
 
-			var dgml = DGMLSerializer.Serialize(ch);
+            //var dgml = DGMLSerializer.Serialize(ch);
 
-			var chcga = new ClassHierarchyCallGraphAnalysis(host, ch);
-			var cg = chcga.Analyze(methodDefinition.ToEnumerable());
+            //var chcga = new ClassHierarchyCallGraphAnalysis(host, ch);
+            //var cg = chcga.Analyze(methodDefinition.ToEnumerable());
 
-			dgml = DGMLSerializer.Serialize(cg);
+            //dgml = DGMLSerializer.Serialize(cg);
+
+            program.VisitMethod(methodDefinition);
 
 			System.Console.WriteLine("Done!");
 			System.Console.ReadKey();

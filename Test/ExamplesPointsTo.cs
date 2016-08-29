@@ -32,12 +32,13 @@ namespace Test
 		{
 			var node = new Node(1);
 			node.Next = new Node(2);
+            node.Next.Next = new Node(3);
 
             var c2 = new Second();
             var c3 = new Second.Third();
 
 			var first = node;
-			var second = first.Next;
+            var second = first.Next;
 			var third = second.Next;
 			third.Next = null;
 		}
