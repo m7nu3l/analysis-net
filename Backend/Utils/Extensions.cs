@@ -653,7 +653,7 @@ namespace Backend.Utils
 
         public static bool IsClassOrStruct(this IType type)
         {
-            string[] primitiveTypes = { "Double", "Integer", "Boolean", "Char", "Int32", "Int16", "Int64" };
+            string[] primitiveTypes = { "Void", "Double", "Integer", "Boolean", "Char", "Int32", "Int16", "Int64" };
             var isRefType = type.TypeKind == TypeKind.ReferenceType;
             if(!isRefType)
             {
