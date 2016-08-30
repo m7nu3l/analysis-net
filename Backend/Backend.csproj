@@ -57,7 +57,6 @@
     <Compile Include="Model\Graph.cs" />
     <Compile Include="Model\IPointsToGraph.cs" />
     <Compile Include="Model\PointsToGraph.cs" />
-    <Compile Include="Model\SimplePointsToGraph.cs" />
     <Compile Include="Transformations\Disassembler.cs" />
     <Compile Include="Transformations\StaticSingleAssignment.cs" />
     <Compile Include="Analyses\SymbolicAnalysis.cs" />
