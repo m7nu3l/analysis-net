@@ -199,7 +199,7 @@ namespace Backend.Model
 
     public class GlobalNode : PTGNode
     {
-        public static PTGID globalID = new PTGID(GlobalContext.GlobalNodeContext, 0);
+        public static PTGID globalID = new PTGID(GlobalContext.GlobalNodeContext, -1);
 
         public GlobalNode() : base(globalID, PlatformTypes.Object, PTGNodeKind.Global)
         {
