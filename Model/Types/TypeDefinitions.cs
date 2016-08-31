@@ -517,9 +517,10 @@ namespace Model.Types
 			get { return new List<IMethodParameterReference>(this.Parameters); }
 		}
 
-        public IList<IType> GenericArguments
+        IList<IType> IMethodReference.GenericArguments
         {
-            get { return new List<IType>(this.GenericArguments); }
+            // TODO: Check this!!!!!
+            get { return new List<IType>(this.GenericParameters); }
         }
 
         public IMethodReference GenericMethod
