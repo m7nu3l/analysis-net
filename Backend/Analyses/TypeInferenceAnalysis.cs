@@ -141,6 +141,7 @@ namespace Backend.Analyses
 
 				switch (instruction.Operation)
 				{
+					case ConvertOperation.Conv:
 					case ConvertOperation.Cast:
 					case ConvertOperation.Box:
 					case ConvertOperation.Unbox:
