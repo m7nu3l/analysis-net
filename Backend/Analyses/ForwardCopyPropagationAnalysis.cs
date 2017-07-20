@@ -233,19 +233,21 @@ namespace Backend.Analyses
 				}
 			}
 
-			// Here we are also removing 'left'.
-			foreach (var variable in instruction.ModifiedVariables)
-			{
-				this.RemoveCopiesWithVariable(copies, variable);
-			}
+            if (instruction.ModifiedVariables.Any())
+            {
+                // Here we are also removing 'left'.
+                foreach (var variable in instruction.ModifiedVariables)
+                {
+                    this.RemoveCopiesWithVariable(copies, variable);
+                }
 
-			if (isCopy)
-			{
-				// 'left' should be already removed.
-				//this.RemoveCopiesWithVariable(copies, left);
-                // TO FIX Exception use copies[left] = right;
-				copies.Add(left, right);
-			}
+                if (isCopy)
+                {
+                    // 'left' should be already removed.
+                    //this.RemoveCopiesWithVariable(copies, left);
+                    copies.Add(left, right);
+                }
+            }
 
 			var result = isCopy && left.IsTemporal();
 			return result;
