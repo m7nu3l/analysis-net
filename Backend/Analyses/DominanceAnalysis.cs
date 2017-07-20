@@ -29,26 +29,30 @@ namespace Backend.Analyses
 				changed = false;
 
 				// Skip first node: entry
-				for (var i = 1; i < sorted_nodes.Length; ++i)
+				for (var i = 0; i < sorted_nodes.Length; ++i)
 				{
 					var node = sorted_nodes[i];
 					var predecessors = node.Predecessors.Where(p => p.ImmediateDominator != null);
-					var new_idom = predecessors.First();
-					predecessors = predecessors.Skip(1);
 
-					foreach (var pred in predecessors)
-					{
-						new_idom = FindCommonAncestor(pred, new_idom);
-					}
+                    if (predecessors.Any())
+                    {
+                        var new_idom = predecessors.First();
+                        predecessors = predecessors.Skip(1);
 
-					var old_idom = node.ImmediateDominator;
-					var equals = old_idom != null && old_idom.Equals(new_idom);
+                        foreach (var pred in predecessors)
+                        {
+                            new_idom = FindCommonAncestor(pred, new_idom);
+                        }
 
-					if (!equals)
-					{
-						node.ImmediateDominator = new_idom;
-						changed = true;
-					}
+                        var old_idom = node.ImmediateDominator;
+                        var equals = old_idom != null && old_idom.Equals(new_idom);
+
+                        if (!equals)
+                        {
+                            node.ImmediateDominator = new_idom;
+                            changed = true;
+                        }
+                    }
 				}
 			}
 			while (changed);
