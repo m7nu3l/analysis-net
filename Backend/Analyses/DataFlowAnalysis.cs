@@ -89,7 +89,7 @@ namespace Backend.Analyses
 
 				var old_output = node_result.Output;
 				var new_output = this.Flow(node, node_result.Input);
-				var equals = this.Compare(old_output, new_output);
+				var equals = this.Compare(new_output, old_output);
 
 				if (!equals)
 				{

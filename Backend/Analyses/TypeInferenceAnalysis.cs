@@ -58,7 +58,11 @@ namespace Backend.Analyses
 					// Set the null variable a type.
 					if (argument.Type == null)
 					{
-						var parameter = instruction.Method.Parameters.ElementAt(i);
+                        IParameterTypeInformation parameter;
+                        if (instruction.Method.IsStatic)
+                            parameter = instruction.Method.Parameters.ElementAt(i);
+                        else
+                            parameter = instruction.Method.Parameters.ElementAt(i - 1);
 
 						argument.Type = parameter.Type;
 					}
