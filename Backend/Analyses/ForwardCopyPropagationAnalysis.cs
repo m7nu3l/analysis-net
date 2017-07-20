@@ -243,6 +243,7 @@ namespace Backend.Analyses
 			{
 				// 'left' should be already removed.
 				//this.RemoveCopiesWithVariable(copies, left);
+                // TO FIX Exception use copies[left] = right;
 				copies.Add(left, right);
 			}
 
