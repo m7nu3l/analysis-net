@@ -7,7 +7,7 @@ using System.Text;
 
 namespace Test
 {
-	class Node
+	/*class Node
 	{
 		public object Value;
 		public Node Next;
@@ -50,5 +50,5 @@ namespace Test
 				current = current.Next;
 			}
 		}
-	}
+	}*/
 }

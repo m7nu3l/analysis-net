@@ -7,7 +7,7 @@ using System.Text;
 
 namespace Test
 {
-	struct Point
+	/*struct Point
 	{
 		public int x, y;
 
@@ -257,5 +257,5 @@ namespace Test
 		//{
 		//	Console.WriteLine(args);
 		//}
-	}
+	}*/
 }

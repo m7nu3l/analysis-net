@@ -10,6 +10,7 @@ using Backend.Analyses;
 using Backend.Serialization;
 using Backend.ThreeAddressCode;
 using Backend.Transformations;
+using System.IO;
 
 namespace TinyBCT
 {
@@ -49,70 +50,95 @@ namespace TinyBCT
             }
         }
 
-        public override void TraverseChildren(ITypeDefinition typeDefinition)
+        /*public override void TraverseChildren(ITypeDefinition typeDefinition)
         {
             // nested classes are not traversed here
-
             //dummyTraverseTypeDef(typeDefinition);
+        }*/
 
+        private String getBoogieType(ITypeReference type)
+        {
+            if (type.TypeCode.Equals(PrimitiveTypeCode.Int32))
+                return "int";
+
+            // hack 
+            if (type.TypeCode.Equals(PrimitiveTypeCode.NotPrimitive))
+                return "Ref";
+            
+            return null;
+        }
+
+        private String getMethodName(IMethodDefinition methodDefinition)
+        {
+            var signature = MemberHelper.GetMethodSignature(methodDefinition, NameFormattingOptions.Signature);
+            var split = signature.Split('(');
+            return split[0];
+        }
+
+        private String getMethodBoogieReturnType(IMethodDefinition methodDefinition)
+        {
+            return getBoogieType(methodDefinition.Type);
+        }
+
+        private String getParametersWithBoogieType(MethodBody methodBody)
+        {
+            return String.Join(",", methodBody.Parameters.Select(v => v.Name + " : " + getBoogieType(v.Type)));
+        }
+
+        private void transformBody(MethodBody methodBody)
+        {
+            var cfAnalysis = new ControlFlowAnalysis(methodBody);
+            var cfg = cfAnalysis.GenerateNormalControlFlow();
+
+            var splitter = new WebAnalysis(cfg);
+            splitter.Analyze();
+            splitter.Transform();
+
+            methodBody.UpdateVariables();
+
+            var typeAnalysis = new TypeInferenceAnalysis(cfg);
+            typeAnalysis.Analyze();
+
+            var forwardCopyAnalysis = new ForwardCopyPropagationAnalysis(cfg);
+            forwardCopyAnalysis.Analyze();
+            forwardCopyAnalysis.Transform(methodBody);
+
+            var backwardCopyAnalysis = new BackwardCopyPropagationAnalysis(cfg);
+            backwardCopyAnalysis.Analyze();
+            backwardCopyAnalysis.Transform(methodBody);
         }
 
         public override void TraverseChildren(IMethodDefinition methodDefinition)
 		{
-			var signature = MemberHelper.GetMethodSignature(methodDefinition, NameFormattingOptions.Signature | NameFormattingOptions.ParameterName); 
-			System.Console.WriteLine(signature);
+            // it's not supported currently
+            if (methodDefinition.IsConstructor)
+                return;
 
-			var disassembler = new Disassembler(host, methodDefinition, sourceLocationProvider);
-			var methodBody = disassembler.Execute();
+            var disassembler = new Disassembler(host, methodDefinition, sourceLocationProvider);
+            var methodBody = disassembler.Execute();
 
-			//System.Console.WriteLine(methodBody);
-			//System.Console.WriteLine();
+            transformBody(methodBody);
 
-			var cfAnalysis = new ControlFlowAnalysis(methodBody);
-			var cfg = cfAnalysis.GenerateNormalControlFlow();
-			//var cfg = cfAnalysis.GenerateExceptionalControlFlow();
+            StreamWriter streamWriter = new StreamWriter(@"C:\result.bpl");
 
-			var domAnalysis = new DominanceAnalysis(cfg);
-			domAnalysis.Analyze();
-			domAnalysis.GenerateDominanceTree();
+            // prelude
+            streamWriter.WriteLine("type Ref;");
 
-			var loopAnalysis = new NaturalLoopAnalysis(cfg);
-			loopAnalysis.Analyze();
+            streamWriter.WriteLine("procedure " + getMethodName(methodDefinition) + "(" + getParametersWithBoogieType(methodBody) + ") returns (r : " + getMethodBoogieReturnType(methodDefinition) + ") {");
+            InstructionTranslator instTranslator = new InstructionTranslator();
 
-			var domFrontierAnalysis = new DominanceFrontierAnalysis(cfg);
-			domFrontierAnalysis.Analyze();
+            // improve this, last element is not appended by ;
+            streamWriter.Write(String.Join(";" + Environment.NewLine, methodBody.Variables.Except(methodBody.Parameters).Select(v => "var " + v.Name + " : " + getBoogieType(v.Type))));
+            streamWriter.Write(";" + Environment.NewLine);
 
-			var splitter = new WebAnalysis(cfg);
-			splitter.Analyze();
-			splitter.Transform();
+            foreach (var instruction in methodBody.Instructions)
+            {
+                instruction.Accept(instTranslator);
+                streamWriter.Write(instTranslator.Result);
+            }
 
-			methodBody.UpdateVariables();
-
-			var typeAnalysis = new TypeInferenceAnalysis(cfg);
-			typeAnalysis.Analyze();
-
-			var forwardCopyAnalysis = new ForwardCopyPropagationAnalysis(cfg);
-			forwardCopyAnalysis.Analyze();
-			forwardCopyAnalysis.Transform(methodBody);
-
-			var backwardCopyAnalysis = new BackwardCopyPropagationAnalysis(cfg);
-			backwardCopyAnalysis.Analyze();
-			backwardCopyAnalysis.Transform(methodBody);
-
-			//var pointsTo = new PointsToAnalysis(cfg);
-			//var result = pointsTo.Analyze();
-
-			var liveVariables = new LiveVariablesAnalysis(cfg);
-			liveVariables.Analyze();
-
-			var ssa = new StaticSingleAssignment(methodBody, cfg);
-			ssa.Transform();
-			ssa.Prune(liveVariables);
-
-			methodBody.UpdateVariables();
-
-			////var dot = DOTSerializer.Serialize(cfg);
-			//var dgml = DGMLSerializer.Serialize(cfg);
-		}
+            streamWriter.Write("}" + Environment.NewLine);
+            streamWriter.Close();
+        }
 	}
 }
