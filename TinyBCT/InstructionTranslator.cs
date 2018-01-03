@@ -1,6 +1,7 @@
 ﻿using Backend.ThreeAddressCode.Instructions;
 using Backend.ThreeAddressCode.Values;
 using Backend.Visitors;
+using Microsoft.Cci;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,18 +12,24 @@ namespace TinyBCT
 {
     class InstructionTranslator : InstructionVisitor
     {
-        private string result;
 
-        public string Result { get => result; set => result = value; }
+        public string Result() { return sb.ToString(); }
+        private StringBuilder sb = new StringBuilder();
+
+        private void addLabel(Instruction instr)
+        {
+            sb.AppendLine(String.Format("\t{0}:", instr.Label));
+        }
 
         public override void Visit(NopInstruction instruction)
         {
-            result = instruction.Label + ":" + Environment.NewLine;
+            //addLabel(instruction);
+            sb.Append(String.Format("\t{0}:", instruction.Label));
         }
 
         public override void Visit(BinaryInstruction instruction)
         {
-            result = instruction.Label + ":" + Environment.NewLine;
+            addLabel(instruction);
 
             IVariable left = instruction.LeftOperand;
             IVariable right = instruction.RightOperand;
@@ -49,22 +56,38 @@ namespace TinyBCT
                 case BinaryOperation.Le: operation = "<="; break;*/
             }
 
-            result += String.Format("{0} {1} {2} {3} {4}", instruction.Result, ":=", left, operation, right);
-            result += ";" + Environment.NewLine;
+            sb.Append(String.Format("\t\t{0} {1} {2} {3} {4};", instruction.Result, ":=", left, operation, right));
         }
 
         public override void Visit(UnconditionalBranchInstruction instruction)
         {
-            result = instruction.Label + ":" + Environment.NewLine;
-            result += "goto " + instruction.Target + ";" + Environment.NewLine;
+            addLabel(instruction);
+            sb.Append(String.Format("\t\tgoto {0};", instruction.Target));
         }
 
         public override void Visit(ReturnInstruction instruction)
         {
-            // fijarse si puede haber return sin valor
+            addLabel(instruction);
+            if (instruction.HasOperand)
+                sb.Append(String.Format("\t\tr := {0};", instruction.Operand.Name));
+        }
 
-            result = instruction.Label + ":" + Environment.NewLine;
-            result += "r := " + instruction.Operand.Name + ";" + Environment.NewLine;
+        public override void Visit(LoadInstruction instruction)
+        {
+            addLabel(instruction);
+            sb.Append(String.Format("\t\t{0} := {1};", instruction.Result, instruction.Operand));
+        }
+
+        public override void Visit(MethodCallInstruction instruction)
+        {
+            addLabel(instruction);
+            var signature = MemberHelper.GetMethodSignature(instruction.Method, NameFormattingOptions.OmitContainingType | NameFormattingOptions.PreserveSpecialNames);
+            var arguments = string.Join(", ", instruction.Arguments);
+
+            if (instruction.HasResult)
+                sb.Append(String.Format("\t\tcall {0} := {1}({2});", instruction.Result, signature, arguments));
+            else
+                sb.Append(String.Format("\t\t{0} := {1}({2});", instruction.Result, signature, arguments));
         }
     }
 }

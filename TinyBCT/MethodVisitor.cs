@@ -11,6 +11,7 @@ using Backend.Serialization;
 using Backend.ThreeAddressCode;
 using Backend.Transformations;
 using System.IO;
+using Backend.ThreeAddressCode.Instructions;
 
 namespace TinyBCT
 {
@@ -70,9 +71,8 @@ namespace TinyBCT
 
         private String getMethodName(IMethodDefinition methodDefinition)
         {
-            var signature = MemberHelper.GetMethodSignature(methodDefinition, NameFormattingOptions.Signature);
-            var split = signature.Split('(');
-            return split[0];
+            var signature = MemberHelper.GetMethodSignature(methodDefinition, NameFormattingOptions.OmitContainingType | NameFormattingOptions.PreserveSpecialNames);
+            return signature;
         }
 
         private String getMethodBoogieReturnType(IMethodDefinition methodDefinition)
@@ -110,7 +110,7 @@ namespace TinyBCT
 
         public override void TraverseChildren(IMethodDefinition methodDefinition)
 		{
-            // it's not supported currently
+            // it's not supported currently - hack
             if (methodDefinition.IsConstructor)
                 return;
 
@@ -119,26 +119,20 @@ namespace TinyBCT
 
             transformBody(methodBody);
 
-            StreamWriter streamWriter = new StreamWriter(@"C:\result.bpl");
+            MethodTranslator methodTranslator = new MethodTranslator(methodDefinition, methodBody);
+       
+            // todo: improve this piece of code
+            StreamWriter streamWriter = Program.streamWriter;
+            streamWriter.WriteLine(methodTranslator.Translate());
 
-            // prelude
-            streamWriter.WriteLine("type Ref;");
-
-            streamWriter.WriteLine("procedure " + getMethodName(methodDefinition) + "(" + getParametersWithBoogieType(methodBody) + ") returns (r : " + getMethodBoogieReturnType(methodDefinition) + ") {");
-            InstructionTranslator instTranslator = new InstructionTranslator();
-
-            // improve this, last element is not appended by ;
-            streamWriter.Write(String.Join(";" + Environment.NewLine, methodBody.Variables.Except(methodBody.Parameters).Select(v => "var " + v.Name + " : " + getBoogieType(v.Type))));
-            streamWriter.Write(";" + Environment.NewLine);
-
-            foreach (var instruction in methodBody.Instructions)
+            // wip
+            /*MethodCallInstruction methodCallInstruction = instruction as MethodCallInstruction;
+            if (methodCallInstruction != null)
             {
-                instruction.Accept(instTranslator);
-                streamWriter.Write(instTranslator.Result);
+            if (methodCallInstruction.Method.ResolvedMethod == null)
+            {
             }
-
-            streamWriter.Write("}" + Environment.NewLine);
-            streamWriter.Close();
+            }*/
         }
 	}
 }

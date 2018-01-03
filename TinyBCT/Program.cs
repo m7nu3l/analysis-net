@@ -6,12 +6,14 @@ using System.Linq;
 using System.Text;
 using Microsoft.Cci;
 using Backend;
+using System.IO;
 
 namespace TinyBCT
 {
 	class Program
 	{
-		static void Main(string[] args)
+        public static StreamWriter streamWriter;
+        static void Main(string[] args)
 		{
 			const string root = @"..\..\..";
 			//const string root = @"C:"; // casa
@@ -26,8 +28,13 @@ namespace TinyBCT
 
 				Types.Initialize(host);
 
-				var visitor = new MethodVisitor(host, assembly.PdbReader);
+                streamWriter = new StreamWriter(@"C:\result.bpl");
+                // prelude
+                streamWriter.WriteLine("type Ref;");
+
+                var visitor = new MethodVisitor(host, assembly.PdbReader);
 				visitor.Traverse(assembly.Module);
+                streamWriter.Close();
 			}
 
 			System.Console.WriteLine("Done!");

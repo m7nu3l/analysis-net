@@ -12,5 +12,16 @@ namespace Test
         {
             return x + y;
         }
+
+        public int subtract(int x, int y)
+        {
+            return x - y;
+        }
+
+        public int multiplyBy2Adding(int x)
+        {
+            int i = add(x, x);
+            return i;
+        }
     }
 }
