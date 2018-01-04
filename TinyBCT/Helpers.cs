@@ -19,7 +19,8 @@ namespace TinyBCT
                 inst is UnconditionalBranchInstruction ||
                 inst is BinaryInstruction ||
                 inst is NopInstruction ||
-                inst is ReturnInstruction)
+                inst is ReturnInstruction ||
+                inst is ConditionalBranchInstruction)
                 return true;
 
             return false;
@@ -29,6 +30,8 @@ namespace TinyBCT
             if (type.TypeCode.Equals(PrimitiveTypeCode.Int32))
                 return "int";
 
+            if (type.TypeCode.Equals(PrimitiveTypeCode.Boolean))
+                return "bool";
             // hack 
             if (type.TypeCode.Equals(PrimitiveTypeCode.NotPrimitive))
                 return "Ref";

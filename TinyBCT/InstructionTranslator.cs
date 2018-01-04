@@ -47,13 +47,13 @@ namespace TinyBCT
                 case BinaryOperation.Or: operation = "|"; break;
                 case BinaryOperation.Xor: operation = "^"; break;
                 case BinaryOperation.Shl: operation = "<<"; break;
-                case BinaryOperation.Shr: operation = ">>"; break;
+                case BinaryOperation.Shr: operation = ">>"; break;*/
                 case BinaryOperation.Eq: operation = "=="; break;
                 case BinaryOperation.Neq: operation = "!="; break;
                 case BinaryOperation.Gt: operation = ">"; break;
                 case BinaryOperation.Ge: operation = ">="; break;
                 case BinaryOperation.Lt: operation = "<"; break;
-                case BinaryOperation.Le: operation = "<="; break;*/
+                case BinaryOperation.Le: operation = "<="; break;
             }
 
             sb.Append(String.Format("\t\t{0} {1} {2} {3} {4};", instruction.Result, ":=", left, operation, right));
@@ -88,6 +88,33 @@ namespace TinyBCT
                 sb.Append(String.Format("\t\tcall {0} := {1}({2});", instruction.Result, signature, arguments));
             else
                 sb.Append(String.Format("\t\t{0} := {1}({2});", instruction.Result, signature, arguments));
+        }
+
+        public override void Visit(ConditionalBranchInstruction instruction)
+        {
+            addLabel(instruction);
+
+            IVariable leftOperand = instruction.LeftOperand;
+            IInmediateValue rightOperand = instruction.RightOperand;
+
+            var operation = string.Empty;
+
+            switch (instruction.Operation)
+            {
+                case BranchOperation.Eq: operation = "=="; break;
+                case BranchOperation.Neq: operation = "!="; break;
+                case BranchOperation.Gt: operation = ">"; break;
+                case BranchOperation.Ge: operation = ">="; break;
+                case BranchOperation.Lt: operation = "<"; break;
+                case BranchOperation.Le: operation = "<="; break;
+            }
+
+
+            sb.AppendLine(String.Format("\t\tif ({0} {1} {2})", leftOperand, operation, rightOperand));
+            sb.AppendLine("\t\t{");
+            sb.AppendLine(String.Format("\t\t\tgoto {0};", instruction.Target));
+            sb.Append("\t\t}");
+
         }
     }
 }
