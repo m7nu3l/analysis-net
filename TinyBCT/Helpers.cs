@@ -1,5 +1,6 @@
 ﻿using Backend;
 using Backend.Analyses;
+using Backend.ThreeAddressCode.Instructions;
 using Microsoft.Cci;
 using System;
 using System.Collections.Generic;
@@ -11,6 +12,18 @@ namespace TinyBCT
 {
     class Helpers
     {
+        public static bool IsInstructionImplemented(Instruction inst)
+        {
+            if (inst is MethodCallInstruction ||
+                inst is LoadInstruction ||
+                inst is UnconditionalBranchInstruction ||
+                inst is BinaryInstruction ||
+                inst is NopInstruction ||
+                inst is ReturnInstruction)
+                return true;
+
+            return false;
+        }
         public static String GetBoogieType(ITypeReference type)
         {
             if (type.TypeCode.Equals(PrimitiveTypeCode.Int32))

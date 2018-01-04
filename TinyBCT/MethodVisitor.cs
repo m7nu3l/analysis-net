@@ -108,6 +108,22 @@ namespace TinyBCT
             backwardCopyAnalysis.Transform(methodBody);
         }
 
+        private void checkNotImplementedInstructions(MethodBody methodBody)
+        {
+            // check if there is no implemented instruction
+            if (methodBody.Instructions.Any(ins => !Helpers.IsInstructionImplemented(ins)))
+            {
+                Console.WriteLine("************" + methodBody.MethodDefinition.Name + "************");
+                foreach (var ins in methodBody.Instructions)
+                {
+                    if (!Helpers.IsInstructionImplemented(ins))
+                        Console.WriteLine(String.Format("{0} ------> {2} {1}", ins, ins.GetType(), "not implemented"));
+                    else
+                        Console.WriteLine(ins);
+                }
+            }
+        }
+
         public override void TraverseChildren(IMethodDefinition methodDefinition)
 		{
             // it's not supported currently - hack
@@ -118,6 +134,8 @@ namespace TinyBCT
             var methodBody = disassembler.Execute();
 
             transformBody(methodBody);
+
+            checkNotImplementedInstructions(methodBody);
 
             MethodTranslator methodTranslator = new MethodTranslator(methodDefinition, methodBody);
        

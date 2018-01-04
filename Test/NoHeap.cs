@@ -23,5 +23,17 @@ namespace Test
             int i = add(x, x);
             return i;
         }
+
+        public int multiply(int a, int x)
+        {
+            int i = 0;
+            while (i < x)
+            {
+                i++;
+                a = a + a;
+            }
+
+            return a;
+        }
     }
 }
