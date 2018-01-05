@@ -12,6 +12,7 @@ using Backend.ThreeAddressCode;
 using Backend.Transformations;
 using System.IO;
 using Backend.ThreeAddressCode.Instructions;
+using Backend.ThreeAddressCode.Values;
 
 namespace TinyBCT
 {
@@ -57,32 +58,43 @@ namespace TinyBCT
             //dummyTraverseTypeDef(typeDefinition);
         }*/
 
-        private String getBoogieType(ITypeReference type)
-        {
-            if (type.TypeCode.Equals(PrimitiveTypeCode.Int32))
-                return "int";
 
-            // hack 
-            if (type.TypeCode.Equals(PrimitiveTypeCode.NotPrimitive))
-                return "Ref";
-            
-            return null;
-        }
-
-        private String getMethodName(IMethodDefinition methodDefinition)
+        private void inmutableArguments(MethodBody methodBody)
         {
-            var signature = MemberHelper.GetMethodSignature(methodDefinition, NameFormattingOptions.OmitContainingType | NameFormattingOptions.PreserveSpecialNames);
-            return signature;
-        }
+            // corral interprets parameter as inmutable references
+            // parameters are renamed, and local versions of them are created
+            // procedure foo(a : int) { ... } -> procedure foo($a_param : int) { var a : int; a := $a_param; ...}
 
-        private String getMethodBoogieReturnType(IMethodDefinition methodDefinition)
-        {
-            return getBoogieType(methodDefinition.Type);
-        }
+            var newParameters = new List<IVariable>();
+            var oldParamToNewLocal = new Dictionary<IVariable, IVariable>();
+            var newLocalToNewParam = new Dictionary<IVariable, IVariable>();
+            foreach (var variable in methodBody.Parameters)
+            {
+                var newParameter = new LocalVariable(String.Format("${0}_param", variable.Name), true);
+                newParameters.Add(newParameter);
+                newParameter.Type = variable.Type;
+                var newLocal = new LocalVariable(variable.Name, false);
+                newLocal.Type = variable.Type;
+                oldParamToNewLocal.Add(variable, newLocal);
+                methodBody.Variables.Add(newLocal);
+                newLocalToNewParam.Add(newLocal, newParameter);
+            }
 
-        private String getParametersWithBoogieType(MethodBody methodBody)
-        {
-            return String.Join(",", methodBody.Parameters.Select(v => v.Name + " : " + getBoogieType(v.Type)));
+            methodBody.Parameters.Clear();
+            foreach (var variable in newParameters)
+                methodBody.Parameters.Add(variable);
+
+            foreach (var instruction in methodBody.Instructions)
+                foreach (KeyValuePair<IVariable, IVariable> oldParamNewParam in oldParamToNewLocal)
+                    instruction.Replace(oldParamNewParam.Key, oldParamNewParam.Value);
+
+            uint i = (uint)methodBody.Instructions.Count * 5; // hack - otherwise we should re assing every label - *5 in order to avoid collisions
+            foreach (KeyValuePair<IVariable, IVariable> oldParamNewLocal in oldParamToNewLocal)
+            {
+                var ins = new LoadInstruction(i, oldParamNewLocal.Value, newLocalToNewParam[oldParamNewLocal.Value]);
+                methodBody.Instructions.Insert(0, ins);
+                i++;
+            }
         }
 
         private void transformBody(MethodBody methodBody)
