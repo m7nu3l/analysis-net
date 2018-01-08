@@ -39,10 +39,14 @@ namespace TinyBCT
             return null;
         }
 
-        public static String GetMethodName(IMethodDefinition methodDefinition)
+        public static String GetMethodName(IMethodReference methodDefinition)
         {
-            var signature = MemberHelper.GetMethodSignature(methodDefinition, NameFormattingOptions.OmitContainingType | NameFormattingOptions.PreserveSpecialNames);
-            return signature;
+            var signature = MemberHelper.GetMethodSignature(methodDefinition, NameFormattingOptions.Signature | NameFormattingOptions.SupressAttributeSuffix);
+            // workaround
+            // Test.NoHeap.subtract(System.Int32, System.Int32) -> Test.NoHeap.subtract
+            var split = signature.Split('(');
+            //..ctor()
+            return split[0].Replace("..", ".");
         }
 
         public static String GetMethodBoogieReturnType(IMethodDefinition methodDefinition)
@@ -53,6 +57,22 @@ namespace TinyBCT
         public static String GetParametersWithBoogieType(MethodBody methodBody)
         {
             return String.Join(",", methodBody.Parameters.Select(v => v.Name + " : " + GetBoogieType(v.Type)));
+        }
+
+        // workaround
+        public static Boolean IsExternal(IMethodDefinition methodDefinition)
+        {
+            if (methodDefinition.IsConstructor)
+            {
+                var methodName = Helpers.GetMethodName(methodDefinition);
+                if (methodName.Equals("System.Object.ctor"))
+                    return true;
+            }
+
+            if (methodDefinition.IsExternal)
+                return true;
+
+            return false;
         }
 
         private void transformBody(MethodBody methodBody)

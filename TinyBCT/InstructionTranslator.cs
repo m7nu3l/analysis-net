@@ -81,13 +81,13 @@ namespace TinyBCT
         public override void Visit(MethodCallInstruction instruction)
         {
             addLabel(instruction);
-            var signature = MemberHelper.GetMethodSignature(instruction.Method, NameFormattingOptions.OmitContainingType | NameFormattingOptions.PreserveSpecialNames);
+            var signature = Helpers.GetMethodName(instruction.Method);
             var arguments = string.Join(", ", instruction.Arguments);
 
             if (instruction.HasResult)
                 sb.Append(String.Format("\t\tcall {0} := {1}({2});", instruction.Result, signature, arguments));
             else
-                sb.Append(String.Format("\t\t{0} := {1}({2});", instruction.Result, signature, arguments));
+                sb.Append(String.Format("\t\tcall {0}({1});", signature, arguments));
         }
 
         public override void Visit(ConditionalBranchInstruction instruction)
