@@ -54,9 +54,34 @@ namespace TinyBCT
             return GetBoogieType(methodDefinition.Type);
         }
 
-        public static String GetParametersWithBoogieType(MethodBody methodBody)
+        public static String GetMethodDefinition(IMethodReference methodRef, bool IsExtern)
         {
-            return String.Join(",", methodBody.Parameters.Select(v => v.Name + " : " + GetBoogieType(v.Type)));
+            var methodName = Helpers.GetMethodName(methodRef.ResolvedMethod);
+            var arguments = Helpers.GetParametersWithBoogieType(methodRef.ResolvedMethod);
+            var returnType = Helpers.GetMethodBoogieReturnType(methodRef.ResolvedMethod);
+
+            var head = String.Empty;
+            if (methodRef.ResolvedMethod.Type.TypeCode != PrimitiveTypeCode.Void)
+                head = String.Format("procedure{0} {1}({2}) returns (r : {3}){4}", IsExtern ? " {:extern}" : String.Empty, methodName, arguments, returnType, IsExtern ? ";" : String.Empty);
+            else
+                head = String.Format("procedure{0} {1}({2}){3}", IsExtern ? " {:extern}" : String.Empty, methodName, arguments, IsExtern ? ";" : String.Empty);
+
+            return head;
+        }
+
+        public static String GetParametersWithBoogieType(IMethodReference methodRef)
+        {
+            var parameters = String.Empty;
+            IMethodDefinition methodDef = methodRef as IMethodDefinition;
+            if (methodDef != null)
+                parameters =  String.Join(",", methodDef.Parameters.Select(v => v.Name + " : " + GetBoogieType(v.Type)));
+            else
+                parameters = String.Join(",", methodRef.Parameters.Select(v => String.Format("param{0}", v.Index) + " : " + GetBoogieType(v.Type)));
+
+            if (methodRef.CallingConvention.HasFlag(Microsoft.Cci.CallingConvention.HasThis))
+                parameters = String.Format("this : Ref{0}{1}", methodRef.ParameterCount > 0 ? "," : String.Empty, parameters);
+
+            return parameters;
         }
 
         // workaround
@@ -73,29 +98,6 @@ namespace TinyBCT
                 return true;
 
             return false;
-        }
-
-        private void transformBody(MethodBody methodBody)
-        {
-            var cfAnalysis = new ControlFlowAnalysis(methodBody);
-            var cfg = cfAnalysis.GenerateNormalControlFlow();
-
-            var splitter = new WebAnalysis(cfg);
-            splitter.Analyze();
-            splitter.Transform();
-
-            methodBody.UpdateVariables();
-
-            var typeAnalysis = new TypeInferenceAnalysis(cfg);
-            typeAnalysis.Analyze();
-
-            var forwardCopyAnalysis = new ForwardCopyPropagationAnalysis(cfg);
-            forwardCopyAnalysis.Analyze();
-            forwardCopyAnalysis.Transform(methodBody);
-
-            var backwardCopyAnalysis = new BackwardCopyPropagationAnalysis(cfg);
-            backwardCopyAnalysis.Analyze();
-            backwardCopyAnalysis.Transform(methodBody);
         }
     }
 }

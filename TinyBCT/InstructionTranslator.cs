@@ -13,6 +13,7 @@ namespace TinyBCT
     class InstructionTranslator : InstructionVisitor
     {
 
+        public static IList<IMethodReference> ExternMethodsCalled = new List<IMethodReference>();
         public string Result() { return sb.ToString(); }
         private StringBuilder sb = new StringBuilder();
 
@@ -88,6 +89,9 @@ namespace TinyBCT
                 sb.Append(String.Format("\t\tcall {0} := {1}({2});", instruction.Result, signature, arguments));
             else
                 sb.Append(String.Format("\t\tcall {0}({1});", signature, arguments));
+
+            if (Helpers.IsExternal(instruction.Method.ResolvedMethod))
+                ExternMethodsCalled.Add(instruction.Method);
         }
 
         public override void Visit(ConditionalBranchInstruction instruction)

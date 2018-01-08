@@ -138,10 +138,6 @@ namespace TinyBCT
 
         public override void TraverseChildren(IMethodDefinition methodDefinition)
 		{
-            // it's not supported currently - hack
-            if (methodDefinition.IsConstructor)
-                return;
-
             var disassembler = new Disassembler(host, methodDefinition, sourceLocationProvider);
             var methodBody = disassembler.Execute();
 
@@ -154,15 +150,6 @@ namespace TinyBCT
             // todo: improve this piece of code
             StreamWriter streamWriter = Program.streamWriter;
             streamWriter.WriteLine(methodTranslator.Translate());
-
-            // wip
-            /*MethodCallInstruction methodCallInstruction = instruction as MethodCallInstruction;
-            if (methodCallInstruction != null)
-            {
-            if (methodCallInstruction.Method.ResolvedMethod == null)
-            {
-            }
-            }*/
         }
 	}
 }

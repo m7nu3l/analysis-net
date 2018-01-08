@@ -18,25 +18,11 @@ namespace TinyBCT
             this.methodDefinition = methodDefinition;
             this.methodBody = methodBody;
         }
-
         public String Translate()
         {
             StringBuilder sb = new StringBuilder();
-
-            var methodName = Helpers.GetMethodName(methodDefinition);
-            var arguments = Helpers.GetParametersWithBoogieType(methodBody);
-            var returnType = Helpers.GetMethodBoogieReturnType(methodDefinition);
-
-            // head is something like: procedure foo(this : Ref,x : int) returns (r : int)
-            // TODO: check if it is a method with no return value.
-            var head = String.Empty;
-            if (methodDefinition.Type.TypeCode != PrimitiveTypeCode.Void )
-                head = String.Format("procedure {0}({1}) returns (r : {2})", methodName, arguments, returnType);
-            else
-                head = String.Format("procedure {0}({1}) ", methodName, arguments);
-
+            var head = Helpers.GetMethodDefinition(methodDefinition, false);
             sb.AppendLine(head);
-
             sb.AppendLine("{");
 
             // local variables declaration - arguments are already declared
@@ -44,7 +30,6 @@ namespace TinyBCT
                 .Select(v =>
                         String.Format("\tvar {0} : {1};", v.Name, Helpers.GetBoogieType(v.Type))
                 ).ToList().ForEach(str => sb.AppendLine(str));
-
 
             // translate instructions
             methodBody.Instructions

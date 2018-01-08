@@ -34,6 +34,14 @@ namespace TinyBCT
 
                 var visitor = new MethodVisitor(host, assembly.PdbReader);
 				visitor.Traverse(assembly.Module);
+
+                // extern method called
+                foreach (var methodRef in InstructionTranslator.ExternMethodsCalled)
+                {
+                    var head = Helpers.GetMethodDefinition(methodRef, true);
+                    streamWriter.WriteLine(head);
+                }
+
                 streamWriter.Close();
 			}
 
