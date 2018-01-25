@@ -8,6 +8,17 @@ namespace Test
 {
     class NoHeap
     {
+        public int factorial(int x)
+        {
+            int res = 1;
+            for (int i = 1; i <= x; i++)
+            {
+                res = i * res;
+            }
+
+            return res;
+        }
+
         public int add(int x, int y)
         {
             return x + y;
@@ -34,6 +45,12 @@ namespace Test
             }
 
             return a;
+        }
+
+        public int alias(int a)
+        {
+            int x = a;
+            return x;
         }
     }
 }

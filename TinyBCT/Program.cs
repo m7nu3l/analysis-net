@@ -28,11 +28,26 @@ namespace TinyBCT
 
 				Types.Initialize(host);
 
+                // *********** store code in TAC *****************
+
+                var mtVisitor = new TACWriterVisitor(host, assembly.PdbReader);
+                mtVisitor.Traverse(assembly.Module);
+                streamWriter = new StreamWriter(@"C:\tac_output.txt");
+                streamWriter.WriteLine(mtVisitor.ToString());
+                streamWriter.Close();
+
+                // ***********************************************
+
+                var streamReader = new StreamReader(@"prelude.bpl");
                 streamWriter = new StreamWriter(@"C:\result.bpl");
                 // prelude
-                streamWriter.WriteLine("type Ref;");
+                streamWriter.WriteLine(streamReader.ReadToEnd());
+                streamReader.Close();
+                
+                var tVisitor = new TypeVisitor(host, assembly.PdbReader);
+                tVisitor.Traverse(assembly.Module);
 
-                var visitor = new MethodVisitor(host, assembly.PdbReader);
+                var visitor = new MethodTranslationVisitor(host, assembly.PdbReader);
 				visitor.Traverse(assembly.Module);
 
                 // extern method called

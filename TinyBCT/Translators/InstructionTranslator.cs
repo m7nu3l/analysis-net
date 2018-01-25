@@ -7,13 +7,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using TinyBCT.Translators;
 
 namespace TinyBCT
 {
     class InstructionTranslator : InstructionVisitor
     {
 
-        public static IList<IMethodReference> ExternMethodsCalled = new List<IMethodReference>();
+        public static ISet<IMethodReference> ExternMethodsCalled = new HashSet<IMethodReference>();
         public string Result() { return sb.ToString(); }
         private StringBuilder sb = new StringBuilder();
 
@@ -119,6 +120,29 @@ namespace TinyBCT
             sb.AppendLine(String.Format("\t\t\tgoto {0};", instruction.Target));
             sb.Append("\t\t}");
 
+        }
+
+        public override void Visit(CreateObjectInstruction instruction)
+        {
+            //addLabel(instruction);
+            sb.Append(String.Format("\t\tcall {0}:= Alloc();", instruction.Result));
+        }
+
+        public override void Visit(StoreInstruction instruction)
+        {
+            addLabel(instruction);
+
+            var op = instruction.Operand; // what it is stored
+            var instanceFieldAccess = instruction.Result as InstanceFieldAccess; // where it is stored
+
+            if (instanceFieldAccess != null)
+            {
+                if (Helpers.GetBoogieType(op.Type).Equals("int"))
+                {
+                    sb.AppendLine(String.Format("\t\tassume Union2Int(Int2Union({0})) == {0};", op));
+                    sb.Append(String.Format("\t\t$Heap := Write($Heap, {0}, {1}, {2});", instanceFieldAccess.Instance, FieldTranslator.fieldNames[instanceFieldAccess.Field], String.Format("Int2Union({0})",op)));
+                }
+            }
         }
     }
 }

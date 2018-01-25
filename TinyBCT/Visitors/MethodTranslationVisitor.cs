@@ -16,48 +16,16 @@ using Backend.ThreeAddressCode.Values;
 
 namespace TinyBCT
 {
-	class MethodVisitor : MetadataTraverser
+	class MethodTranslationVisitor : MetadataTraverser
 	{
 		private IMetadataHost host;
 		private ISourceLocationProvider sourceLocationProvider;
 
-		public MethodVisitor(IMetadataHost host, ISourceLocationProvider sourceLocationProvider)
+		public MethodTranslationVisitor(IMetadataHost host, ISourceLocationProvider sourceLocationProvider)
 		{
 			this.host = host;
 			this.sourceLocationProvider = sourceLocationProvider;
 		}
-
-        private void dummyTraverseTypeDef(ITypeDefinition typeDefinition)
-        {
-            // test code - playground
-
-            Console.WriteLine(typeDefinition); // prints class name
-            foreach (IMethodDefinition method in typeDefinition.Methods) // loops class methods
-            {
-                // translates code method to TAC representation
-                var disassembler = new Disassembler(host, method, sourceLocationProvider);
-                var methodBody = disassembler.Execute();
-                Console.WriteLine(methodBody); // prints instructions
-            }
-
-            foreach (IFieldDefinition field in typeDefinition.Fields) // loops fields
-            {
-                Console.WriteLine(field);
-                Console.WriteLine(field.Type);
-            }
-
-            foreach (IPropertyDefinition properties in typeDefinition.Properties)
-            {
-                Console.WriteLine(properties);
-            }
-        }
-
-        /*public override void TraverseChildren(ITypeDefinition typeDefinition)
-        {
-            // nested classes are not traversed here
-            //dummyTraverseTypeDef(typeDefinition);
-        }*/
-
 
         private void inmutableArguments(MethodBody methodBody)
         {

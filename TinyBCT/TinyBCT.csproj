@@ -71,14 +71,20 @@
   <ItemGroup>
     <Compile Include="Assembly.cs" />
     <Compile Include="Helpers.cs" />
-    <Compile Include="InstructionTranslator.cs" />
-    <Compile Include="MethodTranslator.cs" />
-    <Compile Include="MethodVisitor.cs" />
+    <Compile Include="Translators\FieldTranslator.cs" />
+    <Compile Include="Translators\InstructionTranslator.cs" />
+    <Compile Include="Translators\MethodTranslator.cs" />
+    <Compile Include="Visitors\MethodTranslationVisitor.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Visitors\TACWriterVisitor.cs" />
+    <Compile Include="Visitors\TypeVisitor.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+    <None Include="prelude.bpl">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Backend\Backend.csproj">

@@ -20,7 +20,9 @@ namespace TinyBCT
                 inst is BinaryInstruction ||
                 inst is NopInstruction ||
                 inst is ReturnInstruction ||
-                inst is ConditionalBranchInstruction)
+                inst is ConditionalBranchInstruction ||
+                inst is CreateObjectInstruction ||
+                inst is StoreInstruction)
                 return true;
 
             return false;
@@ -49,19 +51,19 @@ namespace TinyBCT
             return split[0].Replace("..", ".");
         }
 
-        public static String GetMethodBoogieReturnType(IMethodDefinition methodDefinition)
+        public static String GetMethodBoogieReturnType(IMethodReference methodDefinition)
         {
             return GetBoogieType(methodDefinition.Type);
         }
 
         public static String GetMethodDefinition(IMethodReference methodRef, bool IsExtern)
         {
-            var methodName = Helpers.GetMethodName(methodRef.ResolvedMethod);
-            var arguments = Helpers.GetParametersWithBoogieType(methodRef.ResolvedMethod);
-            var returnType = Helpers.GetMethodBoogieReturnType(methodRef.ResolvedMethod);
+            var methodName = Helpers.GetMethodName(methodRef);
+            var arguments = Helpers.GetParametersWithBoogieType(methodRef);
+            var returnType = Helpers.GetMethodBoogieReturnType(methodRef);
 
             var head = String.Empty;
-            if (methodRef.ResolvedMethod.Type.TypeCode != PrimitiveTypeCode.Void)
+            if (methodRef.Type.TypeCode != PrimitiveTypeCode.Void)
                 head = String.Format("procedure{0} {1}({2}) returns (r : {3}){4}", IsExtern ? " {:extern}" : String.Empty, methodName, arguments, returnType, IsExtern ? ";" : String.Empty);
             else
                 head = String.Format("procedure{0} {1}({2}){3}", IsExtern ? " {:extern}" : String.Empty, methodName, arguments, IsExtern ? ";" : String.Empty);
