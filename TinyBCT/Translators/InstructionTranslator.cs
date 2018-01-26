@@ -77,7 +77,13 @@ namespace TinyBCT
         public override void Visit(LoadInstruction instruction)
         {
             addLabel(instruction);
-            sb.Append(String.Format("\t\t{0} := {1};", instruction.Result, instruction.Operand));
+            InstanceFieldAccess op = instruction.Operand as InstanceFieldAccess;
+            if (op != null)
+            {
+                if (Helpers.GetBoogieType(op.Type).Equals("int"))
+                    sb.Append(String.Format("\t\t{0} := Union2Int(Read($Heap,{1},{2}));", instruction.Result, op.Instance, FieldTranslator.fieldNames[op.Field]));
+            } else
+                sb.Append(String.Format("\t\t{0} := {1};", instruction.Result, instruction.Operand));
         }
 
         public override void Visit(MethodCallInstruction instruction)
