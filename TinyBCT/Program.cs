@@ -13,13 +13,22 @@ namespace TinyBCT
 	class Program
 	{
         public static StreamWriter streamWriter;
+
         static void Main(string[] args)
 		{
-			const string root = @"..\..\..";
-			//const string root = @"C:"; // casa
-			//const string root = @"C:\Users\Edgar\Projects"; // facu
+            string root = String.Empty;
+            string input = String.Empty;
 
-			const string input = root + @"\Test\bin\Debug\Test.dll";
+            if (args.Length == 0)
+            {
+                /*const string*/ root = @"..\..\..";
+                /*const string*/ input = root + @"\Test\bin\Debug\Test.dll";
+            } else
+            {
+                root = args[0];
+                input = args[1];
+            }
+
 
 			using (var host = new PeReader.DefaultHost())
 			using (var assembly = new Assembly(host))
