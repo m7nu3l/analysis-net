@@ -58,6 +58,28 @@ namespace TinyBCT
                 case BinaryOperation.Le: operation = "<="; break;
             }
 
+            // workaround for bug typing bools and integers
+            // we need to tell if an integer is used as a boolean
+            // temp fix until fixed from analysis-net framework.
+            switch (instruction.Operation)
+            {
+                case BinaryOperation.Eq:
+                case BinaryOperation.Neq:
+                case BinaryOperation.Gt:
+                case BinaryOperation.Ge:
+                case BinaryOperation.Lt:
+                case BinaryOperation.Le:
+                    if ( (Helpers.GetBoogieType(left.Type).Equals("int") && Helpers.GetBoogieType(right.Type).Equals("bool")) ||
+                        (Helpers.GetBoogieType(right.Type).Equals("int") && Helpers.GetBoogieType(left.Type).Equals("bool")))
+                    {
+                        var leftFixed = Helpers.GetBoogieType(left.Type).Equals("int") ? String.Format("Int2Bool({0})", left.ToString()) : left.ToString();
+                        var rightFixed = Helpers.GetBoogieType(right.Type).Equals("int") ? String.Format("Int2Bool({0})", right.ToString()) : right.ToString();
+                        sb.Append(String.Format("\t\t{0} {1} {2} {3} {4};", instruction.Result, ":=", leftFixed, operation, rightFixed));
+                    } 
+                    return;
+
+            }
+
             sb.Append(String.Format("\t\t{0} {1} {2} {3} {4};", instruction.Result, ":=", left, operation, right));
         }
 
