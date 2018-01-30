@@ -42,3 +42,9 @@ function Int2Union(intValue: int) : Union;
 axiom Union2Int(null) == 0;
 
 axiom Union2Bool(null) == false;
+
+function Int2Bool(intValue: int) : bool;
+
+axiom Int2Bool(1) == true;
+
+axiom Int2Bool(0) == false;
