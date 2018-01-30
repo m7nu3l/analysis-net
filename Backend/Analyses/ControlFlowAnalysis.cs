@@ -187,6 +187,7 @@ namespace Backend.Analyses
 			var protectedBlocksEnd = methodBody.ExceptionInformation.ToLookup(pb => pb.End);
 
 			var orderedLeaders = from entry in leaders
+								 where entry.Value.Instructions.Any()
 								 orderby entry.Value.StartOffset()
 								 select entry;
 
