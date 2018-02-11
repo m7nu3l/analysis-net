@@ -292,6 +292,8 @@ namespace Backend.ThreeAddressCode.Values
 	{
 		string Name { get; }
 		bool IsParameter { get; }
+
+		IMethodReference Method { get; }
 	}
 
 	public class LocalVariable : IVariable
@@ -300,15 +302,19 @@ namespace Backend.ThreeAddressCode.Values
 		public ITypeReference Type { get; set; }
 		public bool IsParameter { get; set; }
 
-		public LocalVariable(string name, bool isParameter)
+		public IMethodReference Method { get; set; }
+
+		public LocalVariable(string name, bool isParameter, IMethodReference method)
 		{
 			this.Name = name;
 			this.IsParameter = isParameter;
+			this.Method = method;
 		}
 
-		public LocalVariable(string name)
+		public LocalVariable(string name, IMethodReference method)
 		{
 			this.Name = name;
+			this.Method = method;
 		}
 
 		ISet<IVariable> IVariableContainer.Variables
@@ -337,12 +343,12 @@ namespace Backend.ThreeAddressCode.Values
 			var other = obj as IVariable;
 
 			return other != null &&
-				this.Name.Equals(other.Name);
+				this.Name.Equals(other.Name) && this.Method.Equals(other.Method);
 		}
 
 		public override int GetHashCode()
 		{
-			return this.Name.GetHashCode();
+			return this.Name.GetHashCode() + this.Method.GetHashCode();
 		}
 
 		public override string ToString()
@@ -358,14 +364,18 @@ namespace Backend.ThreeAddressCode.Values
 		public ITypeReference Type { get; set; }
 		public uint Index { get; set; }
 
-		public TemporalVariable(string name, uint index)
+		public IMethodReference Method { get; set; }
+
+
+		public TemporalVariable(string name, uint index, IMethodReference method)
 		{
 			this.name = name;
 			this.Index = index;
+			this.Method = method;
 		}
 
-		public TemporalVariable(uint index)
-			: this("$t", index)
+		public TemporalVariable(uint index, IMethodReference method)
+			: this("$t", index, method)
 		{
 		}
 
@@ -405,12 +415,12 @@ namespace Backend.ThreeAddressCode.Values
 			var other = obj as IVariable;
 
 			return other != null &&
-				this.Name.Equals(other.Name);
+				this.Name.Equals(other.Name) && this.Method.Equals(other.Method);
 		}
 
 		public override int GetHashCode()
 		{
-			return this.Name.GetHashCode();
+			return this.Name.GetHashCode() + this.Method.GetHashCode(); 
 		}
 
 		public override string ToString()
@@ -423,10 +433,13 @@ namespace Backend.ThreeAddressCode.Values
 	{
 		public IVariable Original { get; set; }
 		public uint Index { get; set; }
+		public IMethodReference Method { get; set; }
+
 
 		public DerivedVariable(IVariable original, uint index)
 		{
 			this.Original = original;
+			this.Method = original.Method;
 			this.Index = index;
 		}
 
@@ -482,12 +495,12 @@ namespace Backend.ThreeAddressCode.Values
 			var other = obj as IVariable;
 
 			return other != null &&
-				this.Name.Equals(other.Name);
+				this.Name.Equals(other.Name) && this.Method.Equals(other.Method);
 		}
 
 		public override int GetHashCode()
 		{
-			return this.Name.GetHashCode();
+			return this.Name.GetHashCode() + this.Method.GetHashCode();
 		}
 
 		public override string ToString()

@@ -22,14 +22,14 @@ namespace Backend.Transformations
 			private ushort top;
 			private TemporalVariable[] stack;			
 
-			public OperandStack(ushort capacity)
+			public OperandStack(ushort capacity, IMethodDefinition method)
 			{
 				this.capacity = capacity;
 				stack = new TemporalVariable[capacity + 1];
 
 				for (var i = 0u; i < stack.Length; ++i)
 				{
-					stack[i] = new TemporalVariable("$s", i);
+					stack[i] = new TemporalVariable("$s", i, method);
 				}
 			}
 
@@ -137,7 +137,7 @@ namespace Backend.Transformations
 			this.sourceLocationProvider = sourceLocationProvider;
 			this.parameters = new Dictionary<IParameterDefinition, LocalVariable>();
 			this.locals = new Dictionary<ILocalDefinition, LocalVariable>();
-			this.stack = new OperandStack(method.Body.MaxStack);
+			this.stack = new OperandStack(method.Body.MaxStack, methodDefinition);
 			this.exceptionHandlersStart = new MapList<uint, IExceptionHandlerBlock>();
 			this.exceptionHandlersEnd = new MapList<uint, IExceptionHandlerBlock>();
 			this.basicBlocks = new SortedDictionary<uint, BasicBlockInfo>();
@@ -145,20 +145,20 @@ namespace Backend.Transformations
 
 			if (!method.IsStatic)
 			{
-				var t = new LocalVariable("this", true) { Type = this.method.ContainingType };
+				var t = new LocalVariable("this", true, this.method) { Type = this.method.ContainingType };
 				this.thisParameter = t;
 			}
 
 			foreach (var parameter in method.Parameters)
 			{
-				var p = new LocalVariable(parameter.Name.Value, true) { Type = parameter.Type };
+				var p = new LocalVariable(parameter.Name.Value, true, this.method) { Type = parameter.Type };
 				this.parameters.Add(parameter, p);
 			}
 
 			foreach (var local in method.Body.LocalVariables)
 			{
 				var name = this.GetLocalSourceName(local);
-				var l = new LocalVariable(name) { Type = local.Type };
+				var l = new LocalVariable(name, method) { Type = local.Type };
 				this.locals.Add(local, l);
 			}
 		}

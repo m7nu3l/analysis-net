@@ -8,6 +8,7 @@ using Backend.ThreeAddressCode.Instructions;
 using Backend.ThreeAddressCode.Values;
 using Backend.Utils;
 using Backend.Model;
+using Microsoft.Cci;
 
 namespace Backend.Analyses
 {
@@ -52,10 +53,12 @@ namespace Backend.Analyses
 	{
 		private ControlFlowGraph cfg;
 		private IList<Web> result;
+		IMethodDefinition method;
 
-		public WebAnalysis(ControlFlowGraph cfg)
+		public WebAnalysis(ControlFlowGraph cfg, IMethodDefinition method)
 		{
 			this.cfg = cfg;
+			this.method = method;
 		}
 
 		public IList<Web> Result
@@ -84,7 +87,7 @@ namespace Backend.Analyses
 				// Do not rename local variables, only rename temporal variables.
 				if (web.Variable.IsTemporal())
 				{
-					var variable = new TemporalVariable("$r", index);
+					var variable = new TemporalVariable("$r", index, this.method);
 					web.Rename(variable);
 					index++;
 				}
