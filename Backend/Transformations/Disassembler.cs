@@ -122,7 +122,7 @@ namespace Backend.Transformations
 		private IMethodDefinition method;
 		private ISourceLocationProvider sourceLocationProvider;
 		private LocalVariable thisParameter;
-		private IDictionary<IParameterDefinition, LocalVariable> parameters;
+		private IDictionary<IName, LocalVariable> parameters;
 		private IDictionary<ILocalDefinition, LocalVariable> locals;
 		private OperandStack stack;
 		private MapList<uint, IExceptionHandlerBlock> exceptionHandlersStart;
@@ -135,7 +135,7 @@ namespace Backend.Transformations
 			this.host = host;
 			this.method = methodDefinition;
 			this.sourceLocationProvider = sourceLocationProvider;
-			this.parameters = new Dictionary<IParameterDefinition, LocalVariable>();
+			this.parameters = new Dictionary<IName, LocalVariable>();
 			this.locals = new Dictionary<ILocalDefinition, LocalVariable>();
 			this.stack = new OperandStack(method.Body.MaxStack, methodDefinition);
 			this.exceptionHandlersStart = new MapList<uint, IExceptionHandlerBlock>();
@@ -152,7 +152,7 @@ namespace Backend.Transformations
 			foreach (var parameter in method.Parameters)
 			{
 				var p = new LocalVariable(parameter.Name.Value, true, this.method) { Type = parameter.Type };
-				this.parameters.Add(parameter, p);
+				this.parameters.Add(parameter.Name, p);
 			}
 
 			foreach (var local in method.Body.LocalVariables)
@@ -1270,7 +1270,7 @@ namespace Backend.Transformations
 			if (op.Value is IParameterDefinition)
 			{
 				var argument = op.Value as IParameterDefinition;
-				source = parameters[argument];
+				source = parameters[argument.Name];
 			}
 
 			var dest = stack.Push();
@@ -1285,7 +1285,7 @@ namespace Backend.Transformations
 			if (op.Value is IParameterDefinition)
 			{
 				var argument = op.Value as IParameterDefinition;
-				operand = parameters[argument];
+				operand = parameters[argument.Name];
 			}
 
 			var dest = stack.Push();
@@ -1449,7 +1449,7 @@ namespace Backend.Transformations
 			if (op.Value is IParameterDefinition)
 			{
 				var argument = op.Value as IParameterDefinition;
-				dest = parameters[argument];
+				dest = parameters[argument.Name];
 			}
 			
 			var source = stack.Pop();
