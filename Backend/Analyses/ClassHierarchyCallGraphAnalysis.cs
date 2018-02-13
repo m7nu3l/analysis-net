@@ -113,7 +113,7 @@ namespace Backend.Analyses
 				var receiverTypeDef = receiverType.ResolvedType;
 				if (receiverTypeDef == null) break;
 
-				var matchingMethod = receiverTypeDef.Methods.SingleOrDefault(m => MemberHelper.SignaturesAreEqual(m, method));
+				var matchingMethod = receiverTypeDef.Methods.SingleOrDefault(m => m.Name.UniqueKey == method.Name.UniqueKey && MemberHelper.SignaturesAreEqual(m, method));
 
 				if (matchingMethod != null)
 				{
@@ -141,7 +141,7 @@ namespace Backend.Analyses
 				var subtypes = classHierarchy.GetAllSubtypes(methodref.ContainingType);
 				var compatibleMethods = from t in subtypes
 										from m in t.Members.OfType<IMethodDefinition>()
-										where MemberHelper.SignaturesAreEqual(m, methodref)
+										where m.Name.UniqueKey == methodref.Name.UniqueKey &&  MemberHelper.SignaturesAreEqual(m, methodref)
 										select m;
 
 				result.UnionWith(compatibleMethods);
