@@ -114,6 +114,12 @@ namespace Backend.Analyses
 				{
 					instruction.Result.Type = instruction.Operand.Type;
 				}
+
+				if (instruction.Operand is Dereference)
+				{
+					var deref = instruction.Operand as Dereference;
+					instruction.Result.Type = deref.Reference.Type;
+				}
 			}
 
 			public override void Visit(LoadTokenInstruction instruction)
@@ -206,7 +212,7 @@ namespace Backend.Analyses
 				}
 			}
 		}
-
+		
 		#endregion
 
 		private ControlFlowGraph cfg;
