@@ -51,7 +51,7 @@ namespace Console
 			var domFrontierAnalysis = new DominanceFrontierAnalysis(cfg);
 			domFrontierAnalysis.Analyze();
 
-			var splitter = new WebAnalysis(cfg);
+			var splitter = new WebAnalysis(cfg, methodDefinition);
 			splitter.Analyze();
 			splitter.Transform();
 
