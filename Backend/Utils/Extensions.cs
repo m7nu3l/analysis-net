@@ -690,7 +690,11 @@ namespace Backend.Utils
 			{
 				var used = usedLabels.Contains(instruction.Label);
 
-				if (!used)
+				if (used)
+				{
+					usedLabels.Remove(instruction.Label);
+				}
+				else
 				{
 					instruction.Label = null;
 				}
