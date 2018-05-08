@@ -1240,8 +1240,10 @@ namespace Backend.Transformations
 			if (!isTryFinallyEnd)
 			{
 				var target = (uint)op.Value;
-				var instruction = new UnconditionalBranchInstruction(op.Offset, target) { Location = GetSourceLocation(op.Location) };
-				bb.Instructions.Add(instruction);
+                var instruction = new UnconditionalBranchInstruction(op.Offset, target) { Location = GetSourceLocation(op.Location)};
+                instruction.IsLeaveProtectedBlock = true;
+
+                bb.Instructions.Add(instruction);
 
 				this.AddToPendingBasicBlocks(target, true);
 			}

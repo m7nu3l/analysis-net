@@ -700,7 +700,9 @@ namespace Backend.ThreeAddressCode.Instructions
 		{
 		}
 
-		public override void Accept(IInstructionVisitor visitor)
+        public bool IsLeaveProtectedBlock { get; set; }
+
+        public override void Accept(IInstructionVisitor visitor)
 		{
 			base.Accept(visitor);
 			visitor.Visit(this);
