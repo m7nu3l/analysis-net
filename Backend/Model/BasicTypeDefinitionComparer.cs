@@ -12,7 +12,8 @@ namespace Backend.Model
 	{
 		public int GetHashCode(ITypeReference type)
 		{
-			return type.GetHashCode();
+            //return type.GetHashCode();
+            return type.InternedKey.GetHashCode();
 		}
 
 		public bool Equals(ITypeReference x, ITypeReference y)
