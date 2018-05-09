@@ -379,9 +379,12 @@ namespace Backend.ThreeAddressCode.Instructions
 		public NopInstruction(uint offset)
 			: base(offset)
 		{
+            IsEndFinally = false;
 		}
 
-		public override void Accept(IInstructionVisitor visitor)
+        public bool IsEndFinally { get; set; }
+
+        public override void Accept(IInstructionVisitor visitor)
 		{
 			base.Accept(visitor);
 			visitor.Visit(this);

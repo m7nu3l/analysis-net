@@ -1169,6 +1169,7 @@ namespace Backend.Transformations
 			// Quick fix to preserve the offset in case it is a target location of some jump
 			// Otherwise it will break the control-flow analysis later.
 			var instruction = new NopInstruction(op.Offset) { Location = GetSourceLocation(op.Location) };
+            instruction.IsEndFinally = true;
 			bb.Instructions.Add(instruction);
 
 			//// TODO: Maybe we don't need to add this branch instruction
