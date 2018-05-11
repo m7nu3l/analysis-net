@@ -123,10 +123,14 @@ namespace Backend.Analyses
 				var receiverTypeDef = receiverType.ResolvedType;
 				if (receiverTypeDef == null) break;
 
+//<<<<<<< cci-version-merging
 				var matchingMethod = receiverTypeDef.Methods.SingleOrDefault(m => 
 					m.Name.Value == method.Name.Value &&
 					MemberHelper.SignaturesAreEqual(m, method)
 				);
+//=======
+//				var matchingMethod = receiverTypeDef.Methods.SingleOrDefault(m => m.Name.UniqueKey == method.Name.UniqueKey && MemberHelper.SignaturesAreEqual(m, method));
+//>>>>>>> cci-version
 
 				if (matchingMethod != null)
 				{
@@ -154,8 +158,12 @@ namespace Backend.Analyses
 				var subtypes = classHierarchy.GetAllSubtypes(methodref.ContainingType);
 				var compatibleMethods = from t in subtypes
 										from m in t.Members.OfType<IMethodDefinition>()
+//<<<<<<< cci-version-merging
 										where m.Name.Value == methodref.Name.Value &&
 											  MemberHelper.SignaturesAreEqual(m, methodref)
+//=======
+//										where m.Name.UniqueKey == methodref.Name.UniqueKey &&  MemberHelper.SignaturesAreEqual(m, methodref)
+//>>>>>>> cci-version
 										select m;
 
 				result.UnionWith(compatibleMethods);

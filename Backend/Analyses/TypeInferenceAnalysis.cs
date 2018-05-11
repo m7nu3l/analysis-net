@@ -262,6 +262,7 @@ namespace Backend.Analyses
 						break;
 				}
 			}
+//<<<<<<< cci-version-merging
 
 			public override void Visit(ConditionalBranchInstruction instruction)
 			{
@@ -310,7 +311,9 @@ namespace Backend.Analyses
 					}
 				}
 			}
-		}
+//=======
+//>>>>>>> cci-version
+//		}
 		
 		#endregion
 
