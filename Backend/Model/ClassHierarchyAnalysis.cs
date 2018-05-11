@@ -86,15 +86,18 @@ namespace Backend.Model
 
 			var definedTypes = host.LoadedUnits.OfType<IModule>()
 				.SelectMany(a => a.GetAllTypes())
-				.OfType<INamedTypeDefinition>();
+				.OfType<INamedTypeDefinition>()
+				.ToList();
 
 			foreach (var type in definedTypes)
 			{
-				Analyze(type);
+                var genericType = (type is IGenericTypeInstance) ? (type as IGenericTypeInstance).GenericType.ResolvedType : type as ITypeDefinition;
+
+                Analyze(genericType);
 			}
 		}
 
-		private void Analyze(INamedTypeDefinition type)
+		private void Analyze(ITypeDefinition type)
 		{
 			if (type.IsClass)
 			{
@@ -108,13 +111,17 @@ namespace Backend.Model
 			{
 				AnalyzeInterface(type);
 			}
+			else if (type.IsEnum || type.IsDelegate)
+			{
+				// Nothing
+			}
 			else
 			{
 				throw new Exception("Unknown type kind");
 			}
 		}
 
-		private void AnalyzeClass(INamedTypeDefinition type)
+		private void AnalyzeClass(ITypeDefinition type)
 		{
 			GetOrAddInfo(type);
 
@@ -131,7 +138,7 @@ namespace Backend.Model
 			}
 		}
 
-		private void AnalyzeStruct(INamedTypeDefinition type)
+		private void AnalyzeStruct(ITypeDefinition type)
 		{
 			GetOrAddInfo(type);
 
@@ -142,7 +149,7 @@ namespace Backend.Model
 			}
 		}
 
-		private void AnalyzeInterface(INamedTypeDefinition type)
+		private void AnalyzeInterface(ITypeDefinition type)
 		{
 			GetOrAddInfo(type);
 
@@ -153,11 +160,12 @@ namespace Backend.Model
 			}
 		}
 
-		private ClassHierarchyInfo GetOrAddInfo(ITypeReference type)
+		private ClassHierarchyInfo GetOrAddInfo(ITypeReference type1)
 		{
 			ClassHierarchyInfo result;
+            var type = (type1.ResolvedType is IGenericTypeInstance) ? (type1.ResolvedType as IGenericTypeInstance).GenericType.ResolvedType : type1.ResolvedType as ITypeDefinition;
 
-			if (!types.TryGetValue(type, out result))
+            if (!types.TryGetValue(type, out result))
 			{
 				result = new ClassHierarchyInfo(type);
 				types.Add(type, result);

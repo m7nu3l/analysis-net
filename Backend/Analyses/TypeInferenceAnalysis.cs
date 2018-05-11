@@ -15,9 +15,9 @@ namespace Backend.Analyses
 {
 	public class TypeInferenceAnalysis
 	{
-		#region class TypeInferencer
+		#region class TypeInferer
 
-		private class TypeInferencer : InstructionVisitor
+		private class TypeInferer : InstructionVisitor
 		{
 			public override void Visit(LocalAllocationInstruction instruction)
 			{
@@ -51,19 +51,18 @@ namespace Backend.Analyses
 					instruction.Result.Type = instruction.Method.Type;
 				}
 
-				for (var i = 0; i < instruction.Arguments.Count; ++i)
+				// Skip implicit "this" parameter.
+				var offset = instruction.Method.IsStatic ? 0 : 1;
+
+				for (var i = offset; i < instruction.Arguments.Count; ++i)
 				{
 					var argument = instruction.Arguments[i];
+					var parameter = instruction.Method.Parameters.ElementAt(i - offset);
 
 					// Set the null variable a type.
-					if (argument.Type == null)
+					if (argument.Type == null ||
+						parameter.Type.TypeCode == PrimitiveTypeCode.Boolean)
 					{
-                        IParameterTypeInformation parameter;
-                        if (instruction.Method.IsStatic)
-                            parameter = instruction.Method.Parameters.ElementAt(i);
-                        else
-                            parameter = instruction.Method.Parameters.ElementAt(i - 1);
-
 						argument.Type = parameter.Type;
 					}
 				}
@@ -76,15 +75,18 @@ namespace Backend.Analyses
 					instruction.Result.Type = instruction.Function.Type;
 				}
 
-				for (var i = 0; i < instruction.Arguments.Count; ++i)
+				// Skip implicit "this" parameter.
+				var offset = instruction.Function.IsStatic ? 0 : 1;
+
+				for (var i = offset; i < instruction.Arguments.Count; ++i)
 				{
 					var argument = instruction.Arguments[i];
+					var parameter = instruction.Function.Parameters.ElementAt(i - offset);
 
 					// Set the null variable a type.
-					if (argument.Type == null)
+					if (argument.Type == null ||
+						parameter.Type.TypeCode == PrimitiveTypeCode.Boolean)
 					{
-						var parameter = instruction.Function.Parameters.ElementAt(i);
-
 						argument.Type = parameter.Type;
 					}
 				}
@@ -98,19 +100,41 @@ namespace Backend.Analyses
 				// Null is a polymorphic value so we handle it specially. We don't set the
 				// corresponding variable's type yet. We postpone it to usage of the variable
 				// or set it to System.Object if it is never used.
-				if (operandAsConstant != null &&
-					operandAsConstant.Value == null)
+				if (operandAsConstant != null)
 				{
-					//instruction.Result.Type = PlatformTypes.Object;
+					if (operandAsConstant.Value == null)
+					{
+						instruction.Result.Type = Types.Instance.PlatformType.SystemObject;
+					}
+					else if (instruction.Result.Type != null &&
+							 instruction.Result.Type.TypeCode == PrimitiveTypeCode.Boolean)
+					{
+						// If the result of the load has type Boolean,
+						// then we are actually loading a Boolean constant.
+						if (operandAsConstant.Value.Equals(0))
+						{
+							operandAsConstant.Value = false;
+							operandAsConstant.Type = Types.Instance.PlatformType.SystemBoolean;
+						}
+						else if (operandAsConstant.Value.Equals(1))
+						{
+							operandAsConstant.Value = true;
+							operandAsConstant.Type = Types.Instance.PlatformType.SystemBoolean;
+						}
+					}
 				}
 				// If we have variable to variable assignment where the result was assigned
 				// a type but the operand was not, then we set the operand type accordingly.
 				else if (operandAsVariable != null &&
-						 operandAsVariable.Type == null)
+						 instruction.Result.Type != null &&
+						(operandAsVariable.Type == null ||
+						 operandAsVariable.Type == Types.Instance.PlatformType.SystemObject ||
+						 instruction.Result.Type.TypeCode == PrimitiveTypeCode.Boolean))
 				{
 					operandAsVariable.Type = instruction.Result.Type;
 				}
-				else
+				
+				if (instruction.Result.Type == null)
 				{
 					instruction.Result.Type = instruction.Operand.Type;
 				}
@@ -130,7 +154,9 @@ namespace Backend.Analyses
 			public override void Visit(StoreInstruction instruction)
 			{
 				// Set the null variable a type.
-				if (instruction.Operand.Type == null)
+				if (instruction.Result.Type != null &&
+				   (instruction.Operand.Type == null ||
+					instruction.Operand.Type.TypeCode == PrimitiveTypeCode.Boolean))
 				{
 					instruction.Operand.Type = instruction.Result.Type;
 				}
@@ -151,7 +177,7 @@ namespace Backend.Analyses
 					case ConvertOperation.Cast:
 					case ConvertOperation.Box:
 					case ConvertOperation.Unbox:
-						// ConversionType is the data type of the result
+						// ConversionType is the data type of the result.
 						type = instruction.ConversionType;
 						break;
 
@@ -205,13 +231,89 @@ namespace Backend.Analyses
 						break;
 
 					case BinaryOperation.Eq:
+					case BinaryOperation.Neq:
+						// If one of the operands has type Boolean,
+						// then the other operand must also have type Boolean.
+						if (left != null && left.TypeCode == PrimitiveTypeCode.Boolean)
+						{
+							instruction.RightOperand.Type = Types.Instance.PlatformType.SystemBoolean;
+						}
+						else if (right != null && right.TypeCode == PrimitiveTypeCode.Boolean)
+						{
+							instruction.LeftOperand.Type = Types.Instance.PlatformType.SystemBoolean;
+						}
+
+						instruction.Result.Type = Types.Instance.PlatformType.SystemBoolean;
+						break;
+
 					case BinaryOperation.Gt:
+					case BinaryOperation.Ge:
 					case BinaryOperation.Lt:
+					case BinaryOperation.Le:
+						// If one of the operands has a reference type,
+						// then the operator must be != instead of >.
+						if ((left != null && !left.IsValueType) ||
+							(right != null && !right.IsValueType))
+						{
+							instruction.Operation = BinaryOperation.Neq;
+						}
+
 						instruction.Result.Type = Types.Instance.PlatformType.SystemBoolean;
 						break;
 				}
 			}
-		}
+//<<<<<<< cci-version-merging
+
+			public override void Visit(ConditionalBranchInstruction instruction)
+			{
+				if (instruction.LeftOperand.Type != null &&
+					instruction.RightOperand.Type == null)
+				{
+					instruction.RightOperand.Type = instruction.LeftOperand.Type;
+				}
+				else if (instruction.LeftOperand.Type == null &&
+						 instruction.RightOperand.Type != null)
+				{
+					instruction.LeftOperand.Type = instruction.RightOperand.Type;
+				}
+
+				if (instruction.Operation == BranchOperation.Eq &&
+					instruction.RightOperand is Constant &&
+					instruction.LeftOperand.Type != null &&
+					instruction.LeftOperand.Type.TypeCode != PrimitiveTypeCode.Boolean)
+				{
+					var constant = instruction.RightOperand as Constant;
+
+					if (constant.Value is bool)
+					{
+						var value = (bool)constant.Value;
+
+						if (value)
+						{
+							// Change num == true to num != true
+							instruction.Operation = BranchOperation.Neq;
+						}
+
+						if (instruction.LeftOperand.Type.IsValueType)
+						{
+							// Change num == false to num == 0 or
+							// num != true to num != 0
+							constant.Value = 0;
+						}
+						else
+						{
+							// Change num == false to num == null or
+							// num != true to num != null
+							constant.Value = null;
+						}
+
+						constant.Type = instruction.LeftOperand.Type;
+					}
+				}
+			}
+//=======
+//>>>>>>> cci-version
+//		}
 		
 		#endregion
 
@@ -224,29 +326,26 @@ namespace Backend.Analyses
 
 		public void Analyze()
 		{
-			var inferer = new TypeInferencer();
+			var inferer = new TypeInferer();
 			var sorted_nodes = cfg.ForwardOrder;
 
-			//for (var i = 0; i < sorted_nodes.Length; ++i)
-			//{
-			//	var node = sorted_nodes[i];
-			//	inferer.Visit(node);
-			//}
-
-			// Propagate types over the CFG until a fixedpoint is reached (i.e. when types do not change anymore)
-			IDictionary<IVariable, ITypeReference> fixedPoint;
+			// Propagate types over the CFG until a fixedpoint is reached
+			// (i.e. when types do not change anymore)
+			bool changed;
 
 			do
 			{
-				fixedPoint = GetTypeInferenceResult();
+				var result = GetTypeInferenceResult();
 
 				for (var i = 0; i < sorted_nodes.Length; ++i)
 				{
 					var node = sorted_nodes[i];
 					inferer.Visit(node);
 				}
+
+				changed = !SameTypes(result);
 			}
-			while (!FixedPointReached(fixedPoint));
+			while (changed);
 		}
 
 		private IDictionary<IVariable, ITypeReference> GetTypeInferenceResult()
@@ -262,8 +361,9 @@ namespace Backend.Analyses
 			return result;
 		}
 
-		private bool FixedPointReached(IDictionary<IVariable, ITypeReference> oldTypes)
+		private bool SameTypes(IDictionary<IVariable, ITypeReference> oldTypes)
 		{
+			var result = true;
 			var variables = cfg.GetVariables();
 
 			foreach (var variable in variables)
@@ -271,19 +371,15 @@ namespace Backend.Analyses
 				var oldType = oldTypes[variable];
 				var newType = variable.Type;
 
-				// this also covers null == null
-				if (oldType == newType)
-					continue;
-
-				if (oldType == null || newType == null)
-					return false;
-
-				// double-check
-				if (!TypeHelper.TypesAreEquivalent(oldType, newType, true))
-					return false;
+				if (oldType == null || newType == null ||
+					!TypeHelper.TypesAreEquivalent(oldType, newType, true))
+				{
+					result = false;
+					break;
+				}
 			}
 
-			return true;
+			return result;
 		}
 	}
 }

@@ -253,6 +253,71 @@ namespace Test
             return p;
         }
 
+		public int ExampleSlice(int n)
+		{
+			var sum = 0;
+			var product = 1;
+			var w = 7;
+
+			for (var i = 1; i < n; ++i)
+			{
+				sum = sum + i + w;
+				product = product * i;
+			}
+
+			if (n > 0)
+			{
+				return sum;
+			}
+			else
+			{
+				return product;
+			}
+		}
+
+		// Boolean vs Int
+		public void ExampleBoolean1()
+		{
+			System.Diagnostics.Contracts.Contract.Assert(false);
+		}
+
+		// Boolean vs Int
+		public void ExampleBoolean2()
+		{
+			var v = false;
+			System.Diagnostics.Contracts.Contract.Assert(v);
+		}
+
+		// Boolean vs Int
+		// Boolean vs object reference
+		public void ExampleConditionalBranches()
+		{
+			var num1 = 5;
+			var num2 = 8;
+			var v1 = (num1 == 0 || num2 == 2);
+			var v2 = (num1 != 0 || num2 == 2);
+
+			object obj1 = null;
+			object obj2 = null;
+			var v3 = (obj1 == null || obj2 == null);
+			var v4 = (obj1 != null || obj2 == null);
+		}
+
+		public void ExampleLambda()
+		{
+			Func<int, int> l = (x => x * x);
+			l(1);
+		}
+
+		public void ExampleCasts()
+		{
+			Exception e = null;
+			var v = e is IndexOutOfRangeException;
+			v = !(e is IndexOutOfRangeException);
+
+			var w = e as IndexOutOfRangeException;
+		}
+
 		//public void Print(params object[] args)
 		//{
 		//	Console.WriteLine(args);
