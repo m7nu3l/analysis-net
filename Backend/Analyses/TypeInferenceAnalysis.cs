@@ -156,7 +156,8 @@ namespace Backend.Analyses
                 // Set the null variable a type.
                 if (instruction.Result.Type != null &&
                    (instruction.Operand.Type == null ||
-                    instruction.Operand.Type.TypeCode == PrimitiveTypeCode.Boolean))
+                    instruction.Operand.Type == Types.Instance.PlatformType.SystemObject ||
+                    instruction.Result.Type.TypeCode == PrimitiveTypeCode.Boolean))
                 {
                     instruction.Operand.Type = instruction.Result.Type;
                 }
