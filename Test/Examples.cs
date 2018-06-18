@@ -338,6 +338,12 @@ namespace Test
 			var a = new int[3, 4];
 			var b = a[0, 1];
 			a[2, 3] = 50;
+        }
+
+		public int ExampleRefParameter(ref int p)
+		{
+			var v = p;
+			return v;
 		}
 
 		//public void Print(params object[] args)

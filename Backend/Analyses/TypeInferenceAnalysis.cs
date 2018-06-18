@@ -19,6 +19,13 @@ namespace Backend.Analyses
 
         private class TypeInferer : InstructionVisitor
         {
+            private ITypeReference returnType;
+
+            public TypeInferer(ITypeReference returnType)
+            {
+	            this.returnType = returnType;
+            }
+
             public override void Visit(LocalAllocationInstruction instruction)
             {
                 instruction.TargetAddress.Type = Types.Instance.NativePointerType;
@@ -163,6 +170,19 @@ namespace Backend.Analyses
                 }
             }
 
+			public override void Visit(ReturnInstruction instruction)
+			{
+				// Set the null variable a type.
+				if (instruction.HasOperand &&
+					returnType != null &&
+				   (instruction.Operand.Type == null ||
+					instruction.Operand.Type == Types.Instance.PlatformType.SystemObject ||
+					returnType.TypeCode == PrimitiveTypeCode.Boolean))
+				{
+					instruction.Operand.Type = returnType;
+				}
+			}
+
             public override void Visit(UnaryInstruction instruction)
             {
                 instruction.Result.Type = instruction.Operand.Type;
@@ -263,8 +283,7 @@ namespace Backend.Analyses
                         break;
                 }
             }
-            //<<<<<<< cci-version-merging
-
+            
             public override void Visit(ConditionalBranchInstruction instruction)
             {
                 if (instruction.LeftOperand.Type != null &&
@@ -317,15 +336,16 @@ namespace Backend.Analyses
 		#endregion
 
 		private ControlFlowGraph cfg;
+        private ITypeReference returnType;
 
-		public TypeInferenceAnalysis(ControlFlowGraph cfg)
+        public TypeInferenceAnalysis(ControlFlowGraph cfg, ITypeReference returnType)
 		{
 			this.cfg = cfg;
 		}
 
 		public void Analyze()
 		{
-			var inferer = new TypeInferer();
+			var inferer = new TypeInferer(returnType);
 			var sorted_nodes = cfg.ForwardOrder;
 
 			// Propagate types over the CFG until a fixedpoint is reached
