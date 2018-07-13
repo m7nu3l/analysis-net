@@ -262,7 +262,25 @@ namespace Backend.Transformations
 
 				switch (exinf.HandlerKind)
 				{
-					case HandlerKind.Catch:
+                    case HandlerKind.Filter:
+                        //end = exinf.HandlerEndOffset - 2;
+                        end = exinf.HandlerEndOffset;
+                        var filterHandler = new FilterExceptionHandler(exinf.HandlerStartOffset, end, exinf.ExceptionType);
+                        tryHandler.Handler = filterHandler;
+
+                        this.exceptionHandlersStart.Add(exinf.FilterDecisionStartOffset, filterHandler);
+                        this.exceptionHandlersEnd.Add(exinf.HandlerStartOffset-2, filterHandler);
+
+                        end = exinf.HandlerEndOffset;
+                        var filterCatchHandler = new CatchExceptionHandler(exinf.HandlerStartOffset, end, exinf.ExceptionType);
+                        //tryHandler.Handler = filterCatchHandler;
+
+                        this.exceptionHandlersStart.Add(exinf.HandlerStartOffset, filterCatchHandler);
+                        this.exceptionHandlersEnd.Add(end, filterCatchHandler);
+
+                        break;
+
+                    case HandlerKind.Catch:
 						//end = exinf.HandlerEndOffset - 2;
 						end = exinf.HandlerEndOffset;
 						var catchHandler = new CatchExceptionHandler(exinf.HandlerStartOffset, end, exinf.ExceptionType);
@@ -850,6 +868,7 @@ namespace Backend.Transformations
 							break;
 
 						case ExceptionHandlerBlockKind.Catch:
+                        case ExceptionHandlerBlockKind.Filter:
 							// push the exception into the stack
 							var exception = stack.Push();
 							var catchBlock = block as CatchExceptionHandler;

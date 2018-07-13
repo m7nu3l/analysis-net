@@ -84,7 +84,7 @@ namespace Backend.Model
 			if (analyzed) return;
 			analyzed = true;
 
-			var definedTypes = host.LoadedUnits.OfType<IModule>()
+			var definedTypes = host.LoadedUnits.OfType<IModule>().ToList()
 				.SelectMany(a => a.GetAllTypes())
 				.OfType<INamedTypeDefinition>()
 				.ToList();
