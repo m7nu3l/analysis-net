@@ -97,7 +97,7 @@ namespace Backend.Analyses
 					{
 						var calleedef = calleeref.ResolvedMethod;
 
-						if (calleedef != null)
+						if (calleedef != null && calleedef.HasBody)
 						{
 							var isNewMethod = visitedMethods.Add(calleedef);
 
