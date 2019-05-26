@@ -36,21 +36,6 @@
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Microsoft.Cci.MetadataHelper">
-      <HintPath>..\Dependencies\Microsoft.Cci.MetadataHelper.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Cci.MetadataModel">
-      <HintPath>..\Dependencies\Microsoft.Cci.MetadataModel.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Cci.PdbReader">
-      <HintPath>..\Dependencies\Microsoft.Cci.PdbReader.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Cci.PeReader">
-      <HintPath>..\Dependencies\Microsoft.Cci.PeReader.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Cci.SourceModel">
-      <HintPath>..\Dependencies\Microsoft.Cci.SourceModel.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -69,6 +54,26 @@
     <ProjectReference Include="..\Backend\Backend.csproj">
       <Project>{45C7B613-E32D-43E8-8030-932D509602EB}</Project>
       <Name>Backend</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\cci\CoreObjectModel\MetadataHelper\MetadataHelper.csproj">
+      <Project>{4a34a3c5-6176-49d7-a4c5-b2b671247f8f}</Project>
+      <Name>MetadataHelper</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\cci\CoreObjectModel\MetadataModel\MetadataModel.csproj">
+      <Project>{33cab640-0d03-43df-81bd-22cdc6c0a597}</Project>
+      <Name>MetadataModel</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\cci\CoreObjectModel\SourceModel\SourceModel.csproj">
+      <Project>{4b0054fd-124a-4037-9965-bdb55e6bf389}</Project>
+      <Name>SourceModel</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\cci\PDBReaderAndWriter\PdbReader\PdbReader.csproj">
+      <Project>{a6a31b03-7c3d-4de6-aa73-be88116bc40a}</Project>
+      <Name>PdbReader</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\cci\PEReaderAndWriter\PEReader\PeReader.csproj">
+      <Project>{34b9a0ce-df18-4cbc-8f7a-90c2b74338d5}</Project>
+      <Name>PeReader</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
