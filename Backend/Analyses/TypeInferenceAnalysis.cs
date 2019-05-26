@@ -145,6 +145,17 @@ namespace Backend.Analyses
                 {
                     instruction.Result.Type = instruction.Operand.Type;
                 }
+
+                if (instruction.Operand is Dereference)
+                {
+                    var deref = instruction.Operand as Dereference;
+                    instruction.Result.Type = deref.Reference.Type;
+                }
+
+                if (instruction.Operand.Type != null && // we can be in the middle of the type inference analysis
+                    instruction.Operand.Type is IManagedPointerType){
+                    instruction.Result.Type = instruction.Operand.Type;
+                }
             }
 
             public override void Visit(LoadTokenInstruction instruction)
