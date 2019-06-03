@@ -32,39 +32,39 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Microsoft.Cci.ILGenerator, Version=1.0.65055.0, Culture=neutral, PublicKeyToken=736440c9b414ea16, processorArchitecture=MSIL">
-      <HintPath>..\packages\CustomMetadataFix.Microsoft.Cci.Metadata.3.0.0\lib\net40\Microsoft.Cci.ILGenerator.dll</HintPath>
+      <HintPath>$(SolutionDir)\packages\CustomMetadataFix.Microsoft.Cci.Metadata.3.0.0\lib\net40\Microsoft.Cci.ILGenerator.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Cci.MetadataHelper, Version=1.0.65055.0, Culture=neutral, PublicKeyToken=736440c9b414ea16, processorArchitecture=MSIL">
-      <HintPath>..\packages\CustomMetadataFix.Microsoft.Cci.Metadata.3.0.0\lib\net40\Microsoft.Cci.MetadataHelper.dll</HintPath>
+      <HintPath>$(SolutionDir)\packages\CustomMetadataFix.Microsoft.Cci.Metadata.3.0.0\lib\net40\Microsoft.Cci.MetadataHelper.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Cci.MetadataModel, Version=1.0.65055.0, Culture=neutral, PublicKeyToken=736440c9b414ea16, processorArchitecture=MSIL">
-      <HintPath>..\packages\CustomMetadataFix.Microsoft.Cci.Metadata.3.0.0\lib\net40\Microsoft.Cci.MetadataModel.dll</HintPath>
+      <HintPath>$(SolutionDir)\packages\CustomMetadataFix.Microsoft.Cci.Metadata.3.0.0\lib\net40\Microsoft.Cci.MetadataModel.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Cci.MutableMetadataModel, Version=1.0.65055.0, Culture=neutral, PublicKeyToken=736440c9b414ea16, processorArchitecture=MSIL">
-      <HintPath>..\packages\CustomMetadataFix.Microsoft.Cci.Metadata.3.0.0\lib\net40\Microsoft.Cci.MutableMetadataModel.dll</HintPath>
+      <HintPath>$(SolutionDir)\packages\CustomMetadataFix.Microsoft.Cci.Metadata.3.0.0\lib\net40\Microsoft.Cci.MutableMetadataModel.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Cci.PdbReader, Version=1.0.65055.0, Culture=neutral, PublicKeyToken=736440c9b414ea16, processorArchitecture=MSIL">
-      <HintPath>..\packages\CustomMetadataFix.Microsoft.Cci.Metadata.3.0.0\lib\net40\Microsoft.Cci.PdbReader.dll</HintPath>
+      <HintPath>$(SolutionDir)\packages\CustomMetadataFix.Microsoft.Cci.Metadata.3.0.0\lib\net40\Microsoft.Cci.PdbReader.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Cci.PdbWriter, Version=1.0.65055.0, Culture=neutral, PublicKeyToken=736440c9b414ea16, processorArchitecture=MSIL">
-      <HintPath>..\packages\CustomMetadataFix.Microsoft.Cci.Metadata.3.0.0\lib\net40\Microsoft.Cci.PdbWriter.dll</HintPath>
+      <HintPath>$(SolutionDir)\packages\CustomMetadataFix.Microsoft.Cci.Metadata.3.0.0\lib\net40\Microsoft.Cci.PdbWriter.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Cci.PeReader, Version=1.0.65055.0, Culture=neutral, PublicKeyToken=736440c9b414ea16, processorArchitecture=MSIL">
-      <HintPath>..\packages\CustomMetadataFix.Microsoft.Cci.Metadata.3.0.0\lib\net40\Microsoft.Cci.PeReader.dll</HintPath>
+      <HintPath>$(SolutionDir)\packages\CustomMetadataFix.Microsoft.Cci.Metadata.3.0.0\lib\net40\Microsoft.Cci.PeReader.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Cci.PeWriter, Version=1.0.65055.0, Culture=neutral, PublicKeyToken=736440c9b414ea16, processorArchitecture=MSIL">
-      <HintPath>..\packages\CustomMetadataFix.Microsoft.Cci.Metadata.3.0.0\lib\net40\Microsoft.Cci.PeWriter.dll</HintPath>
+      <HintPath>$(SolutionDir)\packages\CustomMetadataFix.Microsoft.Cci.Metadata.3.0.0\lib\net40\Microsoft.Cci.PeWriter.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Cci.SourceModel, Version=1.0.65055.0, Culture=neutral, PublicKeyToken=736440c9b414ea16, processorArchitecture=MSIL">
-      <HintPath>..\packages\CustomMetadataFix.Microsoft.Cci.Metadata.3.0.0\lib\net40\Microsoft.Cci.SourceModel.dll</HintPath>
+      <HintPath>$(SolutionDir)\packages\CustomMetadataFix.Microsoft.Cci.Metadata.3.0.0\lib\net40\Microsoft.Cci.SourceModel.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="System" />
