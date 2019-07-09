@@ -170,9 +170,10 @@ namespace Backend.Transformations
 		{
 			var body = new MethodBody(method);
 
+            this.FillBodyParameters(body);
 			if (method.Body.Size == 0) return body;
 
-			this.FillBodyExceptionHandlers(body);
+            this.FillBodyExceptionHandlers(body);
 			this.RecognizeBasicBlocks();
 			var operations = this.GetLinkedOperations();
 
@@ -211,16 +212,19 @@ namespace Backend.Transformations
 			return operations;
 		}
 
+        private void FillBodyParameters(MethodBody body)
+        {
+            if (thisParameter != null)
+            {
+                body.Parameters.Add(thisParameter);
+            }
+
+            body.Parameters.AddRange(parameters.Values);
+            body.Variables.UnionWith(body.Parameters);
+        }
+
 		private void FillBodyVariables(MethodBody body)
 		{
-			if (thisParameter != null)
-			{
-				body.Parameters.Add(thisParameter);
-			}
-
-			body.Parameters.AddRange(parameters.Values);
-
-			body.Variables.UnionWith(body.Parameters);
 			body.Variables.UnionWith(locals.Values);
 			body.Variables.UnionWith(stack.Variables);
 		}
