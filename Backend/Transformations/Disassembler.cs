@@ -111,7 +111,7 @@ namespace Backend.Transformations
 				this.returnType = returnType;
 			}
 
-			public override void Visit(Bytecode.BasicInstruction op)
+            public override void Visit(Bytecode.BasicInstruction op)
 			{
 				switch (op.Operation)
 				{
@@ -198,10 +198,6 @@ namespace Backend.Transformations
 
 					case Bytecode.BasicOperation.LoadArrayElementAddress:
 						ProcessLoadArrayElementAddress(op);
-						break;
-
-					case Bytecode.BasicOperation.IndirectStore:
-						ProcessIndirectStore(op);
 						break;
 
 					case Bytecode.BasicOperation.StoreArrayElement:
@@ -390,15 +386,6 @@ namespace Backend.Transformations
 				var access = new ArrayElementAccess(array, index);
 				var source = new Reference(access);
 				var instruction = new Tac.LoadInstruction(op.Offset, dest, source);
-				body.Instructions.Add(instruction);
-			}
-
-			private void ProcessIndirectStore(Bytecode.BasicInstruction op)
-			{
-				var source = stack.Pop();
-				var address = stack.Pop();
-				var dest = new Dereference(address);
-				var instruction = new Tac.StoreInstruction(op.Offset, dest, source);
 				body.Instructions.Add(instruction);
 			}
 
@@ -960,7 +947,16 @@ namespace Backend.Transformations
 				body.Instructions.Add(instruction);
 			}
 
-			public override void Visit(Bytecode.StoreInstruction op)
+            public override void Visit(Bytecode.StoreIndirectInstruction op)
+            {
+                var source = stack.Pop();
+                var address = stack.Pop();
+                var dest = new Dereference(address);
+                var instruction = new Tac.StoreInstruction(op.Offset, dest, source);
+                body.Instructions.Add(instruction);
+            }
+
+            public override void Visit(Bytecode.StoreInstruction op)
 			{
 				var source = stack.Pop();
 				var instruction = new Tac.LoadInstruction(op.Offset, op.Target, source);

@@ -490,7 +490,7 @@ namespace CCIProvider
 				case Cci.OperationCode.Stind_R8:
 				case Cci.OperationCode.Stind_Ref:
 				case Cci.OperationCode.Stobj:
-					instruction = ProcessBasic(operation);
+					instruction = ProcessStoreIndirect(operation);
 					break;
 
 				case Cci.OperationCode.Stloc:
@@ -743,7 +743,15 @@ namespace CCIProvider
 			return instruction;
 		}
 
-		private IInstruction ProcessStoreField(Cci.IOperation op)
+        private IInstruction ProcessStoreIndirect(Cci.IOperation op)
+        {
+            var type = OperationHelper.GetOperationType(op.OperationCode);
+
+            var instruction = new StoreIndirectInstruction(op.Offset, type);
+            return instruction;
+        }
+
+        private IInstruction ProcessStoreField(Cci.IOperation op)
 		{
 			var cciField = op.Value as Cci.IFieldReference;
 			var ourField = typeExtractor.ExtractReference(cciField);

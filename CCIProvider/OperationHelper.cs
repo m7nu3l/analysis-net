@@ -82,15 +82,6 @@ namespace CCIProvider
 				case Cci.OperationCode.Ldelem_U4:
 				case Cci.OperationCode.Ldelem_Ref:	return BasicOperation.LoadArrayElement;
 				case Cci.OperationCode.Ldelema:		return BasicOperation.LoadArrayElementAddress;
-				case Cci.OperationCode.Stind_I:
-				case Cci.OperationCode.Stind_I1:
-				case Cci.OperationCode.Stind_I2:
-				case Cci.OperationCode.Stind_I4:
-				case Cci.OperationCode.Stind_I8:
-				case Cci.OperationCode.Stind_R4:
-				case Cci.OperationCode.Stind_R8:
-				case Cci.OperationCode.Stind_Ref:
-				case Cci.OperationCode.Stobj:		return BasicOperation.IndirectStore;
 				case Cci.OperationCode.Stelem:
 				case Cci.OperationCode.Stelem_I:
 				case Cci.OperationCode.Stelem_I1:
@@ -381,6 +372,8 @@ namespace CCIProvider
 				case Cci.OperationCode.Stelem_R8:
 				case Cci.OperationCode.Conv_R8:
 				case Cci.OperationCode.Conv_R_Un:		return PlatformTypes.Float64;
+                case Cci.OperationCode.Stobj:           return PlatformTypes.ValueType;
+                case Cci.OperationCode.Stind_Ref:
 				case Cci.OperationCode.Ldnull:			return PlatformTypes.Object;
 				case Cci.OperationCode.Ldstr:			return PlatformTypes.String;
 

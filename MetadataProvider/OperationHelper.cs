@@ -82,15 +82,6 @@ namespace MetadataProvider
 				case SRM.ILOpCode.Ldelem_u4:
 				case SRM.ILOpCode.Ldelem_ref:	return BasicOperation.LoadArrayElement;
 				case SRM.ILOpCode.Ldelema:		return BasicOperation.LoadArrayElementAddress;
-				case SRM.ILOpCode.Stind_i:
-				case SRM.ILOpCode.Stind_i1:
-				case SRM.ILOpCode.Stind_i2:
-				case SRM.ILOpCode.Stind_i4:
-				case SRM.ILOpCode.Stind_i8:
-				case SRM.ILOpCode.Stind_r4:
-				case SRM.ILOpCode.Stind_r8:
-				case SRM.ILOpCode.Stind_ref:
-				case SRM.ILOpCode.Stobj:		return BasicOperation.IndirectStore;
 				case SRM.ILOpCode.Stelem:
 				case SRM.ILOpCode.Stelem_i:
 				case SRM.ILOpCode.Stelem_i1:
@@ -365,8 +356,10 @@ namespace MetadataProvider
 				case SRM.ILOpCode.Stelem_r8:
 				case SRM.ILOpCode.Conv_r8:
 				case SRM.ILOpCode.Conv_r_un:		return PlatformTypes.Float64;
-				case SRM.ILOpCode.Ldnull:			return PlatformTypes.Object;
-				case SRM.ILOpCode.Ldstr:			return PlatformTypes.String;
+                case SRM.ILOpCode.Stind_ref:
+                case SRM.ILOpCode.Ldnull:			return PlatformTypes.Object;
+                case SRM.ILOpCode.Stobj:            return PlatformTypes.ValueType;
+                case SRM.ILOpCode.Ldstr:			return PlatformTypes.String;
 
 				default:							return null;
 			}

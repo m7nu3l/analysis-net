@@ -1095,7 +1095,7 @@ namespace MetadataProvider
 				case SRM.ILOpCode.Stind_r8:
 				case SRM.ILOpCode.Stind_ref:
 				case SRM.ILOpCode.Stobj:
-					instruction = ProcessBasic(operation);
+					instruction = ProcessStoreIndirect(operation);
 					break;
 
 				case SRM.ILOpCode.Stloc:
@@ -1608,7 +1608,15 @@ namespace MetadataProvider
 			return instruction;
 		}
 
-		private IInstruction ProcessStoreField(ILInstruction op)
+        private IInstruction ProcessStoreIndirect(ILInstruction op)
+        {
+            var type = OperationHelper.GetOperationType(op.Opcode);
+
+            var instruction = new StoreIndirectInstruction(op.Offset, type);
+            return instruction;
+        }
+
+        private IInstruction ProcessStoreField(ILInstruction op)
 		{
 			var field = GetOperand<IFieldReference>(op);
 

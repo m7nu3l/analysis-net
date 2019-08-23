@@ -43,7 +43,6 @@ namespace Model.Bytecode
 		IndirectLoad,
 		LoadArrayElement,
 		LoadArrayElementAddress,
-		IndirectStore,
 		StoreArrayElement,
 		Breakpoint,
 		Return
@@ -514,7 +513,29 @@ namespace Model.Bytecode
 		}
 	}
 
-	public class StoreInstruction : Instruction
+    public class StoreIndirectInstruction : Instruction
+    {
+        public IType Type { get; set; }
+
+        public StoreIndirectInstruction(uint label, IType type)
+            : base(label)
+        {
+            this.Type = type;
+        }
+
+        public override void Accept(IInstructionVisitor visitor)
+        {
+            base.Accept(visitor);
+            visitor.Visit(this);
+        }
+
+        public override string ToString()
+        {
+            return this.ToString("indirect store {0}", this.Type);
+        }
+    }
+
+    public class StoreInstruction : Instruction
 	{
 		public IVariable Target { get; set; }
 
