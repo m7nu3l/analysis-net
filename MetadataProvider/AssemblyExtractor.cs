@@ -1177,7 +1177,14 @@ namespace MetadataProvider
 						break;
 					}
 
-				case OperandType.TypeReference:
+                case OperandType.TypeDefinition:
+                    {
+                        var handle = (SRM.TypeDefinitionHandle)op.Operand;
+                        result = (T)(object)GetDefinedType(handle);
+                        break;
+                    }
+
+                case OperandType.TypeReference:
 					{
 						var handle = (SRM.TypeReferenceHandle)op.Operand;
 						result = (T)signatureTypeProvider.GetTypeFromReference(metadata, handle);
@@ -1561,7 +1568,8 @@ namespace MetadataProvider
 		private IInstruction ProcessLoadIndirect(ILInstruction op)
 		{
             var type = OperationHelper.GetOperationType(op.Opcode);
-
+            if (op.Opcode == SRM.ILOpCode.Ldobj)
+                type = GetOperand<IType>(op);
             var instruction = new LoadIndirectInstruction(op.Offset, type);
             return instruction;
         }
@@ -1613,7 +1621,8 @@ namespace MetadataProvider
         private IInstruction ProcessStoreIndirect(ILInstruction op)
         {
             var type = OperationHelper.GetOperationType(op.Opcode);
-
+            if (op.Opcode == SRM.ILOpCode.Stobj)
+                type = GetOperand<IType>(op);
             var instruction = new StoreIndirectInstruction(op.Offset, type);
             return instruction;
         }

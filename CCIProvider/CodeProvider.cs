@@ -688,7 +688,8 @@ namespace CCIProvider
 		private IInstruction ProcessLoadIndirect(Cci.IOperation op)
 		{
             var type = OperationHelper.GetOperationType(op.OperationCode);
-
+            if (op.OperationCode == Cci.OperationCode.Ldobj)
+                type = typeExtractor.ExtractStruct(op.Value as Cci.INamedTypeDefinition, sourceLocationProvider);
             var instruction = new LoadIndirectInstruction(op.Offset, type);
 			return instruction;
 		}
@@ -748,7 +749,8 @@ namespace CCIProvider
         private IInstruction ProcessStoreIndirect(Cci.IOperation op)
         {
             var type = OperationHelper.GetOperationType(op.OperationCode);
-
+            if (op.OperationCode == Cci.OperationCode.Stobj)
+                type = typeExtractor.ExtractStruct(op.Value as Cci.INamedTypeDefinition, sourceLocationProvider);
             var instruction = new StoreIndirectInstruction(op.Offset, type);
             return instruction;
         }

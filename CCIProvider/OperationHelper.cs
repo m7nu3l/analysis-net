@@ -360,8 +360,6 @@ namespace CCIProvider
 				case Cci.OperationCode.Stelem_R8:
 				case Cci.OperationCode.Conv_R8:
 				case Cci.OperationCode.Conv_R_Un:		return PlatformTypes.Float64;
-                case Cci.OperationCode.Ldobj:
-                case Cci.OperationCode.Stobj:           return PlatformTypes.ValueType;
                 case Cci.OperationCode.Stind_Ref:
                 case Cci.OperationCode.Ldind_Ref:
                 case Cci.OperationCode.Ldnull:			return PlatformTypes.Object;

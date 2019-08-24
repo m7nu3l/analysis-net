@@ -188,10 +188,6 @@ namespace Backend.Transformations
 						ProcessLoadArrayLength(op);
 						break;
 
-					case Bytecode.BasicOperation.IndirectLoad:
-						ProcessIndirectLoad(op);
-						break;
-
 					case Bytecode.BasicOperation.LoadArrayElement:
 						ProcessLoadArrayElement(op);
 						break;

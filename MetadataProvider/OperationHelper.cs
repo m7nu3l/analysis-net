@@ -358,8 +358,6 @@ namespace MetadataProvider
                 case SRM.ILOpCode.Ldind_ref:
                 case SRM.ILOpCode.Stind_ref:
                 case SRM.ILOpCode.Ldnull:			return PlatformTypes.Object;
-                case SRM.ILOpCode.Ldobj:
-                case SRM.ILOpCode.Stobj:            return PlatformTypes.ValueType;
                 case SRM.ILOpCode.Ldstr:			return PlatformTypes.String;
 
 				default:							return null;
