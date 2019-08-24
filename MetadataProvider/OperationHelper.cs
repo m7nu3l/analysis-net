@@ -68,7 +68,6 @@ namespace MetadataProvider
 				case SRM.ILOpCode.Ldind_u1:
 				case SRM.ILOpCode.Ldind_u2:
 				case SRM.ILOpCode.Ldind_u4:
-				case SRM.ILOpCode.Ldobj:		return BasicOperation.IndirectLoad;
 				case SRM.ILOpCode.Ldelem:
 				case SRM.ILOpCode.Ldelem_i:
 				case SRM.ILOpCode.Ldelem_i1:
@@ -356,8 +355,10 @@ namespace MetadataProvider
 				case SRM.ILOpCode.Stelem_r8:
 				case SRM.ILOpCode.Conv_r8:
 				case SRM.ILOpCode.Conv_r_un:		return PlatformTypes.Float64;
+                case SRM.ILOpCode.Ldind_ref:
                 case SRM.ILOpCode.Stind_ref:
                 case SRM.ILOpCode.Ldnull:			return PlatformTypes.Object;
+                case SRM.ILOpCode.Ldobj:
                 case SRM.ILOpCode.Stobj:            return PlatformTypes.ValueType;
                 case SRM.ILOpCode.Ldstr:			return PlatformTypes.String;
 

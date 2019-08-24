@@ -57,18 +57,6 @@ namespace CCIProvider
 				case Cci.OperationCode.Cpobj:		return BasicOperation.CopyObject;
 				case Cci.OperationCode.Ret:			return BasicOperation.Return;
 				case Cci.OperationCode.Ldlen:		return BasicOperation.LoadArrayLength;
-				case Cci.OperationCode.Ldind_I:
-				case Cci.OperationCode.Ldind_I1:
-				case Cci.OperationCode.Ldind_I2:
-				case Cci.OperationCode.Ldind_I4:
-				case Cci.OperationCode.Ldind_I8:
-				case Cci.OperationCode.Ldind_R4:
-				case Cci.OperationCode.Ldind_R8:
-				case Cci.OperationCode.Ldind_Ref:
-				case Cci.OperationCode.Ldind_U1:
-				case Cci.OperationCode.Ldind_U2:
-				case Cci.OperationCode.Ldind_U4:
-				case Cci.OperationCode.Ldobj:		return BasicOperation.IndirectLoad;
 				case Cci.OperationCode.Ldelem:
 				case Cci.OperationCode.Ldelem_I:
 				case Cci.OperationCode.Ldelem_I1:
@@ -372,9 +360,11 @@ namespace CCIProvider
 				case Cci.OperationCode.Stelem_R8:
 				case Cci.OperationCode.Conv_R8:
 				case Cci.OperationCode.Conv_R_Un:		return PlatformTypes.Float64;
+                case Cci.OperationCode.Ldobj:
                 case Cci.OperationCode.Stobj:           return PlatformTypes.ValueType;
                 case Cci.OperationCode.Stind_Ref:
-				case Cci.OperationCode.Ldnull:			return PlatformTypes.Object;
+                case Cci.OperationCode.Ldind_Ref:
+                case Cci.OperationCode.Ldnull:			return PlatformTypes.Object;
 				case Cci.OperationCode.Ldstr:			return PlatformTypes.String;
 
 				default: return null;

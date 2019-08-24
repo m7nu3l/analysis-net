@@ -40,7 +40,6 @@ namespace Model.Bytecode
 		CopyObject,
 		CopyBlock,
 		LoadArrayLength,
-		IndirectLoad,
 		LoadArrayElement,
 		LoadArrayElementAddress,
 		StoreArrayElement,
@@ -397,8 +396,29 @@ namespace Model.Bytecode
 			return this.ToString("sizeof {0}", this.MeasuredType);
 		}
 	}
+    public class LoadIndirectInstruction : Instruction
+    {
+        public IType Type { get; set; }
 
-	public class LoadInstruction : Instruction
+        public LoadIndirectInstruction(uint label, IType type)
+            : base(label)
+        {
+            this.Type = type;
+        }
+
+        public override void Accept(IInstructionVisitor visitor)
+        {
+            base.Accept(visitor);
+            visitor.Visit(this);
+        }
+
+        public override string ToString()
+        {
+            return this.ToString("indirect load {0}", this.Type);
+        }
+    }
+
+    public class LoadInstruction : Instruction
 	{
 		public LoadOperation Operation { get; set; }
 		public IInmediateValue Operand { get; set; }

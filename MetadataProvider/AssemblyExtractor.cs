@@ -1560,9 +1560,11 @@ namespace MetadataProvider
 
 		private IInstruction ProcessLoadIndirect(ILInstruction op)
 		{
-			var instruction = new BasicInstruction(op.Offset, BasicOperation.IndirectLoad);
-			return instruction;
-		}
+            var type = OperationHelper.GetOperationType(op.Opcode);
+
+            var instruction = new LoadIndirectInstruction(op.Offset, type);
+            return instruction;
+        }
 
 		private IInstruction ProcessLoadField(ILInstruction op)
 		{

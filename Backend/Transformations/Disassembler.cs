@@ -359,15 +359,6 @@ namespace Backend.Transformations
 				body.Instructions.Add(instruction);
 			}
 
-			private void ProcessIndirectLoad(Bytecode.BasicInstruction op)
-			{
-				var address = stack.Pop();
-				var dest = stack.Push();
-				var source = new Dereference(address);
-				var instruction = new Tac.LoadInstruction(op.Offset, dest, source);
-				body.Instructions.Add(instruction);
-			}
-
 			private void ProcessLoadArrayElement(Bytecode.BasicInstruction op)
 			{
 				var index = stack.Pop();
@@ -791,8 +782,15 @@ namespace Backend.Transformations
 				var instruction = new Tac.LoadInstruction(op.Offset, dest, source);
 				body.Instructions.Add(instruction);
 			}
-
-			public override void Visit(Bytecode.LoadInstruction op)
+            public override void Visit(Bytecode.LoadIndirectInstruction op)
+            {
+                var address = stack.Pop();
+                var dest = stack.Push();
+                var source = new Dereference(address);
+                var instruction = new Tac.LoadInstruction(op.Offset, dest, source);
+                body.Instructions.Add(instruction);
+            }
+            public override void Visit(Bytecode.LoadInstruction op)
 			{
 				switch (op.Operation)
 				{

@@ -687,7 +687,9 @@ namespace CCIProvider
 
 		private IInstruction ProcessLoadIndirect(Cci.IOperation op)
 		{
-			var instruction = new BasicInstruction(op.Offset, BasicOperation.IndirectLoad);
+            var type = OperationHelper.GetOperationType(op.OperationCode);
+
+            var instruction = new LoadIndirectInstruction(op.Offset, type);
 			return instruction;
 		}
 
