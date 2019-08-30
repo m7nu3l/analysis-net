@@ -188,18 +188,6 @@ namespace Backend.Transformations
 						ProcessLoadArrayLength(op);
 						break;
 
-					case Bytecode.BasicOperation.LoadArrayElement:
-						ProcessLoadArrayElement(op);
-						break;
-
-					case Bytecode.BasicOperation.LoadArrayElementAddress:
-						ProcessLoadArrayElementAddress(op);
-						break;
-
-					case Bytecode.BasicOperation.StoreArrayElement:
-						ProcessStoreArrayElement(op);
-						break;
-
 					case Bytecode.BasicOperation.Breakpoint:
 						ProcessBreakpointOperation(op);
 						break;

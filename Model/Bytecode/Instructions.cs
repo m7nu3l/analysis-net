@@ -40,9 +40,6 @@ namespace Model.Bytecode
 		CopyObject,
 		CopyBlock,
 		LoadArrayLength,
-		LoadArrayElement,
-		LoadArrayElementAddress,
-		StoreArrayElement,
 		Breakpoint,
 		Return
 	}
