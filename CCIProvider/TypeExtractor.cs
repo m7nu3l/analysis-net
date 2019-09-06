@@ -199,14 +199,14 @@ namespace CCIProvider
 
 		public IGenericParameterReference ExtractType(Cci.IGenericTypeParameterReference typeref)
 		{
-			var containingType = GetContainingType(typeref.DefiningType);
+            var containingType = GetContainingType(typeref.DefiningType);
 			var startIndex = TotalGenericParameterCount(containingType);
 			var index = (ushort)(startIndex + typeref.Index);
 			var type = new GenericParameterReference(GenericParameterKind.Type, index);
 
 			ExtractAttributes(type.Attributes, typeref.Attributes);
-
-			return type;
+            type.GenericContainer = ExtractType(typeref.DefiningType) as IGenericReference;
+            return type;
 		}
 
 		private Cci.ITypeReference GetContainingType(Cci.ITypeReference typeref)
@@ -491,10 +491,16 @@ namespace CCIProvider
 				{
 					var specializedMethodref = genericMethodref as Cci.ISpecializedMethodReference;
 					genericMethodref = specializedMethodref.UnspecializedVersion;
-				}
+				} 
 
 				method.GenericMethod = ExtractReference(genericMethodref);
-			}
+			} else if (methodref is Cci.ISpecializedMethodReference)
+            {
+                // it can be specialized but not generic
+                // the containing type is generic and the method migth use the generic parameter as an argument or return type
+                var specializedMethodref = methodref as Cci.ISpecializedMethodReference;
+                method.GenericMethod = ExtractReference(specializedMethodref.UnspecializedVersion);
+            }
 
 			method.Resolve(host);
 			return method;
