@@ -793,12 +793,12 @@ namespace MetadataProvider
 				case SRM.ILOpCode.Ldelem_u2:
 				case SRM.ILOpCode.Ldelem_u4:
 				case SRM.ILOpCode.Ldelem_ref:
-					instruction = ProcessBasic(operation);
-					break;
+                    instruction = ProcessLoadArrayElement(operation, LoadArrayElementOperation.Content);
+                    break;
 
 				case SRM.ILOpCode.Ldelema:
-					instruction = ProcessBasic(operation);
-					break;
+                    instruction = ProcessLoadArrayElement(operation, LoadArrayElementOperation.Address);
+                    break;
 
 				case SRM.ILOpCode.Beq:
 				case SRM.ILOpCode.Beq_s:
@@ -1078,7 +1078,7 @@ namespace MetadataProvider
 				case SRM.ILOpCode.Stelem_r4:
 				case SRM.ILOpCode.Stelem_r8:
 				case SRM.ILOpCode.Stelem_ref:
-					instruction = ProcessBasic(operation);
+					instruction = ProcessStoreArrayElement(operation);
 					break;
 
 				case SRM.ILOpCode.Stfld:
@@ -1095,7 +1095,7 @@ namespace MetadataProvider
 				case SRM.ILOpCode.Stind_r8:
 				case SRM.ILOpCode.Stind_ref:
 				case SRM.ILOpCode.Stobj:
-					instruction = ProcessBasic(operation);
+					instruction = ProcessStoreIndirect(operation);
 					break;
 
 				case SRM.ILOpCode.Stloc:
@@ -1177,7 +1177,14 @@ namespace MetadataProvider
 						break;
 					}
 
-				case OperandType.TypeReference:
+                case OperandType.TypeDefinition:
+                    {
+                        var handle = (SRM.TypeDefinitionHandle)op.Operand;
+                        result = (T)(object)GetDefinedType(handle);
+                        break;
+                    }
+
+                case OperandType.TypeReference:
 					{
 						var handle = (SRM.TypeReferenceHandle)op.Operand;
 						result = (T)signatureTypeProvider.GetTypeFromReference(metadata, handle);
@@ -1413,15 +1420,25 @@ namespace MetadataProvider
 			return instruction;
 		}
 
-		private IInstruction ProcessLoadArrayElement(ILInstruction op, ArrayType arrayType, LoadArrayElementOperation operation)
+		private IInstruction ProcessLoadArrayElement(ILInstruction op, LoadArrayElementOperation operation, ArrayType arrayType = null)
 		{
-			var instruction = new LoadArrayElementInstruction(op.Offset, operation, arrayType);
-			return instruction;
-		}
+            if (arrayType == null)
+            {
+                IType elementType = op.Opcode == SRM.ILOpCode.Ldelem || op.Opcode == SRM.ILOpCode.Ldelema ?
+                                    GetOperand<IType>(op)
+                                    : OperationHelper.GetOperationType(op.Opcode);
+                arrayType = new ArrayType(elementType);
+            }
+            var instruction = new LoadArrayElementInstruction(op.Offset, operation, arrayType);
+            return instruction;
+        }
 
-		private IInstruction ProcessStoreArrayElement(ILInstruction op, ArrayType arrayType)
+		private IInstruction ProcessStoreArrayElement(ILInstruction op, ArrayType arrayType = null)
 		{
-			var instruction = new StoreArrayElementInstruction(op.Offset, arrayType);
+            if (arrayType == null)
+                arrayType = new ArrayType(OperationHelper.GetOperationType(op.Opcode));
+
+            var instruction = new StoreArrayElementInstruction(op.Offset, arrayType);
 			return instruction;
 		}
 
@@ -1462,7 +1479,7 @@ namespace MetadataProvider
 				{
 					var operation = OperationHelper.ToLoadArrayElementOperation(method.Name);
 
-					instruction = ProcessLoadArrayElement(op, arrayType.Type, operation);
+                    instruction = ProcessLoadArrayElement(op, operation, arrayType.Type);
 				}
 			}
 			else
@@ -1560,9 +1577,12 @@ namespace MetadataProvider
 
 		private IInstruction ProcessLoadIndirect(ILInstruction op)
 		{
-			var instruction = new BasicInstruction(op.Offset, BasicOperation.IndirectLoad);
-			return instruction;
-		}
+            var type = OperationHelper.GetOperationType(op.Opcode);
+            if (op.Opcode == SRM.ILOpCode.Ldobj)
+                type = GetOperand<IType>(op);
+            var instruction = new LoadIndirectInstruction(op.Offset, type);
+            return instruction;
+        }
 
 		private IInstruction ProcessLoadField(ILInstruction op)
 		{
@@ -1608,7 +1628,16 @@ namespace MetadataProvider
 			return instruction;
 		}
 
-		private IInstruction ProcessStoreField(ILInstruction op)
+        private IInstruction ProcessStoreIndirect(ILInstruction op)
+        {
+            var type = OperationHelper.GetOperationType(op.Opcode);
+            if (op.Opcode == SRM.ILOpCode.Stobj)
+                type = GetOperand<IType>(op);
+            var instruction = new StoreIndirectInstruction(op.Offset, type);
+            return instruction;
+        }
+
+        private IInstruction ProcessStoreField(ILInstruction op)
 		{
 			var field = GetOperand<IFieldReference>(op);
 

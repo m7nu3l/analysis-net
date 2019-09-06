@@ -20,9 +20,11 @@ namespace Model.Bytecode.Visitor
 
 		public virtual void Visit(Instruction instruction) { }
 		public virtual void Visit(BasicInstruction instruction) { }
+        public virtual void Visit(LoadIndirectInstruction instruction) { }
 		public virtual void Visit(LoadInstruction instruction) { }
 		public virtual void Visit(LoadFieldInstruction instruction) { }
 		public virtual void Visit(LoadMethodAddressInstruction instruction) { }
+        public virtual void Visit(StoreIndirectInstruction instruction) { }
 		public virtual void Visit(StoreInstruction instruction) { }
 		public virtual void Visit(StoreFieldInstruction instruction) { }
 		public virtual void Visit(ConvertInstruction instruction) { }

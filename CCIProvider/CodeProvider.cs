@@ -128,68 +128,70 @@ namespace CCIProvider
 		{
 			IInstruction instruction = null;
 
-			switch (operation.OperationCode)
-			{
-				case Cci.OperationCode.Add:
-				case Cci.OperationCode.Add_Ovf:
-				case Cci.OperationCode.Add_Ovf_Un:
-				case Cci.OperationCode.And:
-				case Cci.OperationCode.Ceq:
-				case Cci.OperationCode.Cgt:
-				case Cci.OperationCode.Cgt_Un:
-				case Cci.OperationCode.Clt:
-				case Cci.OperationCode.Clt_Un:
-				case Cci.OperationCode.Div:
-				case Cci.OperationCode.Div_Un:
-				case Cci.OperationCode.Mul:
-				case Cci.OperationCode.Mul_Ovf:
-				case Cci.OperationCode.Mul_Ovf_Un:
-				case Cci.OperationCode.Or:
-				case Cci.OperationCode.Rem:
-				case Cci.OperationCode.Rem_Un:
-				case Cci.OperationCode.Shl:
-				case Cci.OperationCode.Shr:
-				case Cci.OperationCode.Shr_Un:
-				case Cci.OperationCode.Sub:
-				case Cci.OperationCode.Sub_Ovf:
-				case Cci.OperationCode.Sub_Ovf_Un:
-				case Cci.OperationCode.Xor:
-					instruction = ProcessBasic(operation);
-					break;
-
-				//case Cci.OperationCode.Arglist:
-				//    //expression = new RuntimeArgumentHandleExpression();
-				//    break;
-
-				case Cci.OperationCode.Array_Create_WithLowerBound:
-				case Cci.OperationCode.Array_Create:
-				case Cci.OperationCode.Newarr:
-					instruction = ProcessCreateArray(operation);
-					break;
-
-				case Cci.OperationCode.Array_Get:
-				case Cci.OperationCode.Array_Addr:
-					instruction = ProcessLoadArrayElement(operation);
+            switch (operation.OperationCode)
+            {
+                case Cci.OperationCode.Add:
+                case Cci.OperationCode.Add_Ovf:
+                case Cci.OperationCode.Add_Ovf_Un:
+                case Cci.OperationCode.And:
+                case Cci.OperationCode.Ceq:
+                case Cci.OperationCode.Cgt:
+                case Cci.OperationCode.Cgt_Un:
+                case Cci.OperationCode.Clt:
+                case Cci.OperationCode.Clt_Un:
+                case Cci.OperationCode.Div:
+                case Cci.OperationCode.Div_Un:
+                case Cci.OperationCode.Mul:
+                case Cci.OperationCode.Mul_Ovf:
+                case Cci.OperationCode.Mul_Ovf_Un:
+                case Cci.OperationCode.Or:
+                case Cci.OperationCode.Rem:
+                case Cci.OperationCode.Rem_Un:
+                case Cci.OperationCode.Shl:
+                case Cci.OperationCode.Shr:
+                case Cci.OperationCode.Shr_Un:
+                case Cci.OperationCode.Sub:
+                case Cci.OperationCode.Sub_Ovf:
+                case Cci.OperationCode.Sub_Ovf_Un:
+                case Cci.OperationCode.Xor:
+                    instruction = ProcessBasic(operation);
                     break;
 
-				case Cci.OperationCode.Ldelem:
-				case Cci.OperationCode.Ldelem_I:
-				case Cci.OperationCode.Ldelem_I1:
-				case Cci.OperationCode.Ldelem_I2:
-				case Cci.OperationCode.Ldelem_I4:
-				case Cci.OperationCode.Ldelem_I8:
-				case Cci.OperationCode.Ldelem_R4:
-				case Cci.OperationCode.Ldelem_R8:
-				case Cci.OperationCode.Ldelem_U1:
-				case Cci.OperationCode.Ldelem_U2:
-				case Cci.OperationCode.Ldelem_U4:
-				case Cci.OperationCode.Ldelem_Ref:
-					instruction = ProcessBasic(operation);
+                //case Cci.OperationCode.Arglist:
+                //    //expression = new RuntimeArgumentHandleExpression();
+                //    break;
+
+                case Cci.OperationCode.Array_Create_WithLowerBound:
+                case Cci.OperationCode.Array_Create:
+                case Cci.OperationCode.Newarr:
+                    instruction = ProcessCreateArray(operation);
+                    break;
+
+                case Cci.OperationCode.Array_Get:
+                    instruction = ProcessLoadArrayElement(operation, LoadArrayElementOperation.Content);
+                    break;
+                case Cci.OperationCode.Array_Addr:
+                    instruction = ProcessLoadArrayElement(operation, LoadArrayElementOperation.Address);
+                    break;
+
+                case Cci.OperationCode.Ldelem:
+                case Cci.OperationCode.Ldelem_I:
+                case Cci.OperationCode.Ldelem_I1:
+                case Cci.OperationCode.Ldelem_I2:
+                case Cci.OperationCode.Ldelem_I4:
+                case Cci.OperationCode.Ldelem_I8:
+                case Cci.OperationCode.Ldelem_R4:
+                case Cci.OperationCode.Ldelem_R8:
+                case Cci.OperationCode.Ldelem_U1:
+                case Cci.OperationCode.Ldelem_U2:
+                case Cci.OperationCode.Ldelem_U4:
+                case Cci.OperationCode.Ldelem_Ref:
+                    instruction = ProcessLoadArrayElement(operation, LoadArrayElementOperation.Content);
 					break;
 
 				case Cci.OperationCode.Ldelema:
-					instruction = ProcessBasic(operation);
-					break;
+                    instruction = ProcessLoadArrayElement(operation, LoadArrayElementOperation.Address);
+                    break;
 
 				case Cci.OperationCode.Beq:
 				case Cci.OperationCode.Beq_S:
@@ -461,19 +463,16 @@ namespace CCIProvider
 					break;
 
 				case Cci.OperationCode.Array_Set:
-					instruction = ProcessStoreArrayElement(operation);
-					break;
-
-				case Cci.OperationCode.Stelem:
-				case Cci.OperationCode.Stelem_I:
-				case Cci.OperationCode.Stelem_I1:
-				case Cci.OperationCode.Stelem_I2:
-				case Cci.OperationCode.Stelem_I4:
-				case Cci.OperationCode.Stelem_I8:
-				case Cci.OperationCode.Stelem_R4:
-				case Cci.OperationCode.Stelem_R8:
-				case Cci.OperationCode.Stelem_Ref:
-					instruction = ProcessBasic(operation);
+                case Cci.OperationCode.Stelem:
+                case Cci.OperationCode.Stelem_I:
+                case Cci.OperationCode.Stelem_I1:
+                case Cci.OperationCode.Stelem_I2:
+                case Cci.OperationCode.Stelem_I4:
+                case Cci.OperationCode.Stelem_I8:
+                case Cci.OperationCode.Stelem_R4:
+                case Cci.OperationCode.Stelem_R8:
+                case Cci.OperationCode.Stelem_Ref:
+                    instruction = ProcessStoreArrayElement(operation);
 					break;
 
 				case Cci.OperationCode.Stfld:
@@ -490,7 +489,7 @@ namespace CCIProvider
 				case Cci.OperationCode.Stind_R8:
 				case Cci.OperationCode.Stind_Ref:
 				case Cci.OperationCode.Stobj:
-					instruction = ProcessBasic(operation);
+					instruction = ProcessStoreIndirect(operation);
 					break;
 
 				case Cci.OperationCode.Stloc:
@@ -540,7 +539,57 @@ namespace CCIProvider
 			return instruction;
 		}
 
-		private IInstruction ProcessSwitch(Cci.IOperation op)
+        private IInstruction ProcessStoreArrayElement(Cci.IOperation op)
+        {
+            ArrayType arrayType = null;
+
+            switch (op.OperationCode)
+            {
+                case Cci.OperationCode.Array_Set:
+                    arrayType = typeExtractor.ExtractType(op.Value as Cci.ITypeReference) as ArrayType;
+                    break;
+                default:
+                    arrayType = new ArrayType(OperationHelper.GetOperationType(op.OperationCode));
+                    break;
+            }
+
+            if (arrayType == null)
+                throw new NotImplementedException();
+
+            var instruction = new StoreArrayElementInstruction(op.Offset, arrayType);
+            return instruction;
+        }
+
+        private IInstruction ProcessLoadArrayElement(Cci.IOperation op, LoadArrayElementOperation operation)
+        {
+            ArrayType arrayType = null;
+
+            switch (op.OperationCode)
+            {
+                case Cci.OperationCode.Array_Addr:
+                case Cci.OperationCode.Array_Create:
+                case Cci.OperationCode.Array_Create_WithLowerBound:
+                case Cci.OperationCode.Array_Get:
+                case Cci.OperationCode.Array_Set:
+                    arrayType = typeExtractor.ExtractType(op.Value as Cci.ITypeReference) as ArrayType;
+                    break;
+                case Cci.OperationCode.Ldelem:
+                case Cci.OperationCode.Ldelema:
+                    arrayType = new ArrayType(typeExtractor.ExtractType(op.Value as Cci.ITypeReference));
+                    break;
+                default:
+                    arrayType = new ArrayType(OperationHelper.GetOperationType(op.OperationCode));
+                    break;
+            }
+
+            if (arrayType == null)
+                throw new NotImplementedException();
+
+            var instruction = new LoadArrayElementInstruction(op.Offset, operation, arrayType);
+            return instruction;
+        }
+
+        private IInstruction ProcessSwitch(Cci.IOperation op)
 		{
 			var targets = op.Value as uint[];
 
@@ -559,26 +608,7 @@ namespace CCIProvider
 			return instruction;
 		}
 
-        private IInstruction ProcessLoadArrayElement(Cci.IOperation op)
-        {
-			var operation = OperationHelper.ToLoadArrayElementOperation(op.OperationCode);
-			var cciArrayType = op.Value as Cci.IArrayTypeReference;
-            var ourArrayType = typeExtractor.ExtractType(cciArrayType);
-
-            var instruction = new LoadArrayElementInstruction(op.Offset, operation, ourArrayType);
-			return instruction;
-        }
-
-		private IInstruction ProcessStoreArrayElement(Cci.IOperation op)
-		{
-			var cciArrayType = op.Value as Cci.IArrayTypeReference;
-			var ourArrayType = typeExtractor.ExtractType(cciArrayType);
-
-			var instruction = new StoreArrayElementInstruction(op.Offset, ourArrayType);
-			return instruction;
-		}
-
-		private IInstruction ProcessCreateObject(Cci.IOperation op)
+        private IInstruction ProcessCreateObject(Cci.IOperation op)
 		{
 			var cciMethod = op.Value as Cci.IMethodReference;
 			var ourMethod = typeExtractor.ExtractReference(cciMethod);
@@ -687,7 +717,10 @@ namespace CCIProvider
 
 		private IInstruction ProcessLoadIndirect(Cci.IOperation op)
 		{
-			var instruction = new BasicInstruction(op.Offset, BasicOperation.IndirectLoad);
+            var type = OperationHelper.GetOperationType(op.OperationCode);
+            if (op.OperationCode == Cci.OperationCode.Ldobj)
+                type = typeExtractor.ExtractStruct(op.Value as Cci.INamedTypeDefinition, sourceLocationProvider);
+            var instruction = new LoadIndirectInstruction(op.Offset, type);
 			return instruction;
 		}
 
@@ -743,7 +776,16 @@ namespace CCIProvider
 			return instruction;
 		}
 
-		private IInstruction ProcessStoreField(Cci.IOperation op)
+        private IInstruction ProcessStoreIndirect(Cci.IOperation op)
+        {
+            var type = OperationHelper.GetOperationType(op.OperationCode);
+            if (op.OperationCode == Cci.OperationCode.Stobj)
+                type = typeExtractor.ExtractStruct(op.Value as Cci.INamedTypeDefinition, sourceLocationProvider);
+            var instruction = new StoreIndirectInstruction(op.Offset, type);
+            return instruction;
+        }
+
+        private IInstruction ProcessStoreField(Cci.IOperation op)
 		{
 			var cciField = op.Value as Cci.IFieldReference;
 			var ourField = typeExtractor.ExtractReference(cciField);
