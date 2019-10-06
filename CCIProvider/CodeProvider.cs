@@ -305,9 +305,9 @@ namespace CCIProvider
 				//    expression = new MethodCall() { Arguments = new List<IExpression>(1) { operand }, IsStaticCall = true, Type = operand.Type, MethodToCall = chkfinite };
 				//    break;
 
-				//case Cci.OperationCode.Constrained_:
-				//	// This prefix is redundant and is not represented in the code model.
-				//	break;
+				case Cci.OperationCode.Constrained_:
+                    instruction = ProcessConstrained(operation);
+                    break;
 
 				case Cci.OperationCode.Cpblk:
 					instruction = ProcessBasic(operation);
@@ -587,6 +587,13 @@ namespace CCIProvider
 
             var instruction = new LoadArrayElementInstruction(op.Offset, operation, arrayType);
             return instruction;
+        }
+
+        private IInstruction ProcessConstrained(Cci.IOperation op)
+        {
+            var thisType = typeExtractor.ExtractType(op.Value as Cci.ITypeReference);
+            var ins = new ConstrainedInstruction(op.Offset, thisType);
+            return ins;
         }
 
         private IInstruction ProcessSwitch(Cci.IOperation op)
