@@ -545,10 +545,11 @@ namespace CCIProvider
 			CreateGenericParameterReferences(GenericParameterKind.Method, genericArguments.Count);
 
 			var method = ExtractReference(methodref.GenericMethod);
-			method = method.Instantiate(genericArguments);
+            var instantiatedMethod = method.Instantiate(genericArguments);
+            instantiatedMethod.Resolve(host);
 
-			BindGenericParameterReferences(GenericParameterKind.Method, method);
-			return method;
+            BindGenericParameterReferences(GenericParameterKind.Method, instantiatedMethod);
+			return instantiatedMethod;
 		}
 
 		public IMethodReference ExtractMethodReference(Cci.IMethodReference methodref)

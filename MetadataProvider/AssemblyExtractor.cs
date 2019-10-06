@@ -1316,10 +1316,11 @@ namespace MetadataProvider
 			CreateGenericParameterReferences(GenericParameterKind.Method, genericArguments.Length);
 
 			var method = GetMethodReference(methodspec.Method);
-			method = method.Instantiate(genericArguments);
+            var instantiatedMethod = method.Instantiate(genericArguments);
+            instantiatedMethod.Resolve(Host);
 
-			BindGenericParameterReferences(GenericParameterKind.Method, method);
-			return method;
+            BindGenericParameterReferences(GenericParameterKind.Method, instantiatedMethod);
+			return instantiatedMethod;
 		}
 
 		private IMethodReference GetMethodReference(SRM.EntityHandle handle)
