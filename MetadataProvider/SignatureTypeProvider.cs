@@ -171,8 +171,9 @@ namespace MetadataProvider
 		public virtual IType GetGenericInstantiation(IType genericType, ImmutableArray<IType> genericArguments)
 		{
 			var result = genericType as IBasicType;
-			result = result.Instantiate(genericArguments);
-			return result;
+			var instantiated = result.Instantiate(genericArguments);
+            instantiated.Resolve(extractor.Host);
+			return instantiated;
 		}
 
 		public virtual IType GetArrayType(IType elementsType, SRM.ArrayShape shape)
