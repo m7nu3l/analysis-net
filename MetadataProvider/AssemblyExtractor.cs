@@ -510,6 +510,8 @@ namespace MetadataProvider
 			method.IsStatic = methoddef.Attributes.HasFlag(SR.MethodAttributes.Static);
 			method.IsAbstract = methoddef.Attributes.HasFlag(SR.MethodAttributes.Abstract);
 			method.IsVirtual = methoddef.Attributes.HasFlag(SR.MethodAttributes.Virtual);
+			method.IsOverrider = (method.IsAbstract || method.IsVirtual) && !methoddef.Attributes.HasFlag(SR.MethodAttributes.NewSlot);
+			method.IsFinal = methoddef.Attributes.HasFlag(SR.MethodAttributes.Final);
 			method.IsExternal = methoddef.Attributes.HasFlag(SR.MethodAttributes.PinvokeImpl);
 			method.IsConstructor = method.Name.EndsWith(".ctor");
 
