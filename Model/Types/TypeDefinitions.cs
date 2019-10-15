@@ -606,6 +606,18 @@ namespace Model.Types
 		Public = 8
 	}
 
+	public class MethodImplementation
+	{
+		public IMethodReference ImplementedMethod { get; private set; }
+		public IMethodReference ImplementingMethod { get; private set; }
+
+		public MethodImplementation(IMethodReference implemented, IMethodReference implementing)
+		{
+			this.ImplementedMethod = implemented;
+			this.ImplementingMethod = implementing;
+		}
+	}
+
 	public class TypeDefinition : IBasicType, IGenericDefinition, ITypeMemberDefinition, ITypeDefinitionContainer
 	{
 		public TypeKind TypeKind { get; set; }
@@ -623,6 +635,7 @@ namespace Model.Types
 		public IList<MethodDefinition> Methods { get; private set; }
 		public IList<TypeDefinition> Types { get; private set; }
 		public IBasicType UnderlayingType { get; set; }
+		public ISet<MethodImplementation> ExplicitOverrides { get; private set; }
 
 		public TypeDefinition(string name, TypeKind typeKind = TypeKind.Unknown, TypeDefinitionKind kind = TypeDefinitionKind.Unknown)
 		{
@@ -635,6 +648,7 @@ namespace Model.Types
 			this.Fields = new List<FieldDefinition>();
 			this.Methods = new List<MethodDefinition>();
 			this.Types = new List<TypeDefinition>();
+			this.ExplicitOverrides = new HashSet<MethodImplementation>();
 		}
 
 		public string GenericName
