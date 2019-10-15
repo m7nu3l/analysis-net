@@ -410,6 +410,8 @@ namespace Model.Types
 		public bool IsStatic { get; set; }
 		public bool IsAbstract { get; set; }
 		public bool IsVirtual { get; set; }
+		public bool IsOverrider { get; set; }
+		public bool IsFinal { get; set; }
 		public bool IsConstructor { get; set; }
 		public bool IsExternal { get; set; }
 		public MethodBody Body { get; set; }

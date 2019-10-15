@@ -790,6 +790,8 @@ namespace CCIProvider
 				method.IsStatic = methoddef.IsStatic;
 				method.IsAbstract = methoddef.IsAbstract;
 				method.IsVirtual = methoddef.IsVirtual;
+				method.IsOverrider = (methoddef.IsAbstract || methoddef.IsVirtual) && !methoddef.IsNewSlot;
+				method.IsFinal = methoddef.IsSealed;
 				method.IsConstructor = methoddef.IsConstructor;
 				method.IsExternal = methoddef.IsExternal;
 				method.ContainingType = containingType;
