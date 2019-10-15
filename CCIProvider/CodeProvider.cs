@@ -548,6 +548,10 @@ namespace CCIProvider
                 case Cci.OperationCode.Array_Set:
                     arrayType = typeExtractor.ExtractType(op.Value as Cci.ITypeReference) as ArrayType;
                     break;
+                case Cci.OperationCode.Stelem:
+                    var extractedType = typeExtractor.ExtractType(op.Value as Cci.ITypeReference);
+                    arrayType = new ArrayType(extractedType);
+                    break;
                 default:
                     arrayType = new ArrayType(OperationHelper.GetOperationType(op.OperationCode));
                     break;
