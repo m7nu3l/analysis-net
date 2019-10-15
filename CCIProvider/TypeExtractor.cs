@@ -107,6 +107,7 @@ namespace CCIProvider
 			ExtractInterfaces(type.Interfaces, typedef.Interfaces);
 			ExtractFields(type, type.Fields, typedef.Fields);
 			ExtractMethods(type, type.Methods, typedef.Methods, sourceLocationProvider);
+			ExtractExplicitMethodOverrides(type, typedef.ExplicitImplementationOverrides);
 
 			defGenericContext.TypeParameters.Clear();
 			return type;
@@ -766,6 +767,16 @@ namespace CCIProvider
 			else result = TypeKind.ReferenceType;
 
 			return result;
+		}
+
+		private void ExtractExplicitMethodOverrides(TypeDefinition type, IEnumerable<Cci.IMethodImplementation> impls)
+		{
+			foreach (var impl in impls)
+			{
+				var implementedMethod = ExtractMethodReference(impl.ImplementedMethod);
+				var implementingMethod = ExtractMethodReference(impl.ImplementingMethod);
+				type.ExplicitOverrides.Add(new MethodImplementation(implementedMethod, implementingMethod));
+			}
 		}
 
 		private void ExtractMethods(TypeDefinition containingType, IList<MethodDefinition> dest, IEnumerable<Cci.IMethodDefinition> source, Cci.ISourceLocationProvider sourceLocationProvider)
