@@ -255,7 +255,9 @@ namespace Model.Types
 						 this.GenericParameterCount == other.GenericParameterCount &&
 						 this.ContainingNamespace == other.ContainingNamespace &&
                          this.ContainingAssembly.Equals(other.ContainingAssembly) &&
-						 this.GenericArguments.SequenceEqual(other.GenericArguments);
+						 this.GenericArguments.SequenceEqual(other.GenericArguments) &&
+						 (this.ContainingType != null == (other.ContainingType != null)) &&
+						 (this.ContainingType == null || other.ContainingType == null || this.ContainingType.Equals(other.ContainingType));
 
 			return result;
 		}
