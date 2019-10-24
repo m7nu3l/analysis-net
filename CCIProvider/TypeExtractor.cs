@@ -117,6 +117,8 @@ namespace CCIProvider
 		{
 			var name = typedef.Name.Value;
 			var type = new TypeDefinition(name, TypeKind.ValueType, TypeDefinitionKind.Struct);
+			var basedef = typedef.BaseClasses.SingleOrDefault();
+			type.Base = ExtractType(basedef) as IBasicType;
 
 			ExtractAttributes(type.Attributes, typedef.Attributes);
 			ExtractGenericTypeParameters(type, typedef);
