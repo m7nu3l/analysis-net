@@ -110,8 +110,11 @@ namespace Backend.Transformations
 				this.body = body;				
 				this.returnType = returnType;
 			}
-
-            public override void Visit(Bytecode.BasicInstruction op)
+			public override void Visit(Bytecode.InitObjInstruction op)
+			{
+				ProcessInitializeObject(op);
+			}
+			public override void Visit(Bytecode.BasicInstruction op)
 			{
 				switch (op.Operation)
 				{
@@ -170,10 +173,6 @@ namespace Backend.Transformations
 
 					case Bytecode.BasicOperation.InitBlock:
 						ProcessInitializeMemory(op);
-						break;
-
-					case Bytecode.BasicOperation.InitObject:
-						ProcessInitializeObject(op);
 						break;
 
 					case Bytecode.BasicOperation.CopyObject:
@@ -308,7 +307,7 @@ namespace Backend.Transformations
 				body.Instructions.Add(instruction);
 			}
 
-			private void ProcessInitializeObject(Bytecode.BasicInstruction op)
+			private void ProcessInitializeObject(Bytecode.InitObjInstruction op)
 			{
 				var targetAddress = stack.Pop();
 				var instruction = new Tac.InitializeObjectInstruction(op.Offset, targetAddress);
