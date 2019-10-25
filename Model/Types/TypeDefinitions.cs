@@ -668,6 +668,25 @@ namespace Model.Types
 		Internal = 4,
 		Public = 8
 	}
+	public enum LayoutKind
+	{
+		Unknown,
+		AutoLayout,    // Class fields are auto-laid out
+		SequentialLayout,  // Class fields are laid out sequentially
+		ExplicitLayout,	// Layout is supplied explicitly
+	}
+	public class LayoutInformation
+	{
+		public LayoutKind Kind { get; set; }
+		public short PackingSize { get; set; }
+		public int ClassSize { get; set; }
+		public LayoutInformation(LayoutKind kind = LayoutKind.Unknown)
+		{
+			Kind = kind;
+			PackingSize = -1;
+			ClassSize = -1;
+		}
+	}
 
 	public class MethodImplementation
 	{
@@ -680,7 +699,6 @@ namespace Model.Types
 			this.ImplementingMethod = implementing;
 		}
 	}
-
 	public class TypeDefinition : IBasicType, IGenericDefinition, ITypeMemberDefinition, ITypeDefinitionContainer
 	{
 		public TypeKind TypeKind { get; set; }
@@ -698,8 +716,10 @@ namespace Model.Types
 		public IList<MethodDefinition> Methods { get; private set; }
 		public IList<TypeDefinition> Types { get; private set; }
 		public IBasicType UnderlayingType { get; set; }
+		public LayoutInformation LayoutInformation { get; set; }
 		public ISet<MethodImplementation> ExplicitOverrides { get; private set; }
 		public ISet<PropertyDefinition> PropertyDefinitions { get; private set; }
+				
 		public TypeDefinition(string name, TypeKind typeKind = TypeKind.Unknown, TypeDefinitionKind kind = TypeDefinitionKind.Unknown)
 		{
 			this.Name = name;
@@ -713,6 +733,7 @@ namespace Model.Types
 			this.Types = new List<TypeDefinition>();
 			this.ExplicitOverrides = new HashSet<MethodImplementation>();
 			this.PropertyDefinitions = new HashSet<PropertyDefinition>();
+			this.LayoutInformation = new LayoutInformation();		
 		}
 
 		public string GenericName
