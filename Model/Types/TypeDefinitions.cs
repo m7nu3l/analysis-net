@@ -110,14 +110,14 @@ namespace Model.Types
 		public IType Type { get; set; }
 		public string Name { get; set; }
 		public Constant Value { get; set; }
-
 		public bool IsStatic { get; set; }
-
+		public byte[] InitialValue { get; set; }
 		public FieldDefinition(string name, IType type)
 		{
 			this.Name = name;
 			this.Type = type;
 			this.Attributes = new HashSet<CustomAttribute>();
+			this.InitialValue = new byte[0];
 		}
 
 		#region ITypeMemberReference members
