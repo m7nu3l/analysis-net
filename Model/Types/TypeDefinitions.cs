@@ -716,10 +716,11 @@ namespace Model.Types
 		public IList<MethodDefinition> Methods { get; private set; }
 		public IList<TypeDefinition> Types { get; private set; }
 		public IBasicType UnderlayingType { get; set; }
+		public bool IsSealed { get; set; }
+		public bool IsAbstract { get; set; }
 		public LayoutInformation LayoutInformation { get; set; }
 		public ISet<MethodImplementation> ExplicitOverrides { get; private set; }
 		public ISet<PropertyDefinition> PropertyDefinitions { get; private set; }
-				
 		public TypeDefinition(string name, TypeKind typeKind = TypeKind.Unknown, TypeDefinitionKind kind = TypeDefinitionKind.Unknown)
 		{
 			this.Name = name;

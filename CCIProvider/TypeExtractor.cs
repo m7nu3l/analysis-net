@@ -66,6 +66,8 @@ namespace CCIProvider
 			type.UnderlayingType = ExtractType(typedef.UnderlyingType) as IBasicType;
 			ExtractAttributes(type.Attributes, typedef.Attributes);
 			ExtractConstants(type, type.Fields, typedef.Fields);
+			type.IsSealed = typedef.IsSealed;
+			type.IsAbstract = typedef.IsAbstract;
 
 			return type;
 		}
@@ -79,6 +81,8 @@ namespace CCIProvider
 			ExtractGenericTypeParameters(type, typedef);
 			ExtractInterfaces(type.Interfaces, typedef.Interfaces);
 			ExtractMethods(type, type.Methods, typedef.Methods, sourceLocationProvider);
+			type.IsSealed = typedef.IsSealed;
+			type.IsAbstract = typedef.IsAbstract;
 
 			defGenericContext.TypeParameters.Clear();
 			return type;
@@ -108,6 +112,8 @@ namespace CCIProvider
 			ExtractFields(type, type.Fields, typedef.Fields);
 			ExtractMethods(type, type.Methods, typedef.Methods, sourceLocationProvider);
 			ExtractExplicitMethodOverrides(type, typedef.ExplicitImplementationOverrides);
+			type.IsSealed = typedef.IsSealed;
+			type.IsAbstract = typedef.IsAbstract;
 
 			defGenericContext.TypeParameters.Clear();
 			return type;
@@ -125,6 +131,8 @@ namespace CCIProvider
 			ExtractInterfaces(type.Interfaces, typedef.Interfaces);
 			ExtractFields(type, type.Fields, typedef.Fields);
 			ExtractMethods(type, type.Methods, typedef.Methods, sourceLocationProvider);
+			type.IsSealed = typedef.IsSealed;
+			type.IsAbstract = typedef.IsAbstract;
 
 			defGenericContext.TypeParameters.Clear();
 			return type;
