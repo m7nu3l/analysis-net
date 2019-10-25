@@ -623,7 +623,8 @@ namespace Model.Types
 		public IList<MethodDefinition> Methods { get; private set; }
 		public IList<TypeDefinition> Types { get; private set; }
 		public IBasicType UnderlayingType { get; set; }
-
+		public bool IsSealed { get; set; }
+		public bool IsAbstract { get; set; }
 		public TypeDefinition(string name, TypeKind typeKind = TypeKind.Unknown, TypeDefinitionKind kind = TypeDefinitionKind.Unknown)
 		{
 			this.Name = name;
