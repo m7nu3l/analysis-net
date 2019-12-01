@@ -53,9 +53,30 @@ namespace Backend.Analyses
 
 			public override void Visit(MethodCallInstruction instruction)
 			{
-				if (instruction.HasResult)
-				{
-					instruction.Result.Type = instruction.Method.ReturnType;
+                if (instruction.HasResult)
+                {
+                    /*
+                     You have class A<T> with method T Get().
+                     In IL a method call to A<int32>::Get() looks like: callvirt instance !0 class A`1<int32>::Get()
+                     We want the int32 (generic argument) not the generic reference as the return type . 
+                     The returned value can also be used as the return value of the current method.
+                     If the current method's return type is int32, then !0 is not compatible.
+                     
+                    int Foo(){
+                        A<int32> a = new A<int32>();
+                        int b = a.Get();
+                        return b;
+                    }
+                    */
+
+                    if (instruction.Method.ReturnType is IGenericParameterReference genericParamRef)
+                    {
+                        if (genericParamRef.Kind == GenericParameterKind.Type)
+                            instruction.Result.Type = instruction.Method.ContainingType.GenericArguments.ElementAt(genericParamRef.Index);
+                        else
+                            instruction.Result.Type = instruction.Method.GenericArguments.ElementAt(genericParamRef.Index);
+                    } else
+                        instruction.Result.Type = instruction.Method.ReturnType;
 				}
 
 				// Skip implicit "this" parameter.
