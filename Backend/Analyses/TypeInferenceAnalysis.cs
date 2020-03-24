@@ -94,7 +94,7 @@ namespace Backend.Analyses
                             {
                                 solvedArg = arg;
                             }
-                            solvedArguments.Add(arg);
+                            solvedArguments.Add(solvedArg);
                         }
 
                         var newType = basicType.Instantiate(solvedArguments);
