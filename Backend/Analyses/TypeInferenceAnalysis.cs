@@ -10,6 +10,7 @@ using Model.ThreeAddressCode.Visitor;
 using Backend.Model;
 using Model.ThreeAddressCode.Values;
 using Backend.Utils;
+using Model;
 
 namespace Backend.Analyses
 {
@@ -75,6 +76,29 @@ namespace Backend.Analyses
                             instruction.Result.Type = instruction.Method.ContainingType.GenericArguments.ElementAt(genericParamRef.Index);
                         else
                             instruction.Result.Type = instruction.Method.GenericArguments.ElementAt(genericParamRef.Index);
+                    } 
+                    else if (instruction.Method.ReturnType is IBasicType basicType && basicType.GenericArguments.Count > 0)
+                    {
+                        // we need to resolve generic parameter references if there is any
+                        IList<IType> solvedArguments = new List<IType>();
+
+                        foreach (var arg in basicType.GenericArguments)
+                        {
+                            IType solvedArg = null;
+                            if (arg is IGenericParameterReference genericParam)
+                            {
+                                IList<IType> container = genericParam.Kind == GenericParameterKind.Method ? instruction.Method.GenericArguments : instruction.Method.ContainingType.GenericArguments;
+                                solvedArg = container.ElementAt(genericParam.Index);
+                            }
+                            else
+                            {
+                                solvedArg = arg;
+                            }
+                            solvedArguments.Add(arg);
+                        }
+
+                        var newType = basicType.Instantiate(solvedArguments);
+                        instruction.Result.Type = newType;
                     } else
                         instruction.Result.Type = instruction.Method.ReturnType;
 				}
@@ -160,7 +184,7 @@ namespace Backend.Analyses
 						 instruction.Result.Type.Equals(PlatformTypes.Boolean)))
 				{
 					operandAsVariable.Type = instruction.Result.Type;
-				}
+				} 
 				
 				if (instruction.Result.Type == null)
 				{
@@ -209,9 +233,12 @@ namespace Backend.Analyses
 
 				switch (instruction.Operation)
 				{
+					case ConvertOperation.Box:
+                        type = PlatformTypes.Object;
+                        break; 
+
 					case ConvertOperation.Conv:
 					case ConvertOperation.Cast:
-					case ConvertOperation.Box:
 					case ConvertOperation.Unbox:
 						// ConversionType is the data type of the result.
 						type = instruction.ConversionType;
@@ -357,7 +384,7 @@ namespace Backend.Analyses
 		{
 			this.cfg = cfg;
 			this.returnType = returnType;
-		}
+        }
 
 		public void Analyze()
 		{

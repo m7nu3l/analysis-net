@@ -233,7 +233,6 @@ namespace Model
 			result = definitionType.Equals(referenceType);
 			return result;
 		}
-
 		public static BasicType Instantiate(this IBasicType type, params IType[] genericArguments)
 		{
 			return type.Instantiate(genericArguments.AsEnumerable());
@@ -251,7 +250,7 @@ namespace Model
 			};
 
 			result.GenericArguments.AddRange(genericArguments);
-			//result.Resolve(host);
+			result.Resolve(() => type.ResolvedType);
 			return result;
 		}
 

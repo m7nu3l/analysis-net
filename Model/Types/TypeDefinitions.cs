@@ -701,7 +701,7 @@ namespace Model.Types
 	}
 	public class TypeDefinition : IBasicType, IGenericDefinition, ITypeMemberDefinition, ITypeDefinitionContainer
 	{
-		public TypeKind TypeKind { get; set; }
+        public TypeKind TypeKind { get; set; }
 		public TypeDefinitionKind Kind { get; set; }
 		public VisibilityKind Visibility { get; set; }
 		public Assembly ContainingAssembly { get; set; }

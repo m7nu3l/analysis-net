@@ -156,7 +156,7 @@ namespace Model.Types
 
 	public class BasicType : IBasicType
 	{
-		private Func<TypeDefinition> ResolveType;
+        private Func<TypeDefinition> ResolveType;
 		private TypeDefinition resolvedType;
 
 		public ISet<CustomAttribute> Attributes { get; private set; }
@@ -235,6 +235,11 @@ namespace Model.Types
 		{
 			ResolveType = () => host.ResolveReference(this);
 		}
+
+        public void Resolve(Func<TypeDefinition> ResolutionFunc)
+        {
+            ResolveType = ResolutionFunc;
+        }
 
 		public override string ToString()
 		{
