@@ -36,7 +36,7 @@ namespace Backend.Model
         {
 			this.Id = id;
             this.Kind = kind;
-			this.Type = PlatformTypes.Object;
+			this.Type = PlatformType.Object;
         }
 
 		//public PTGNode(int id, IType type, PTGNodeKind kind = PTGNodeKind.Object, uint offset = 0)

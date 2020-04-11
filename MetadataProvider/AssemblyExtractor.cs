@@ -305,16 +305,16 @@ namespace MetadataProvider
 
 			if (baseType != null)
 			{
-				if (baseType.Equals(PlatformTypes.ValueType))
+				if (baseType.Equals(PlatformType.ValueType))
 				{
 					result = TypeDefinitionKind.Struct;
 				}
-				else if (baseType.Equals(PlatformTypes.Enum))
+				else if (baseType.Equals(PlatformType.Enum))
 				{
 					result = TypeDefinitionKind.Enum;
 				}
-				else if (baseType.Equals(PlatformTypes.MulticastDelegate) ||
-						 baseType.Equals(PlatformTypes.Delegate))
+				else if (baseType.Equals(PlatformType.MulticastDelegate) ||
+						 baseType.Equals(PlatformType.Delegate))
 				{
 					result = TypeDefinitionKind.Delegate;
 				}
@@ -1689,7 +1689,7 @@ namespace MetadataProvider
 
 			if (operation == ConvertOperation.Box && type.TypeKind == TypeKind.ValueType)
 			{
-				type = PlatformTypes.Object;
+				type = PlatformType.Object;
 			}
 			else if (operation == ConvertOperation.Conv)
 			{

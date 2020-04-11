@@ -264,21 +264,21 @@ namespace MetadataProvider
 				case SRM.ILOpCode.Stelem_i:
 				case SRM.ILOpCode.Conv_i:
 				case SRM.ILOpCode.Conv_ovf_i:
-				case SRM.ILOpCode.Conv_ovf_i_un:	return PlatformTypes.IntPtr;
+				case SRM.ILOpCode.Conv_ovf_i_un:	return PlatformType.IntPtr;
                 case SRM.ILOpCode.Ldelem_i1:
                 case SRM.ILOpCode.Ldind_i1:
 				case SRM.ILOpCode.Stind_i1:
 				case SRM.ILOpCode.Stelem_i1:
 				case SRM.ILOpCode.Conv_i1:
 				case SRM.ILOpCode.Conv_ovf_i1:
-				case SRM.ILOpCode.Conv_ovf_i1_un:	return PlatformTypes.Int8;
+				case SRM.ILOpCode.Conv_ovf_i1_un:	return PlatformType.Int8;
                 case SRM.ILOpCode.Ldelem_i2:
                 case SRM.ILOpCode.Ldind_i2:
 				case SRM.ILOpCode.Stind_i2:
 				case SRM.ILOpCode.Stelem_i2:
 				case SRM.ILOpCode.Conv_i2:
 				case SRM.ILOpCode.Conv_ovf_i2:
-				case SRM.ILOpCode.Conv_ovf_i2_un:	return PlatformTypes.Int16;
+				case SRM.ILOpCode.Conv_ovf_i2_un:	return PlatformType.Int16;
                 case SRM.ILOpCode.Ldelem_i4:
                 case SRM.ILOpCode.Ldc_i4:
 				case SRM.ILOpCode.Ldc_i4_0:
@@ -297,7 +297,7 @@ namespace MetadataProvider
 				case SRM.ILOpCode.Stelem_i4:
 				case SRM.ILOpCode.Conv_i4:
 				case SRM.ILOpCode.Conv_ovf_i4:
-				case SRM.ILOpCode.Conv_ovf_i4_un:	return PlatformTypes.Int32;
+				case SRM.ILOpCode.Conv_ovf_i4_un:	return PlatformType.Int32;
                 case SRM.ILOpCode.Ldelem_i8:
                 case SRM.ILOpCode.Ldc_i8:
 				case SRM.ILOpCode.Ldind_i8:
@@ -305,48 +305,48 @@ namespace MetadataProvider
 				case SRM.ILOpCode.Stelem_i8:
 				case SRM.ILOpCode.Conv_i8:
 				case SRM.ILOpCode.Conv_ovf_i8:
-				case SRM.ILOpCode.Conv_ovf_i8_un:	return PlatformTypes.Int64;
+				case SRM.ILOpCode.Conv_ovf_i8_un:	return PlatformType.Int64;
 				case SRM.ILOpCode.Conv_u:
 				case SRM.ILOpCode.Conv_ovf_u:
 				case SRM.ILOpCode.Conv_ovf_u_un:
-				case SRM.ILOpCode.Ldlen:			return PlatformTypes.UIntPtr;
+				case SRM.ILOpCode.Ldlen:			return PlatformType.UIntPtr;
                 case SRM.ILOpCode.Ldelem_u1:
                 case SRM.ILOpCode.Ldind_u1:
 				case SRM.ILOpCode.Conv_u1:
 				case SRM.ILOpCode.Conv_ovf_u1:
-				case SRM.ILOpCode.Conv_ovf_u1_un:	return PlatformTypes.UInt8;
+				case SRM.ILOpCode.Conv_ovf_u1_un:	return PlatformType.UInt8;
                 case SRM.ILOpCode.Ldelem_u2:
                 case SRM.ILOpCode.Ldind_u2:
 				case SRM.ILOpCode.Conv_u2:
 				case SRM.ILOpCode.Conv_ovf_u2:
-				case SRM.ILOpCode.Conv_ovf_u2_un:	return PlatformTypes.UInt16;
+				case SRM.ILOpCode.Conv_ovf_u2_un:	return PlatformType.UInt16;
                 case SRM.ILOpCode.Ldelem_u4:
                 case SRM.ILOpCode.Ldind_u4:
 				case SRM.ILOpCode.Conv_u4:
 				case SRM.ILOpCode.Conv_ovf_u4:
 				case SRM.ILOpCode.Conv_ovf_u4_un:
-				case SRM.ILOpCode.Sizeof:			return PlatformTypes.UInt32;
+				case SRM.ILOpCode.Sizeof:			return PlatformType.UInt32;
 				case SRM.ILOpCode.Conv_u8:
 				case SRM.ILOpCode.Conv_ovf_u8:
-				case SRM.ILOpCode.Conv_ovf_u8_un:	return PlatformTypes.UInt64;
+				case SRM.ILOpCode.Conv_ovf_u8_un:	return PlatformType.UInt64;
                 case SRM.ILOpCode.Ldelem_r4:
 				case SRM.ILOpCode.Ldc_r4:
 				case SRM.ILOpCode.Ldind_r4:
 				case SRM.ILOpCode.Stind_r4:
 				case SRM.ILOpCode.Stelem_r4:
-				case SRM.ILOpCode.Conv_r4:			return PlatformTypes.Float32;
+				case SRM.ILOpCode.Conv_r4:			return PlatformType.Float32;
                 case SRM.ILOpCode.Ldelem_r8:
                 case SRM.ILOpCode.Ldc_r8:
 				case SRM.ILOpCode.Ldind_r8:
 				case SRM.ILOpCode.Stind_r8:
 				case SRM.ILOpCode.Stelem_r8:
 				case SRM.ILOpCode.Conv_r8:
-				case SRM.ILOpCode.Conv_r_un:		return PlatformTypes.Float64;
+				case SRM.ILOpCode.Conv_r_un:		return PlatformType.Float64;
                 case SRM.ILOpCode.Ldind_ref:
                 case SRM.ILOpCode.Stind_ref:
                 case SRM.ILOpCode.Ldelem_ref:
-                case SRM.ILOpCode.Ldnull:			return PlatformTypes.Object;
-                case SRM.ILOpCode.Ldstr:			return PlatformTypes.String;
+                case SRM.ILOpCode.Ldnull:			return PlatformType.Object;
+                case SRM.ILOpCode.Ldstr:			return PlatformType.String;
 
 				default:							return null;
 			}

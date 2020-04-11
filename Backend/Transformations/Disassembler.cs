@@ -383,7 +383,7 @@ namespace Backend.Transformations
 			{
 				IVariable operand = null;
 
-				if (!returnType.Equals(PlatformTypes.Void))
+				if (!returnType.Equals( PlatformType.Void))
 				{
 					operand = stack.Pop();
 				}
@@ -681,7 +681,7 @@ namespace Backend.Transformations
 
 				arguments.Reverse();
 
-				if (!op.Function.ReturnType.Equals(PlatformTypes.Void))
+				if (!op.Function.ReturnType.Equals( PlatformType.Void))
 				{
 					result = stack.Push();
 				}
@@ -883,7 +883,7 @@ namespace Backend.Transformations
 
 				arguments.Reverse();
 
-				if (!op.Method.ReturnType.Equals(PlatformTypes.Void))
+				if (!op.Method.ReturnType.Equals( PlatformType.Void))
 				{
 					result = stack.Push();
 				}

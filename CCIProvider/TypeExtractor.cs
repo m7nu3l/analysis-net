@@ -478,7 +478,7 @@ namespace CCIProvider
 
 		public IMetadataReference ExtractToken(Cci.IReference token)
 		{
-			IMetadataReference result = PlatformTypes.Unknown;
+			IMetadataReference result = PlatformType.Unknown;
 
 			if (token is Cci.IMethodReference)
 			{

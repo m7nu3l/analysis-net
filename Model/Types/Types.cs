@@ -35,80 +35,148 @@ namespace Model.Types
 
 	}
 
-	public static class PlatformTypes
-	{
-		private static readonly ICollection<BasicType> platformTypes = new List<BasicType>();
+    public static class CoreLibraries
+    {
+        // Names of the libraries that contain the .net fundamental types
+        public const string Mscorlib = "mscorlib"; // net framework
+        public const string NetStandard = "netstandard"; // net standard
+        public const string SystemRuntime = "System.Runtime"; // net core
+    }
 
-		public static readonly UnknownType Unknown = UnknownType.Value;
-		public static readonly BasicType Void = New("mscorlib", "System", "Void", TypeKind.ValueType);
-		public static readonly BasicType Boolean = New("mscorlib", "System", "Boolean", TypeKind.ValueType);
-		public static readonly BasicType Char = New("mscorlib", "System", "Char", TypeKind.ValueType);
-		public static readonly BasicType String = New("mscorlib", "System", "String", TypeKind.ReferenceType);
-		public static readonly BasicType Byte = New("mscorlib", "System", "Byte", TypeKind.ValueType);
-		public static readonly BasicType SByte = New("mscorlib", "System", "SByte", TypeKind.ValueType);
-		public static readonly BasicType Int16 = New("mscorlib", "System", "Int16", TypeKind.ValueType);
-		public static readonly BasicType Int32 = New("mscorlib", "System", "Int32", TypeKind.ValueType);
-		public static readonly BasicType Int64 = New("mscorlib", "System", "Int64", TypeKind.ValueType);
-		public static readonly BasicType UInt16 = New("mscorlib", "System", "UInt16", TypeKind.ValueType);
-		public static readonly BasicType UInt32 = New("mscorlib", "System", "UInt32", TypeKind.ValueType);
-		public static readonly BasicType UInt64 = New("mscorlib", "System", "UInt64", TypeKind.ValueType);
-		public static readonly BasicType Decimal = New("mscorlib", "System", "Decimal", TypeKind.ValueType);
-		public static readonly BasicType Single = New("mscorlib", "System", "Single", TypeKind.ValueType);
-		public static readonly BasicType Double = New("mscorlib", "System", "Double", TypeKind.ValueType);
-		public static readonly BasicType Object = New("mscorlib", "System", "Object", TypeKind.ReferenceType);
-		public static readonly BasicType IntPtr = New("mscorlib", "System", "IntPtr", TypeKind.ValueType);
-		public static readonly BasicType UIntPtr = New("mscorlib", "System", "UIntPtr", TypeKind.ValueType);
-		public static readonly BasicType RuntimeMethodHandle = New("mscorlib", "System", "RuntimeMethodHandle", TypeKind.ValueType);
-		public static readonly BasicType RuntimeTypeHandle = New("mscorlib", "System", "RuntimeTypeHandle", TypeKind.ValueType);
-		public static readonly BasicType RuntimeFieldHandle = New("mscorlib", "System", "RuntimeFieldHandle", TypeKind.ValueType);
-		public static readonly BasicType ArrayLengthType = UInt32;
-		public static readonly BasicType SizeofType = UInt32;
-		public static readonly BasicType Int8 = SByte;
-		public static readonly BasicType UInt8 = Byte;
-		public static readonly BasicType Float32 = Single;
-		public static readonly BasicType Float64 = Double;
+    // A PlatformType represents a unified way to model .net fundamental types independently of where they are defined. 
+    // Their implementations can be in different assemblies depending on the runtime.
+    public class PlatformType : IBasicType
+    {
+        private PlatformType(string name, TypeKind kind = TypeKind.Unknown) 
+        {
+            this.Name = name;
+            this.TypeKind = kind;
+            this.GenericArguments = new List<IType>();
+            this.Attributes = new HashSet<CustomAttribute>();
+        }
 
-		public static readonly BasicType Enum = New("mscorlib", "System", "Enum", TypeKind.ValueType);		
-		public static readonly BasicType ValueType = New("mscorlib", "System", "ValueType", TypeKind.ValueType);
-		public static readonly BasicType MulticastDelegate = New("mscorlib", "System", "MulticastDelegate", TypeKind.ReferenceType);
-		public static readonly BasicType Delegate = New("mscorlib", "System", "Delegate", TypeKind.ReferenceType);
+        public override string ToString()
+        {
+            return GenericName;
+        }
 
-		public static readonly BasicType PureAttribute = New("mscorlib", "System.Diagnostics.Contracts", "PureAttribute", TypeKind.ReferenceType);
-		public static readonly BasicType ICollection = New("mscorlib", "System.Collections", "ICollection", TypeKind.ReferenceType);
-        public static readonly BasicType IEnumerable = New("mscorlib", "System.Collections", "IEnumerable", TypeKind.ReferenceType);
-        public static readonly BasicType IEnumerator = New("mscorlib", "System.Collections", "IEnumerator", TypeKind.ReferenceType);
-		public static readonly BasicType GenericICollection = New("mscorlib", "System.Collections.Generic", "ICollection", TypeKind.ReferenceType, 1);
+        public override bool Equals(object obj)
+        {
+            if (obj is IBasicType basicType)
+            {
+                return basicType.Name.Equals(this.Name) && basicType.ContainingNamespace.Equals(this.ContainingNamespace)
+                    && basicType.ContainingType == null && basicType.GenericParameterCount == this.GenericParameterCount;
+            }
 
-		public static readonly BasicType Task = New("mscorlib", "System.Threading.Tasks", "Task", TypeKind.ReferenceType);
-		public static readonly BasicType GenericTask = New("mscorlib", "System.Threading.Tasks", "Task", TypeKind.ReferenceType, 1);
+            return false;
+        }
 
-		public static void Resolve(Host host)
-		{
-			foreach (var type in platformTypes)
-			{
-				type.Resolve(host);
-			}
-		}
+        public override int GetHashCode()
+        {
+            return Name.GetHashCode();
+        }
 
-		private static BasicType New(string containingAssembly, string containingNamespace, string name, TypeKind kind, int genericParameterCount = 0)
-		{
-			var result = new BasicType(name, kind)
-			{
-				ContainingAssembly = new AssemblyReference(containingAssembly),
-				ContainingNamespace = containingNamespace,
-				GenericParameterCount = genericParameterCount
-			};
+        public BasicType ToImplementation(string coreLibrary)
+        {
+            // the user must do result.Resolve(host) so it can be resolvable!
+            var result = new BasicType(this.Name, this.TypeKind)
+            {
+                ContainingAssembly = new AssemblyReference(coreLibrary),
+                ContainingNamespace = this.ContainingNamespace,
+                GenericParameterCount = this.GenericParameterCount
+            };
 
-			//for (ushort i = 0; i < genericParameterCount; ++i)
-			//{
-			//	var typevar = new GenericParameterReference(GenericParameterKind.Type, i);
-			//	result.GenericArguments.Add(typevar);
-			//}
+            return result;
+        }
 
-			platformTypes.Add(result);
-			return result;
-		}
-	}
+        private static PlatformType New(string containingNamespace, string name, TypeKind kind, int genericParameterCount = 0)
+        {
+            var result = new PlatformType(name, kind)
+            {
+                // A PlatformType doesn't belong to any real assembly
+                // It is a handy way to represent every possible implementation of it.
+                ContainingAssembly = new AssemblyReference(""),
+                ContainingNamespace = containingNamespace,
+                GenericParameterCount = genericParameterCount
+            };
+
+            return result;
+        }
+
+        public string GenericName
+        {
+            get
+            {
+                var arguments = string.Empty;
+
+                if (this.GenericArguments.Count > 0)
+                {
+                    arguments = string.Join(", ", this.GenericArguments);
+                    arguments = string.Format("<{0}>", arguments);
+                }
+                else if (this.GenericParameterCount > 0)
+                {
+                    arguments = string.Join(", T", Enumerable.Range(1, this.GenericParameterCount));
+                    arguments = string.Format("<T{0}>", arguments);
+                }
+                return string.Format("{0}{1}", this.Name, arguments);
+            }
+        }
+        public ISet<CustomAttribute> Attributes { get; private set; }
+		public TypeKind TypeKind { get; set; }
+		public IAssemblyReference ContainingAssembly { get; set; }
+		public string ContainingNamespace { get; set; }
+        public IBasicType ContainingType { get; set; }
+		public string Name { get; set; }
+		public int GenericParameterCount { get; set; }
+		public IList<IType> GenericArguments { get; private set; }
+        public IBasicType GenericType { get; set; }
+
+        public TypeDefinition ResolvedType => throw new NotImplementedException("PlatformType can't be resolved because it doesn't belong to any assembly.");
+        
+        public static readonly UnknownType Unknown = UnknownType.Value;
+        public static readonly PlatformType Void = New("System", "Void", TypeKind.ValueType);
+        public static readonly PlatformType Boolean = New("System", "Boolean", TypeKind.ValueType);
+        public static readonly PlatformType Char = New("System", "Char", TypeKind.ValueType);
+        public static readonly PlatformType String = New("System", "String", TypeKind.ReferenceType);
+        public static readonly PlatformType Byte = New("System", "Byte", TypeKind.ValueType);
+        public static readonly PlatformType SByte = New("System", "SByte", TypeKind.ValueType);
+        public static readonly PlatformType Int16 = New("System", "Int16", TypeKind.ValueType);
+        public static readonly PlatformType Int32 = New("System", "Int32", TypeKind.ValueType);
+        public static readonly PlatformType Int64 = New("System", "Int64", TypeKind.ValueType);
+        public static readonly PlatformType UInt16 = New("System", "UInt16", TypeKind.ValueType);
+        public static readonly PlatformType UInt32 = New("System", "UInt32", TypeKind.ValueType);
+        public static readonly PlatformType UInt64 = New("System", "UInt64", TypeKind.ValueType);
+        public static readonly PlatformType Decimal = New("System", "Decimal", TypeKind.ValueType);
+        public static readonly PlatformType Single = New("System", "Single", TypeKind.ValueType);
+        public static readonly PlatformType Double = New("System", "Double", TypeKind.ValueType);
+        public static readonly PlatformType Object = New("System", "Object", TypeKind.ReferenceType);
+        public static readonly PlatformType IntPtr = New("System", "IntPtr", TypeKind.ValueType);
+        public static readonly PlatformType UIntPtr = New("System", "UIntPtr", TypeKind.ValueType);
+        public static readonly PlatformType RuntimeMethodHandle = New("System", "RuntimeMethodHandle", TypeKind.ValueType);
+        public static readonly PlatformType RuntimeTypeHandle = New("System", "RuntimeTypeHandle", TypeKind.ValueType);
+        public static readonly PlatformType RuntimeFieldHandle = New("System", "RuntimeFieldHandle", TypeKind.ValueType);
+        public static readonly PlatformType ArrayLengthType = UInt32;
+        public static readonly PlatformType SizeofType = UInt32;
+        public static readonly PlatformType Int8 = SByte;
+        public static readonly PlatformType UInt8 = Byte;
+        public static readonly PlatformType Float32 = Single;
+        public static readonly PlatformType Float64 = Double;
+
+        public static readonly PlatformType Enum = New("System", "Enum", TypeKind.ValueType);
+        public static readonly PlatformType ValueType = New("System", "ValueType", TypeKind.ValueType);
+        public static readonly PlatformType MulticastDelegate = New("System", "MulticastDelegate", TypeKind.ReferenceType);
+        public static readonly PlatformType Delegate = New("System", "Delegate", TypeKind.ReferenceType);
+
+        public static readonly PlatformType PureAttribute = New("System.Diagnostics.Contracts", "PureAttribute", TypeKind.ReferenceType);
+        public static readonly PlatformType ICollection = New("System.Collections", "ICollection", TypeKind.ReferenceType);
+        public static readonly PlatformType IEnumerable = New("System.Collections", "IEnumerable", TypeKind.ReferenceType);
+        public static readonly PlatformType IEnumerator = New("System.Collections", "IEnumerator", TypeKind.ReferenceType);
+        public static readonly PlatformType GenericICollection = New("System.Collections.Generic", "ICollection", TypeKind.ReferenceType, 1);
+
+        public static readonly PlatformType Task = New("System.Threading.Tasks", "Task", TypeKind.ReferenceType);
+        public static readonly PlatformType GenericTask = New("System.Threading.Tasks", "Task", TypeKind.ReferenceType, 1);
+    }
 
 	public class UnknownType : IType
 	{
@@ -179,7 +247,7 @@ namespace Model.Types
 			this.ResolveType = () =>
 			{
 				var msg = "Use Resolve method to bind this reference with some host. " +
-						  "To bind all platform types use PlatformTypes.Resolve method.";
+						  "To bind all platform types use  PlatformType.Resolve method.";
 
 				throw new InvalidOperationException(msg);
 			};
@@ -253,6 +321,9 @@ namespace Model.Types
 
 		public override bool Equals(object obj)
 		{
+            if (obj is PlatformType platformType)
+                return platformType.Equals(this);
+
 			var other = obj as IBasicType;
 			// TODO: Maybe we should also compare the TypeKind?
 			var result = other != null &&

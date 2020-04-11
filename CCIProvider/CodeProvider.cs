@@ -833,7 +833,7 @@ namespace CCIProvider
 
 			if (operation == ConvertOperation.Box && cciType.IsValueType)
 			{
-				ourType = PlatformTypes.Object;
+				ourType = PlatformType.Object;
 			}
 			else if (operation == ConvertOperation.Conv)
 			{

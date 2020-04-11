@@ -314,8 +314,8 @@ namespace Model
 
 		public static IEnumerable<MethodDefinition> GetRootMethods(this Assembly assembly)
 		{
-			var mainSignature = new MethodReference("Main", PlatformTypes.Void);
-			var args = new MethodParameterReference(0, new ArrayType(PlatformTypes.String));
+			var mainSignature = new MethodReference("Main", PlatformType.Void);
+			var args = new MethodParameterReference(0, new ArrayType( PlatformType.String));
 
 			mainSignature.IsStatic = true;
 			mainSignature.Parameters.Add(args);

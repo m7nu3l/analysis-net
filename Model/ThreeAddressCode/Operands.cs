@@ -723,7 +723,7 @@ namespace Model.ThreeAddressCode.Values
 
 		public IType Type
 		{
-			get { return PlatformTypes.ArrayLengthType; }
+			get { return PlatformType.ArrayLengthType; }
 		}
 
 		public ISet<IVariable> Variables

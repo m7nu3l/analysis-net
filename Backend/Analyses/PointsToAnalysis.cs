@@ -211,7 +211,7 @@ namespace Backend.Analyses
 
 				if (instruction.Arguments.Count == 3)
 				{
-					var field = new PTGNodeField("instance", PlatformTypes.Object);
+					var field = new PTGNodeField("instance", PlatformType.Object);
 					var instance = instruction.Arguments[1];
 					var targets = ptg.GetTargets(instance);
 

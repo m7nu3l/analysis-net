@@ -15,23 +15,23 @@ namespace MetadataProvider
 		{
 			switch (typeCode)
 			{
-				case SRM.PrimitiveTypeCode.Boolean: return PlatformTypes.Boolean;
-				case SRM.PrimitiveTypeCode.Byte: return PlatformTypes.Byte;
-				case SRM.PrimitiveTypeCode.Char: return PlatformTypes.Char;
-				case SRM.PrimitiveTypeCode.Double: return PlatformTypes.Double;
-				case SRM.PrimitiveTypeCode.Int16: return PlatformTypes.Int16;
-				case SRM.PrimitiveTypeCode.Int32: return PlatformTypes.Int32;
-				case SRM.PrimitiveTypeCode.Int64: return PlatformTypes.Int64;
-				case SRM.PrimitiveTypeCode.IntPtr: return PlatformTypes.IntPtr;
-				case SRM.PrimitiveTypeCode.Object: return PlatformTypes.Object;
-				case SRM.PrimitiveTypeCode.SByte: return PlatformTypes.SByte;
-				case SRM.PrimitiveTypeCode.Single: return PlatformTypes.Single;
-				case SRM.PrimitiveTypeCode.String: return PlatformTypes.String;
-				case SRM.PrimitiveTypeCode.UInt16: return PlatformTypes.UInt16;
-				case SRM.PrimitiveTypeCode.UInt32: return PlatformTypes.UInt32;
-				case SRM.PrimitiveTypeCode.UInt64: return PlatformTypes.UInt64;
-				case SRM.PrimitiveTypeCode.UIntPtr: return PlatformTypes.UIntPtr;
-				case SRM.PrimitiveTypeCode.Void: return PlatformTypes.Void;
+				case SRM.PrimitiveTypeCode.Boolean: return PlatformType.Boolean;
+				case SRM.PrimitiveTypeCode.Byte: return PlatformType.Byte;
+				case SRM.PrimitiveTypeCode.Char: return PlatformType.Char;
+				case SRM.PrimitiveTypeCode.Double: return PlatformType.Double;
+				case SRM.PrimitiveTypeCode.Int16: return PlatformType.Int16;
+				case SRM.PrimitiveTypeCode.Int32: return PlatformType.Int32;
+				case SRM.PrimitiveTypeCode.Int64: return PlatformType.Int64;
+				case SRM.PrimitiveTypeCode.IntPtr: return PlatformType.IntPtr;
+				case SRM.PrimitiveTypeCode.Object: return PlatformType.Object;
+				case SRM.PrimitiveTypeCode.SByte: return PlatformType.SByte;
+				case SRM.PrimitiveTypeCode.Single: return PlatformType.Single;
+				case SRM.PrimitiveTypeCode.String: return PlatformType.String;
+				case SRM.PrimitiveTypeCode.UInt16: return PlatformType.UInt16;
+				case SRM.PrimitiveTypeCode.UInt32: return PlatformType.UInt32;
+				case SRM.PrimitiveTypeCode.UInt64: return PlatformType.UInt64;
+				case SRM.PrimitiveTypeCode.UIntPtr: return PlatformType.UIntPtr;
+				case SRM.PrimitiveTypeCode.Void: return PlatformType.Void;
 
 				//case SRM.PrimitiveTypeCode.TypedReference:	return "typedref";
 
@@ -43,20 +43,20 @@ namespace MetadataProvider
 		{
 			switch (typeCode)
 			{
-				case SRM.ConstantTypeCode.Boolean: return PlatformTypes.Boolean;
-				case SRM.ConstantTypeCode.Byte: return PlatformTypes.Byte;
-				case SRM.ConstantTypeCode.Char: return PlatformTypes.Char;
-				case SRM.ConstantTypeCode.Double: return PlatformTypes.Double;
-				case SRM.ConstantTypeCode.Int16: return PlatformTypes.Int16;
-				case SRM.ConstantTypeCode.Int32: return PlatformTypes.Int32;
-				case SRM.ConstantTypeCode.Int64: return PlatformTypes.Int64;
-				case SRM.ConstantTypeCode.SByte: return PlatformTypes.SByte;
-				case SRM.ConstantTypeCode.Single: return PlatformTypes.Single;
-				case SRM.ConstantTypeCode.String: return PlatformTypes.String;
-				case SRM.ConstantTypeCode.UInt16: return PlatformTypes.UInt16;
-				case SRM.ConstantTypeCode.UInt32: return PlatformTypes.UInt32;
-				case SRM.ConstantTypeCode.UInt64: return PlatformTypes.UInt64;
-				case SRM.ConstantTypeCode.NullReference: return PlatformTypes.Object;
+				case SRM.ConstantTypeCode.Boolean: return PlatformType.Boolean;
+				case SRM.ConstantTypeCode.Byte: return PlatformType.Byte;
+				case SRM.ConstantTypeCode.Char: return PlatformType.Char;
+				case SRM.ConstantTypeCode.Double: return PlatformType.Double;
+				case SRM.ConstantTypeCode.Int16: return PlatformType.Int16;
+				case SRM.ConstantTypeCode.Int32: return PlatformType.Int32;
+				case SRM.ConstantTypeCode.Int64: return PlatformType.Int64;
+				case SRM.ConstantTypeCode.SByte: return PlatformType.SByte;
+				case SRM.ConstantTypeCode.Single: return PlatformType.Single;
+				case SRM.ConstantTypeCode.String: return PlatformType.String;
+				case SRM.ConstantTypeCode.UInt16: return PlatformType.UInt16;
+				case SRM.ConstantTypeCode.UInt32: return PlatformType.UInt32;
+				case SRM.ConstantTypeCode.UInt64: return PlatformType.UInt64;
+				case SRM.ConstantTypeCode.NullReference: return PlatformType.Object;
 
 				default: throw typeCode.ToUnknownValueException();
 			}

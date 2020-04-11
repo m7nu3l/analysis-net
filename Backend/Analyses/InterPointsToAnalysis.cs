@@ -375,8 +375,8 @@ namespace Backend.Analyses
 		{
 			var result = new HashSet<MethodCallInstruction>();
 			var receiver = methodCall.Arguments.First();
-			var field = new PTGNodeField("instance", PlatformTypes.Object);
-			var original = new LocalVariable("$instance") { Type = PlatformTypes.Object };
+			var field = new PTGNodeField("instance", PlatformType.Object);
+			var original = new LocalVariable("$instance") { Type = PlatformType.Object };
 			var nodes = ptg.GetTargets(receiver).OfType<PTGDelegateNode>();
 
 			foreach (var node in nodes)

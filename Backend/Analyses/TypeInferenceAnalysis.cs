@@ -29,12 +29,12 @@ namespace Backend.Analyses
 
 			public override void Visit(LocalAllocationInstruction instruction)
 			{
-				instruction.TargetAddress.Type = PlatformTypes.IntPtr;
+				instruction.TargetAddress.Type =  PlatformType.IntPtr;
 			}
 
 			public override void Visit(SizeofInstruction instruction)
 			{
-				instruction.Result.Type = PlatformTypes.SizeofType;
+				instruction.Result.Type =  PlatformType.SizeofType;
 			}
 
 			public override void Visit(CreateArrayInstruction instruction)
@@ -113,7 +113,7 @@ namespace Backend.Analyses
 
 					// Set the null variable a type.
 					if (argument.Type == null ||
-						parameter.Type.Equals(PlatformTypes.Boolean))
+						parameter.Type.Equals( PlatformType.Boolean))
 					{
 						argument.Type = parameter.Type;
 					}
@@ -137,7 +137,7 @@ namespace Backend.Analyses
 
 					// Set the null variable a type.
 					if (argument.Type == null ||
-						parameter.Type.Equals(PlatformTypes.Boolean))
+						parameter.Type.Equals( PlatformType.Boolean))
 					{
 						argument.Type = parameter.Type;
 					}
@@ -156,22 +156,22 @@ namespace Backend.Analyses
 				{
 					if (operandAsConstant.Value == null)
 					{
-						instruction.Result.Type = PlatformTypes.Object;
+						instruction.Result.Type =  PlatformType.Object;
 					}
 					else if (instruction.Result.Type != null &&
-							 instruction.Result.Type.Equals(PlatformTypes.Boolean))
+							 instruction.Result.Type.Equals( PlatformType.Boolean))
 					{
 						// If the result of the load has type Boolean,
 						// then we are actually loading a Boolean constant.
 						if (operandAsConstant.Value.Equals(0))
 						{
 							operandAsConstant.Value = false;
-							operandAsConstant.Type = PlatformTypes.Boolean;
+							operandAsConstant.Type =  PlatformType.Boolean;
 						}
 						else if (operandAsConstant.Value.Equals(1))
 						{
 							operandAsConstant.Value = true;
-							operandAsConstant.Type = PlatformTypes.Boolean;
+							operandAsConstant.Type =  PlatformType.Boolean;
 						}
 					}
 				}
@@ -180,8 +180,8 @@ namespace Backend.Analyses
 				else if (operandAsVariable != null && 
 						 instruction.Result.Type != null &&
 						(operandAsVariable.Type == null ||
-						 operandAsVariable.Type.Equals(PlatformTypes.Object) ||
-						 instruction.Result.Type.Equals(PlatformTypes.Boolean)))
+						 operandAsVariable.Type.Equals( PlatformType.Object) ||
+						 instruction.Result.Type.Equals( PlatformType.Boolean)))
 				{
 					operandAsVariable.Type = instruction.Result.Type;
 				} 
@@ -202,8 +202,8 @@ namespace Backend.Analyses
 				// Set the null variable a type.
 				if (instruction.Result.Type != null &&
 				   (instruction.Operand.Type == null ||
-					instruction.Operand.Type.Equals(PlatformTypes.Object) ||
-					instruction.Result.Type.Equals(PlatformTypes.Boolean)))
+					instruction.Operand.Type.Equals( PlatformType.Object) ||
+					instruction.Result.Type.Equals( PlatformType.Boolean)))
 				{
 					instruction.Operand.Type = instruction.Result.Type;
 				}
@@ -215,8 +215,8 @@ namespace Backend.Analyses
 				if (instruction.HasOperand &&
 					returnType != null &&
 				   (instruction.Operand.Type == null ||
-					instruction.Operand.Type.Equals(PlatformTypes.Object) ||
-					returnType.Equals(PlatformTypes.Boolean)))
+					instruction.Operand.Type.Equals( PlatformType.Object) ||
+					returnType.Equals( PlatformType.Boolean)))
 				{
 					instruction.Operand.Type = returnType;
 				}
@@ -234,7 +234,7 @@ namespace Backend.Analyses
 				switch (instruction.Operation)
 				{
 					case ConvertOperation.Box:
-                        type = PlatformTypes.Object;
+                        type =  PlatformType.Object;
                         break; 
 
 					case ConvertOperation.Conv:
@@ -297,16 +297,16 @@ namespace Backend.Analyses
 					case BinaryOperation.Neq:
 						// If one of the operands has type Boolean,
 						// then the other operand must also have type Boolean.
-						if (left != null && left.Equals(PlatformTypes.Boolean))
+						if (left != null && left.Equals( PlatformType.Boolean))
 						{
-							instruction.RightOperand.Type = PlatformTypes.Boolean;
+							instruction.RightOperand.Type =  PlatformType.Boolean;
 						}
-						else if (right != null && right.Equals(PlatformTypes.Boolean))
+						else if (right != null && right.Equals( PlatformType.Boolean))
 						{
-							instruction.LeftOperand.Type = PlatformTypes.Boolean;
+							instruction.LeftOperand.Type =  PlatformType.Boolean;
 						}
 
-						instruction.Result.Type = PlatformTypes.Boolean;
+						instruction.Result.Type =  PlatformType.Boolean;
 						break;
 
 					case BinaryOperation.Gt:
@@ -321,7 +321,7 @@ namespace Backend.Analyses
 							instruction.Operation = BinaryOperation.Neq;
 						}
 
-						instruction.Result.Type = PlatformTypes.Boolean;
+						instruction.Result.Type =  PlatformType.Boolean;
 						break;
 				}
 			}
@@ -342,7 +342,7 @@ namespace Backend.Analyses
 				if (instruction.Operation == BranchOperation.Eq &&
 					instruction.RightOperand is Constant &&
 					instruction.LeftOperand.Type != null &&
-					!instruction.LeftOperand.Type.Equals(PlatformTypes.Boolean))
+					!instruction.LeftOperand.Type.Equals( PlatformType.Boolean))
 				{
 					var constant = instruction.RightOperand as Constant;
 

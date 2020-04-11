@@ -789,7 +789,7 @@ namespace Model.ThreeAddressCode.Instructions
 		{
 			var operation = this.Operation.ToBinaryOperation();
 			var expression = new BinaryExpression(this.LeftOperand, operation, this.RightOperand);
-			expression.Type = PlatformTypes.Boolean;
+			expression.Type =  PlatformType.Boolean;
 			return expression;
 		}
 

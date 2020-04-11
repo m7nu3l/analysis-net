@@ -269,21 +269,21 @@ namespace CCIProvider
 				case Cci.OperationCode.Stelem_I:
 				case Cci.OperationCode.Conv_I:
 				case Cci.OperationCode.Conv_Ovf_I:
-				case Cci.OperationCode.Conv_Ovf_I_Un:	return PlatformTypes.IntPtr;
+				case Cci.OperationCode.Conv_Ovf_I_Un:	return PlatformType.IntPtr;
                 case Cci.OperationCode.Ldelem_I1:
                 case Cci.OperationCode.Ldind_I1:
 				case Cci.OperationCode.Stind_I1:
 				case Cci.OperationCode.Stelem_I1:
 				case Cci.OperationCode.Conv_I1:
 				case Cci.OperationCode.Conv_Ovf_I1:
-				case Cci.OperationCode.Conv_Ovf_I1_Un:	return PlatformTypes.Int8;
+				case Cci.OperationCode.Conv_Ovf_I1_Un:	return PlatformType.Int8;
                 case Cci.OperationCode.Ldelem_I2:
                 case Cci.OperationCode.Ldind_I2:
 				case Cci.OperationCode.Stind_I2:
 				case Cci.OperationCode.Stelem_I2:
 				case Cci.OperationCode.Conv_I2:
 				case Cci.OperationCode.Conv_Ovf_I2:
-				case Cci.OperationCode.Conv_Ovf_I2_Un:	return PlatformTypes.Int16;
+				case Cci.OperationCode.Conv_Ovf_I2_Un:	return PlatformType.Int16;
                 case Cci.OperationCode.Ldelem_I4:
                 case Cci.OperationCode.Ldc_I4:
 				case Cci.OperationCode.Ldc_I4_0:
@@ -302,7 +302,7 @@ namespace CCIProvider
 				case Cci.OperationCode.Stelem_I4:
 				case Cci.OperationCode.Conv_I4:
 				case Cci.OperationCode.Conv_Ovf_I4:
-				case Cci.OperationCode.Conv_Ovf_I4_Un:	return PlatformTypes.Int32;
+				case Cci.OperationCode.Conv_Ovf_I4_Un:	return PlatformType.Int32;
                 case Cci.OperationCode.Ldelem_I8:
                 case Cci.OperationCode.Ldc_I8:
 				case Cci.OperationCode.Ldind_I8:
@@ -310,48 +310,48 @@ namespace CCIProvider
 				case Cci.OperationCode.Stelem_I8:
 				case Cci.OperationCode.Conv_I8:
 				case Cci.OperationCode.Conv_Ovf_I8:
-				case Cci.OperationCode.Conv_Ovf_I8_Un:	return PlatformTypes.Int64;
+				case Cci.OperationCode.Conv_Ovf_I8_Un:	return PlatformType.Int64;
 				case Cci.OperationCode.Conv_U:
 				case Cci.OperationCode.Conv_Ovf_U:
 				case Cci.OperationCode.Conv_Ovf_U_Un:
-				case Cci.OperationCode.Ldlen:			return PlatformTypes.UIntPtr;
+				case Cci.OperationCode.Ldlen:			return PlatformType.UIntPtr;
                 case Cci.OperationCode.Ldelem_U1:
                 case Cci.OperationCode.Ldind_U1:
 				case Cci.OperationCode.Conv_U1:
 				case Cci.OperationCode.Conv_Ovf_U1:
-				case Cci.OperationCode.Conv_Ovf_U1_Un:	return PlatformTypes.UInt8;
+				case Cci.OperationCode.Conv_Ovf_U1_Un:	return PlatformType.UInt8;
                 case Cci.OperationCode.Ldelem_U2:
                 case Cci.OperationCode.Ldind_U2:
 				case Cci.OperationCode.Conv_U2:
 				case Cci.OperationCode.Conv_Ovf_U2:
-				case Cci.OperationCode.Conv_Ovf_U2_Un:	return PlatformTypes.UInt16;
+				case Cci.OperationCode.Conv_Ovf_U2_Un:	return PlatformType.UInt16;
                 case Cci.OperationCode.Ldelem_U4:
                 case Cci.OperationCode.Ldind_U4:
 				case Cci.OperationCode.Conv_U4:
 				case Cci.OperationCode.Conv_Ovf_U4:
 				case Cci.OperationCode.Conv_Ovf_U4_Un:
-				case Cci.OperationCode.Sizeof:			return PlatformTypes.UInt32;
+				case Cci.OperationCode.Sizeof:			return PlatformType.UInt32;
 				case Cci.OperationCode.Conv_U8:
 				case Cci.OperationCode.Conv_Ovf_U8:
-				case Cci.OperationCode.Conv_Ovf_U8_Un:	return PlatformTypes.UInt64;
+				case Cci.OperationCode.Conv_Ovf_U8_Un:	return PlatformType.UInt64;
                 case Cci.OperationCode.Ldelem_R4:
                 case Cci.OperationCode.Ldc_R4:
 				case Cci.OperationCode.Ldind_R4:
 				case Cci.OperationCode.Stind_R4:
 				case Cci.OperationCode.Stelem_R4:
-				case Cci.OperationCode.Conv_R4:			return PlatformTypes.Float32;
+				case Cci.OperationCode.Conv_R4:			return PlatformType.Float32;
                 case Cci.OperationCode.Ldelem_R8:
                 case Cci.OperationCode.Ldc_R8:
 				case Cci.OperationCode.Ldind_R8:
 				case Cci.OperationCode.Stind_R8:
 				case Cci.OperationCode.Stelem_R8:
 				case Cci.OperationCode.Conv_R8:
-				case Cci.OperationCode.Conv_R_Un:		return PlatformTypes.Float64;
+				case Cci.OperationCode.Conv_R_Un:		return PlatformType.Float64;
                 case Cci.OperationCode.Ldelem_Ref:
                 case Cci.OperationCode.Stind_Ref:
                 case Cci.OperationCode.Ldind_Ref:
-                case Cci.OperationCode.Ldnull:			return PlatformTypes.Object;
-				case Cci.OperationCode.Ldstr:			return PlatformTypes.String;
+                case Cci.OperationCode.Ldnull:			return PlatformType.Object;
+				case Cci.OperationCode.Ldstr:			return PlatformType.String;
 
 				default: return null;
 			}

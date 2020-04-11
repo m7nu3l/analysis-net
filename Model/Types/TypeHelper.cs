@@ -35,19 +35,19 @@ namespace Model.Types
 
 		public static IType TokenType(IMetadataReference token)
 		{
-			IType type = PlatformTypes.Unknown;
+			IType type = PlatformType.Unknown;
 
 			if (token is IMethodReference)
 			{
-				type = PlatformTypes.RuntimeMethodHandle;
+				type = PlatformType.RuntimeMethodHandle;
 			}
 			else if (token is IType)
 			{
-				type = PlatformTypes.RuntimeTypeHandle;
+				type = PlatformType.RuntimeTypeHandle;
 			}
 			else if (token is IFieldReference)
 			{
-				type = PlatformTypes.RuntimeFieldHandle;
+				type = PlatformType.RuntimeFieldHandle;
 			}
 
 			return type;
@@ -62,22 +62,22 @@ namespace Model.Types
 				var basicType = type as IBasicType;
 				var scalarTypes = new IBasicType[]
 				{
-					PlatformTypes.Void,
-					PlatformTypes.Boolean,
-					PlatformTypes.Char,
-					PlatformTypes.Float32,
-					PlatformTypes.Float64,
-					PlatformTypes.Decimal,
-					PlatformTypes.Int8,
-					PlatformTypes.Int16,
-					PlatformTypes.Int32,
-					PlatformTypes.Int64,
-					PlatformTypes.UInt8,
-					PlatformTypes.UInt16,
-					PlatformTypes.UInt32,
-					PlatformTypes.UInt64,
-					PlatformTypes.IntPtr,
-					PlatformTypes.UIntPtr
+					 PlatformType.Void,
+					 PlatformType.Boolean,
+					 PlatformType.Char,
+					 PlatformType.Float32,
+					 PlatformType.Float64,
+					 PlatformType.Decimal,
+					 PlatformType.Int8,
+					 PlatformType.Int16,
+					 PlatformType.Int32,
+					 PlatformType.Int64,
+					 PlatformType.UInt8,
+					 PlatformType.UInt16,
+					 PlatformType.UInt32,
+					 PlatformType.UInt64,
+					 PlatformType.IntPtr,
+					 PlatformType.UIntPtr
 				};
 
 				result = scalarTypes.Contains(basicType, BasicTypeDefinitionComparer.Default);
@@ -128,8 +128,8 @@ namespace Model.Types
 
 			if (basicType != null && basicType.ResolvedType != null)
 			{
-				result = Type1ImplementsType2(basicType.ResolvedType, PlatformTypes.ICollection);
-				result = result || Type1ImplementsType2(basicType.ResolvedType, PlatformTypes.GenericICollection);
+				result = Type1ImplementsType2(basicType.ResolvedType, PlatformType.ICollection);
+				result = result || Type1ImplementsType2(basicType.ResolvedType, PlatformType.GenericICollection);
 			}
 
 			return result;
@@ -142,8 +142,8 @@ namespace Model.Types
 
 			if (basicType != null && basicType.ResolvedType != null)
 			{
-				result = Type1ImplementsType2(basicType.ResolvedType, PlatformTypes.MulticastDelegate);
-				result = result || Type1ImplementsType2(basicType.ResolvedType, PlatformTypes.Delegate);
+				result = Type1ImplementsType2(basicType.ResolvedType, PlatformType.MulticastDelegate);
+				result = result || Type1ImplementsType2(basicType.ResolvedType, PlatformType.Delegate);
 			}
 
 			return result;
@@ -151,7 +151,7 @@ namespace Model.Types
 
 		public static IType MergedType(IType type1, IType type2)
 		{
-			IType result = PlatformTypes.Object;
+			IType result = PlatformType.Object;
 
 			if (type1 is PointerType && type2 is PointerType)
 			{
@@ -221,7 +221,7 @@ namespace Model.Types
 			if (typedef1 != null && Type1ImplementsType2(typedef1, type2)) return type2;
 			if (typedef2 != null && Type1ImplementsType2(typedef2, type1)) return type1;
 
-			return PlatformTypes.Object;
+			return PlatformType.Object;
 		}
 
 		public static bool TypesAreEquivalent(IType type1, IType type2)
@@ -258,34 +258,34 @@ namespace Model.Types
 			if (basicType == null) return type;
 
 			// TODO: Improve these comparisons (optimize for performance)!!
-			if (basicType.Equals(PlatformTypes.Boolean) ||
-				basicType.Equals(PlatformTypes.Char) ||
-				basicType.Equals(PlatformTypes.Int8) ||
-				basicType.Equals(PlatformTypes.Int16) ||
-				basicType.Equals(PlatformTypes.Int32) ||
-				basicType.Equals(PlatformTypes.UInt8) ||
-				basicType.Equals(PlatformTypes.UInt16) ||
-				basicType.Equals(PlatformTypes.UInt32))
+			if (basicType.Equals( PlatformType.Boolean) ||
+				basicType.Equals( PlatformType.Char) ||
+				basicType.Equals( PlatformType.Int8) ||
+				basicType.Equals( PlatformType.Int16) ||
+				basicType.Equals( PlatformType.Int32) ||
+				basicType.Equals( PlatformType.UInt8) ||
+				basicType.Equals( PlatformType.UInt16) ||
+				basicType.Equals( PlatformType.UInt32))
 			{
-				return PlatformTypes.Int32;
+				return PlatformType.Int32;
 			}
 
-			if (basicType.Equals(PlatformTypes.Int64) ||
-				basicType.Equals(PlatformTypes.UInt64))
+			if (basicType.Equals( PlatformType.Int64) ||
+				basicType.Equals( PlatformType.UInt64))
 			{
-				return PlatformTypes.Int64;
+				return PlatformType.Int64;
 			}
 
-			if (basicType.Equals(PlatformTypes.Float32) ||
-				basicType.Equals(PlatformTypes.Float64))
+			if (basicType.Equals( PlatformType.Float32) ||
+				basicType.Equals( PlatformType.Float64))
 			{
-				return PlatformTypes.Float64;
+				return PlatformType.Float64;
 			}
 
-			if (basicType.Equals(PlatformTypes.IntPtr) ||
-				basicType.Equals(PlatformTypes.UIntPtr))
+			if (basicType.Equals( PlatformType.IntPtr) ||
+				basicType.Equals( PlatformType.UIntPtr))
 			{
-				return PlatformTypes.IntPtr;
+				return PlatformType.IntPtr;
 			}
 
 			if (basicType.ResolvedType != null && basicType.ResolvedType.Kind == TypeDefinitionKind.Enum)
@@ -404,7 +404,7 @@ namespace Model.Types
 			}
 			else if (targetType is IBasicType)
 			{
-				result = TypesAreEquivalent(targetType, PlatformTypes.Object);
+				result = TypesAreEquivalent(targetType, PlatformType.Object);
 			}
 
 			return result;
@@ -418,7 +418,7 @@ namespace Model.Types
 			if (TypesAreEquivalent(sourceType, targetType)) return true;
 			if (Type1DerivesFromType2(sourceType, targetType)) return true;
 			if (Type1ImplementsType2(sourceType, targetType)) return true;
-			if (TypesAreEquivalent(targetType, PlatformTypes.Object)) return true;
+			if (TypesAreEquivalent(targetType, PlatformType.Object)) return true;
 			if (Type1IsCovariantWithType2(sourceType, targetType)) return true;
 
 			return false;
@@ -508,9 +508,9 @@ namespace Model.Types
 		{
 			IType type = null;
 
-			if (left.Equals(PlatformTypes.Boolean) && right.Equals(PlatformTypes.Boolean))
+			if (left.Equals( PlatformType.Boolean) && right.Equals( PlatformType.Boolean))
 			{
-				type = PlatformTypes.Boolean;
+				type = PlatformType.Boolean;
 			}
 			else
 			{
@@ -538,11 +538,11 @@ namespace Model.Types
 		/// </summary>
 		public static IType UnsignedEquivalent(IType type)
 		{
-			if (type.Equals(PlatformTypes.Int8)) return PlatformTypes.UInt8;
-			else if (type.Equals(PlatformTypes.Int16)) return PlatformTypes.UInt16;
-			else if (type.Equals(PlatformTypes.Int32)) return PlatformTypes.UInt32;
-			else if (type.Equals(PlatformTypes.Int64)) return PlatformTypes.UInt64;
-			else if (type.Equals(PlatformTypes.IntPtr)) return PlatformTypes.UIntPtr;
+			if (type.Equals( PlatformType.Int8)) return PlatformType.UInt8;
+			else if (type.Equals( PlatformType.Int16)) return PlatformType.UInt16;
+			else if (type.Equals( PlatformType.Int32)) return PlatformType.UInt32;
+			else if (type.Equals( PlatformType.Int64)) return PlatformType.UInt64;
+			else if (type.Equals( PlatformType.IntPtr)) return PlatformType.UIntPtr;
 			else return type;
 		}
 
@@ -554,37 +554,37 @@ namespace Model.Types
 
 		public static IType BinarySignedNumericOperationType(IType left, IType right)
 		{
-			if (left.Equals(PlatformTypes.Boolean) ||
-				left.Equals(PlatformTypes.Char) ||
-				left.Equals(PlatformTypes.UInt8) ||
-				left.Equals(PlatformTypes.UInt16) ||
-				left.Equals(PlatformTypes.UInt32))
+			if (left.Equals( PlatformType.Boolean) ||
+				left.Equals( PlatformType.Char) ||
+				left.Equals( PlatformType.UInt8) ||
+				left.Equals( PlatformType.UInt16) ||
+				left.Equals( PlatformType.UInt32))
 			{
-				if (right.Equals(PlatformTypes.Boolean) ||
-					right.Equals(PlatformTypes.Char) ||
-					right.Equals(PlatformTypes.UInt8) ||
-					right.Equals(PlatformTypes.UInt16) ||
-					right.Equals(PlatformTypes.UInt32))
-					return PlatformTypes.UInt32;
+				if (right.Equals( PlatformType.Boolean) ||
+					right.Equals( PlatformType.Char) ||
+					right.Equals( PlatformType.UInt8) ||
+					right.Equals( PlatformType.UInt16) ||
+					right.Equals( PlatformType.UInt32))
+					return PlatformType.UInt32;
 
-				else if (right.Equals(PlatformTypes.Int8) ||
-					right.Equals(PlatformTypes.Int16) ||
-					right.Equals(PlatformTypes.Int32))
+				else if (right.Equals( PlatformType.Int8) ||
+					right.Equals( PlatformType.Int16) ||
+					right.Equals( PlatformType.Int32))
 					// Code generators will tend to make both operands be of the same type.
 					// Assume this happened because the right operand is a polymorphic constant.
-					return PlatformTypes.UInt32;
+					return PlatformType.UInt32;
 
 				//The cases below are not expected to happen in practice
-				else if (right.Equals(PlatformTypes.UInt64) ||
-					right.Equals(PlatformTypes.Int64))
-					return PlatformTypes.UInt64;
+				else if (right.Equals( PlatformType.UInt64) ||
+					right.Equals( PlatformType.Int64))
+					return PlatformType.UInt64;
 
-				else if (right.Equals(PlatformTypes.UIntPtr) ||
-					right.Equals(PlatformTypes.IntPtr))
-					return PlatformTypes.UIntPtr;
+				else if (right.Equals( PlatformType.UIntPtr) ||
+					right.Equals( PlatformType.IntPtr))
+					return PlatformType.UIntPtr;
 
-				else if (right.Equals(PlatformTypes.Float32) ||
-					right.Equals(PlatformTypes.Float64))
+				else if (right.Equals( PlatformType.Float32) ||
+					right.Equals( PlatformType.Float64))
 					return right;
 
 				else
@@ -592,31 +592,31 @@ namespace Model.Types
 					// Assume this happened because the right operand is an enum.
 					return right;
 			}
-			else if (left.Equals(PlatformTypes.Int8) ||
-				left.Equals(PlatformTypes.Int16) ||
-				left.Equals(PlatformTypes.Int32))
+			else if (left.Equals( PlatformType.Int8) ||
+				left.Equals( PlatformType.Int16) ||
+				left.Equals( PlatformType.Int32))
 			{
-				if (right.Equals(PlatformTypes.Boolean) ||
-					right.Equals(PlatformTypes.Char) ||
-					right.Equals(PlatformTypes.UInt8) ||
-					right.Equals(PlatformTypes.UInt16) ||
-					right.Equals(PlatformTypes.UInt32))
-					return PlatformTypes.UInt32;
+				if (right.Equals( PlatformType.Boolean) ||
+					right.Equals( PlatformType.Char) ||
+					right.Equals( PlatformType.UInt8) ||
+					right.Equals( PlatformType.UInt16) ||
+					right.Equals( PlatformType.UInt32))
+					return PlatformType.UInt32;
 
-				else if (right.Equals(PlatformTypes.Int8) ||
-					right.Equals(PlatformTypes.Int16) ||
-					right.Equals(PlatformTypes.Int32))
+				else if (right.Equals( PlatformType.Int8) ||
+					right.Equals( PlatformType.Int16) ||
+					right.Equals( PlatformType.Int32))
 					// Code generators will tend to make both operands be of the same type.
 					// Assume this happened because the right operand is a polymorphic constant.
-					return PlatformTypes.Int32;
+					return PlatformType.Int32;
 
 				// The cases below are not expected to happen in practice
-				else if (right.Equals(PlatformTypes.UInt64) ||
-					right.Equals(PlatformTypes.Int64) ||
-					right.Equals(PlatformTypes.UIntPtr) ||
-					right.Equals(PlatformTypes.IntPtr) ||
-					right.Equals(PlatformTypes.Float32) ||
-					right.Equals(PlatformTypes.Float64))
+				else if (right.Equals( PlatformType.UInt64) ||
+					right.Equals( PlatformType.Int64) ||
+					right.Equals( PlatformType.UIntPtr) ||
+					right.Equals( PlatformType.IntPtr) ||
+					right.Equals( PlatformType.Float32) ||
+					right.Equals( PlatformType.Float64))
 					return right;
 
 				else
@@ -624,28 +624,28 @@ namespace Model.Types
 					// Assume this happened because the right operand is an enum.
 					return right;
 			}
-			else if (left.Equals(PlatformTypes.UInt64))
+			else if (left.Equals( PlatformType.UInt64))
 			{
-				if (right.Equals(PlatformTypes.Boolean) ||
-					right.Equals(PlatformTypes.Char) ||
-					right.Equals(PlatformTypes.UInt8) ||
-					right.Equals(PlatformTypes.UInt16) ||
-					right.Equals(PlatformTypes.UInt32) ||
-					right.Equals(PlatformTypes.UInt64))
-					return PlatformTypes.UInt64;
+				if (right.Equals( PlatformType.Boolean) ||
+					right.Equals( PlatformType.Char) ||
+					right.Equals( PlatformType.UInt8) ||
+					right.Equals( PlatformType.UInt16) ||
+					right.Equals( PlatformType.UInt32) ||
+					right.Equals( PlatformType.UInt64))
+					return PlatformType.UInt64;
 
-				else if (right.Equals(PlatformTypes.Int8) ||
-					right.Equals(PlatformTypes.Int16) ||
-					right.Equals(PlatformTypes.Int32) ||
-					right.Equals(PlatformTypes.Int64))
+				else if (right.Equals( PlatformType.Int8) ||
+					right.Equals( PlatformType.Int16) ||
+					right.Equals( PlatformType.Int32) ||
+					right.Equals( PlatformType.Int64))
 					// Code generators will tend to make both operands be of the same type.
 					// Assume this happened because the right operand is a polymorphic constant.
-					return PlatformTypes.UInt64;
+					return PlatformType.UInt64;
 
-				else if (right.Equals(PlatformTypes.UIntPtr) ||
-					right.Equals(PlatformTypes.IntPtr) ||
-					right.Equals(PlatformTypes.Float32) ||
-					right.Equals(PlatformTypes.Float64))
+				else if (right.Equals( PlatformType.UIntPtr) ||
+					right.Equals( PlatformType.IntPtr) ||
+					right.Equals( PlatformType.Float32) ||
+					right.Equals( PlatformType.Float64))
 					return right;
 
 				else
@@ -653,30 +653,30 @@ namespace Model.Types
 					// Assume this happened because the right operand is an enum.
 					return right;
 			}
-			else if (left.Equals(PlatformTypes.Int64))
+			else if (left.Equals( PlatformType.Int64))
 			{
-				if (right.Equals(PlatformTypes.Boolean) ||
-					right.Equals(PlatformTypes.Char) ||
-					right.Equals(PlatformTypes.UInt8) ||
-					right.Equals(PlatformTypes.UInt16) ||
-					right.Equals(PlatformTypes.UInt32) ||
-					right.Equals(PlatformTypes.UInt64))
+				if (right.Equals( PlatformType.Boolean) ||
+					right.Equals( PlatformType.Char) ||
+					right.Equals( PlatformType.UInt8) ||
+					right.Equals( PlatformType.UInt16) ||
+					right.Equals( PlatformType.UInt32) ||
+					right.Equals( PlatformType.UInt64))
 					// Code generators will tend to make both operands be of the same type.
 					// Assume this happened because the right operand is a polymorphic constant.
-					return PlatformTypes.UInt64;
+					return PlatformType.UInt64;
 
-				else if (right.Equals(PlatformTypes.Int8) ||
-					right.Equals(PlatformTypes.Int16) ||
-					right.Equals(PlatformTypes.Int32) ||
-					right.Equals(PlatformTypes.Int64))
-					return PlatformTypes.Int64;
+				else if (right.Equals( PlatformType.Int8) ||
+					right.Equals( PlatformType.Int16) ||
+					right.Equals( PlatformType.Int32) ||
+					right.Equals( PlatformType.Int64))
+					return PlatformType.Int64;
 
-				else if (right.Equals(PlatformTypes.UIntPtr) ||
-					right.Equals(PlatformTypes.IntPtr))
-					return PlatformTypes.IntPtr;
+				else if (right.Equals( PlatformType.UIntPtr) ||
+					right.Equals( PlatformType.IntPtr))
+					return PlatformType.IntPtr;
 
-				else if (right.Equals(PlatformTypes.Float32) ||
-					right.Equals(PlatformTypes.Float64))
+				else if (right.Equals( PlatformType.Float32) ||
+					right.Equals( PlatformType.Float64))
 					return right;
 
 				else
@@ -684,90 +684,90 @@ namespace Model.Types
 					// Assume this happened because the right operand is an enum.
 					return right;
 			}
-			else if (left.Equals(PlatformTypes.UIntPtr))
+			else if (left.Equals( PlatformType.UIntPtr))
 			{
-				if (right.Equals(PlatformTypes.Boolean) ||
-					right.Equals(PlatformTypes.Char) ||
-					right.Equals(PlatformTypes.UInt8) ||
-					right.Equals(PlatformTypes.UInt16) ||
-					right.Equals(PlatformTypes.UInt32) ||
-					right.Equals(PlatformTypes.UInt64) ||
-					right.Equals(PlatformTypes.UIntPtr))
-					return PlatformTypes.UIntPtr;
+				if (right.Equals( PlatformType.Boolean) ||
+					right.Equals( PlatformType.Char) ||
+					right.Equals( PlatformType.UInt8) ||
+					right.Equals( PlatformType.UInt16) ||
+					right.Equals( PlatformType.UInt32) ||
+					right.Equals( PlatformType.UInt64) ||
+					right.Equals( PlatformType.UIntPtr))
+					return PlatformType.UIntPtr;
 
-				else if (right.Equals(PlatformTypes.Int8) ||
-					right.Equals(PlatformTypes.Int16) ||
-					right.Equals(PlatformTypes.Int32) ||
-					right.Equals(PlatformTypes.Int64) ||
-					right.Equals(PlatformTypes.IntPtr))
-					return PlatformTypes.UIntPtr;
+				else if (right.Equals( PlatformType.Int8) ||
+					right.Equals( PlatformType.Int16) ||
+					right.Equals( PlatformType.Int32) ||
+					right.Equals( PlatformType.Int64) ||
+					right.Equals( PlatformType.IntPtr))
+					return PlatformType.UIntPtr;
 
-				else if (right.Equals(PlatformTypes.Float32) ||
-					right.Equals(PlatformTypes.Float64))
+				else if (right.Equals( PlatformType.Float32) ||
+					right.Equals( PlatformType.Float64))
 					return right;
 
 				else if (right is IReferenceType)
 					return right;
 			}
-			else if (left.Equals(PlatformTypes.IntPtr))
+			else if (left.Equals( PlatformType.IntPtr))
 			{
-				if (right.Equals(PlatformTypes.Boolean) ||
-					right.Equals(PlatformTypes.Char) ||
-					right.Equals(PlatformTypes.UInt8) ||
-					right.Equals(PlatformTypes.UInt16) ||
-					right.Equals(PlatformTypes.UInt32) ||
-					right.Equals(PlatformTypes.UInt64) ||
-					right.Equals(PlatformTypes.UIntPtr))
-					return PlatformTypes.UIntPtr;
+				if (right.Equals( PlatformType.Boolean) ||
+					right.Equals( PlatformType.Char) ||
+					right.Equals( PlatformType.UInt8) ||
+					right.Equals( PlatformType.UInt16) ||
+					right.Equals( PlatformType.UInt32) ||
+					right.Equals( PlatformType.UInt64) ||
+					right.Equals( PlatformType.UIntPtr))
+					return PlatformType.UIntPtr;
 
-				else if (right.Equals(PlatformTypes.Int8) ||
-					right.Equals(PlatformTypes.Int16) ||
-					right.Equals(PlatformTypes.Int32) ||
-					right.Equals(PlatformTypes.Int64) ||
-					right.Equals(PlatformTypes.IntPtr))
-					return PlatformTypes.IntPtr;
+				else if (right.Equals( PlatformType.Int8) ||
+					right.Equals( PlatformType.Int16) ||
+					right.Equals( PlatformType.Int32) ||
+					right.Equals( PlatformType.Int64) ||
+					right.Equals( PlatformType.IntPtr))
+					return PlatformType.IntPtr;
 
-				else if (right.Equals(PlatformTypes.Float32) ||
-					right.Equals(PlatformTypes.Float64))
+				else if (right.Equals( PlatformType.Float32) ||
+					right.Equals( PlatformType.Float64))
 					return right;
 
 				else if (right is IReferenceType)
 					return right;
 			}
-			else if (left.Equals(PlatformTypes.Float32) ||
-					left.Equals(PlatformTypes.Float64))
+			else if (left.Equals( PlatformType.Float32) ||
+					left.Equals( PlatformType.Float64))
 				return right;
 
 			else if (left is IReferenceType)
 			{
 				if (right is IReferenceType)
-					return PlatformTypes.UIntPtr;
+					return PlatformType.UIntPtr;
 
-				else if (right.Equals(PlatformTypes.Int8) ||
-					right.Equals(PlatformTypes.Int16) ||
-					right.Equals(PlatformTypes.Int32) ||
-					right.Equals(PlatformTypes.Int64) ||
-					right.Equals(PlatformTypes.Char) ||
-					right.Equals(PlatformTypes.UInt8) ||
-					right.Equals(PlatformTypes.UInt16) ||
-					right.Equals(PlatformTypes.UInt32) ||
-					right.Equals(PlatformTypes.UInt64) ||
-					right.Equals(PlatformTypes.IntPtr) ||
-					right.Equals(PlatformTypes.UIntPtr))
+				else if (right.Equals( PlatformType.Int8) ||
+					right.Equals( PlatformType.Int16) ||
+					right.Equals( PlatformType.Int32) ||
+					right.Equals( PlatformType.Int64) ||
+					right.Equals( PlatformType.Char) ||
+					right.Equals( PlatformType.UInt8) ||
+					right.Equals( PlatformType.UInt16) ||
+					right.Equals( PlatformType.UInt32) ||
+					right.Equals( PlatformType.UInt64) ||
+					right.Equals( PlatformType.IntPtr) ||
+					right.Equals( PlatformType.UIntPtr))
 					return left;
 			}
 			else
 			{
-				if (right.Equals(PlatformTypes.Int8) ||
-					right.Equals(PlatformTypes.Int16) ||
-					right.Equals(PlatformTypes.Int32) ||
-					right.Equals(PlatformTypes.Int64) ||
-					right.Equals(PlatformTypes.Boolean) ||
-					right.Equals(PlatformTypes.Char) ||
-					right.Equals(PlatformTypes.UInt8) ||
-					right.Equals(PlatformTypes.UInt16) ||
-					right.Equals(PlatformTypes.UInt32) ||
-					right.Equals(PlatformTypes.UInt64))
+				if (right.Equals( PlatformType.Int8) ||
+					right.Equals( PlatformType.Int16) ||
+					right.Equals( PlatformType.Int32) ||
+					right.Equals( PlatformType.Int64) ||
+					right.Equals( PlatformType.Boolean) ||
+					right.Equals( PlatformType.Char) ||
+					right.Equals( PlatformType.UInt8) ||
+					right.Equals( PlatformType.UInt16) ||
+					right.Equals( PlatformType.UInt32) ||
+					right.Equals( PlatformType.UInt64))
 					// Assume that the left operand has an enum type.
 					return left;
 
