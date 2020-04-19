@@ -129,6 +129,7 @@
     <Content Include="Resources\DSA\NUnit\DSANUnitTests.pdb">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <Content Include="Resources\DSA\Source.txt" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\CecilBackend\CecilCodeGenerator.csproj">
