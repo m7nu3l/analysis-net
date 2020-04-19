@@ -1,0 +1,10 @@
+[submodule "analysis-net"]
+	path = analysis-net
+	url = https://github.com/m7nu3l/analysis-net.git
+	branch = advanced-pta
+[submodule "cecil"]
+	path = cecil
+	url = https://github.com/jbevain/cecil.git
+[submodule "DSA"]
+	path = DSA
+	url = https://github.com/m7nu3l/DSA.git
