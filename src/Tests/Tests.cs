@@ -2,16 +2,18 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 namespace Tests
 {
     public class Tests
     {
-        public string GetResourceAsString(string res)
+        public static string GetResourceAsString(string res)
         {
             Stream sourceStream = System.Reflection.Assembly.GetAssembly(typeof(Tests)).GetManifestResourceStream(res);
             System.IO.StreamReader streamReader = new System.IO.StreamReader(sourceStream);
             string source = streamReader.ReadToEnd();
+            streamReader.Dispose();
             return source;
         }
 
@@ -186,6 +188,208 @@ namespace Tests
             // check results
             string output = File.ReadAllText(outputTxt);
             Assert.IsTrue(output.Contains("Test Count: 618, Passed: 618"));
+        }
+    }
+
+    public class ExampleTests
+    {
+        private static string CompileExample()
+        {
+            // The file is located at the Resources folder of this project.
+            var source = Tests.GetResourceAsString("Tests.Resources.Example.cs");
+            // Compiler encapsulates calls to Roslyn.
+            var compiler = new Compiler();
+            var output = compiler.CompileSource(source);
+            return output;
+        }
+
+        [Test]
+        public void SimplifiedBytecode()
+        {
+            var assemblyPath = CompileExample();
+            // Simply put, a host is a collection of loaded assemblies.
+            var host = new Model.Host();
+            // A loader is the frontend of the framework.
+            // It is able to load a .net assembly and transform it into
+            // analyses-net representations.
+            // All loaded assemblies are added to the host.
+            var loader = new CecilCodeLoader.Loader(host);
+            // This assembly variable holds an analysis-net's object modeling the original .net assembly.
+            var assembly = loader.LoadAssembly(assemblyPath);
+
+            // Next, we are going to iterate over each defined type and print their method's bodies
+            // Note: If there are nested types, you should check definedType.Types
+            foreach (var definedType in assembly.RootNamespace.Types)
+            {
+                foreach (var method in definedType.Methods)
+                {
+                    if (method.HasBody)
+                    {
+                        // At first, a method's body is in a simplified bytecode form (aka sil).
+                        // It is still a stack based representation.
+
+                        TestContext.Out.WriteLine("Method: " + method.GenericName);
+                        TestContext.Out.WriteLine(method.Body.ToString());
+                    }
+                }
+            }
+        }
+
+        [Test]
+        public void ThreeAddressCode()
+        {
+            var assemblyPath = CompileExample();
+            // Simply put, a host is a collection of loaded assemblies.
+            var host = new Model.Host();
+            // A loader is the frontend of the framework.
+            // It is able to load a .net assembly and transform it into
+            // analyses-net representations.
+            // All loaded assemblies are added to the host.
+            var loader = new CecilCodeLoader.Loader(host);
+            // This assembly variable holds an analysis-net's object modeling the original .net assembly.
+            var assembly = loader.LoadAssembly(assemblyPath);
+
+            // Next, we are going to iterate over each defined type and print their method's bodies
+            // Note: If there are nested types, you should check definedType.Types
+            foreach (var definedType in assembly.RootNamespace.Types)
+            {
+                foreach (var method in definedType.Methods)
+                {
+                    if (method.HasBody)
+                    {
+                        // At first, a method's body is in a simplified bytecode form (aka sil).
+                        // It is still a stack based representation.
+
+                        // Transform the simplified bytecode to the three-address code (not typed yet)
+                        var disassembler = new TacAnalyses.Transformations.Disassembler(method);
+                        var methodBody = disassembler.Execute();
+                        method.Body = methodBody;
+
+                        // Required for next transformations
+                        var cfAnalysis = new TacAnalyses.Analyses.ControlFlowAnalysis(method.Body);
+                        TacAnalyses.Model.ControlFlowGraph cfg = cfAnalysis.GenerateExceptionalControlFlow();
+
+                        // It differentiates unrelated def-uses of the same variable (improves readability)
+                        var splitter = new TacAnalyses.Analyses.WebAnalysis(cfg);
+                        splitter.Analyze();
+                        splitter.Transform();
+
+                        methodBody.UpdateVariables();
+
+                        // TypeInferenceAnalysis types each register (aka. variable) of the three-address code
+                        var typeAnalysis = new TacAnalyses.Analyses.TypeInferenceAnalysis(cfg, method.ReturnType);
+                        typeAnalysis.Analyze();
+
+                        // Optionally you can also call to ForwardCopyPropagation and BackwardCopyPropagation to improve readability
+                        // After that, you must call methodBody.UpdateVariables()
+
+                        TestContext.Out.WriteLine("Method: " + method.GenericName);
+                        TestContext.Out.WriteLine(method.Body.ToString());
+                    }
+                }
+            }
+        }
+
+        [Test]
+        public void SerializedControlFlowGraph()
+        {
+            var assemblyPath = CompileExample();
+            // Simply put, a host is a collection of loaded assemblies.
+            var host = new Model.Host();
+            // A loader is the frontend of the framework.
+            // It is able to load a .net assembly and transform it into
+            // analyses-net representations.
+            // All loaded assemblies are added to the host.
+            var loader = new CecilCodeLoader.Loader(host);
+            // This assembly variable holds an analysis-net's object modeling the original .net assembly.
+            var assembly = loader.LoadAssembly(assemblyPath);
+
+            var method = (from types in assembly.RootNamespace.Types
+                                  from m in types.Methods
+                                  where m.Name.Equals("Fibonacci")
+                                  select m).Single();
+
+            // Transform the simplified bytecode to the three-address code (not typed yet)
+            var disassembler = new TacAnalyses.Transformations.Disassembler(method);
+            var methodBody = disassembler.Execute();
+            method.Body = methodBody;
+
+            // Required for next transformations
+            var cfAnalysis = new TacAnalyses.Analyses.ControlFlowAnalysis(method.Body);
+            TacAnalyses.Model.ControlFlowGraph cfg = cfAnalysis.GenerateExceptionalControlFlow();
+
+            // It differentiates unrelated def-uses of the same variable (improves readability)
+            var splitter = new TacAnalyses.Analyses.WebAnalysis(cfg);
+            splitter.Analyze();
+            splitter.Transform();
+
+            methodBody.UpdateVariables();
+
+            // TypeInferenceAnalysis types each register (aka. variable) of the three-address code
+            var typeAnalysis = new TacAnalyses.Analyses.TypeInferenceAnalysis(cfg, method.ReturnType);
+            typeAnalysis.Analyze();
+
+            var dotRepresentation = TacAnalyses.Serialization.DOTSerializer.Serialize(cfg);
+
+            TestContext.Out.WriteLine("Method: " + method.GenericName);
+            TestContext.Out.WriteLine(dotRepresentation);
+        }
+
+        [Test]
+        public void TacInstructionVisitor()
+        {
+            var assemblyPath = CompileExample();
+            // Simply put, a host is a collection of loaded assemblies.
+            var host = new Model.Host();
+            // A loader is the frontend of the framework.
+            // It is able to load a .net assembly and transform it into
+            // analyses-net representations.
+            // All loaded assemblies are added to the host.
+            var loader = new CecilCodeLoader.Loader(host);
+            // This assembly variable holds an analysis-net's object modeling the original .net assembly.
+            var assembly = loader.LoadAssembly(assemblyPath);
+
+            var method = (from types in assembly.RootNamespace.Types
+                          from m in types.Methods
+                          where m.Name.Equals("Fibonacci")
+                          select m).Single();
+
+            // Transform the simplified bytecode to the three-address code (not typed yet)
+            var disassembler = new TacAnalyses.Transformations.Disassembler(method);
+            var methodBody = disassembler.Execute();
+            method.Body = methodBody;
+
+            // Required for next transformations
+            var cfAnalysis = new TacAnalyses.Analyses.ControlFlowAnalysis(method.Body);
+            TacAnalyses.Model.ControlFlowGraph cfg = cfAnalysis.GenerateExceptionalControlFlow();
+
+            // It differentiates unrelated def-uses of the same variable (improves readability)
+            var splitter = new TacAnalyses.Analyses.WebAnalysis(cfg);
+            splitter.Analyze();
+            splitter.Transform();
+
+            methodBody.UpdateVariables();
+
+            // TypeInferenceAnalysis types each register (aka. variable) of the three-address code
+            var typeAnalysis = new TacAnalyses.Analyses.TypeInferenceAnalysis(cfg, method.ReturnType);
+            typeAnalysis.Analyze();
+
+            var visitor = new ExampleVisitor();
+            visitor.Visit(methodBody);
+            
+            // This is also valid.
+            // If you add or remove an instruction to a cfgNode, it won't affect the original method.Body
+            // Although references to instructions are shared.
+            foreach (var cfgNode in cfg.Nodes)
+                visitor.Visit(cfgNode);
+        }
+
+        // If you need, a Model.Bytecode.Visitor.InstructionVisitor is available (which is for sil - simplified bytecode)
+        class ExampleVisitor : Model.ThreeAddressCode.Visitor.InstructionVisitor
+        {
+            public override void Visit(Model.ThreeAddressCode.Instructions.MethodCallInstruction instruction) {
+                TestContext.Out.WriteLine(instruction);
+            }
         }
     }
 }

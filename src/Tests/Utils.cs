@@ -14,14 +14,13 @@ namespace Tests
             return tempDirectory;
         }
 
-        public static void TransformToTac(MethodDefinition method)
+        public static TacAnalyses.Model.ControlFlowGraph TransformToTac(MethodDefinition method)
         {
             Disassembler disassembler = new Disassembler(method);
             MethodBody methodBody = disassembler.Execute();
             method.Body = methodBody;
 
             ControlFlowAnalysis cfAnalysis = new ControlFlowAnalysis(method.Body);
-            //var cfg = cfAnalysis.GenerateNormalControlFlow();
             TacAnalyses.Model.ControlFlowGraph cfg = cfAnalysis.GenerateExceptionalControlFlow();
 
             WebAnalysis splitter = new WebAnalysis(cfg);
@@ -43,6 +42,8 @@ namespace Tests
             backwardCopyAnalysis.Transform(methodBody);
 
             methodBody.UpdateVariables();
+
+            return cfg;
         }
     }
 }

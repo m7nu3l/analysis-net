@@ -111,6 +111,7 @@
     <EmbeddedResource Include="Resources\Struct.cs" />
     <EmbeddedResource Include="Resources\Sum.cs" />
     <EmbeddedResource Include="Resources\Switch.cs" />
+    <EmbeddedResource Include="Resources\Example.cs" />
     <Compile Include="ShellService.cs" />
     <Compile Include="TestHandler.cs" />
     <Compile Include="Tests.cs" />
