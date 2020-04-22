@@ -133,8 +133,8 @@
     <Content Include="Resources\DSA\Source.txt" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\CecilBackend\CecilCodeGenerator.csproj">
-      <Project>{2b03c2b4-ed29-442a-b07e-06b17a1c1974}</Project>
+    <ProjectReference Include="..\CecilCodeGenerator\CecilCodeGenerator.csproj">
+      <Project>{33457db2-d55d-45ff-8c18-f4da864a813d}</Project>
       <Name>CecilCodeGenerator</Name>
     </ProjectReference>
     <ProjectReference Include="..\CodeLoaders\CCIProvider\CciCodeLoader.csproj">

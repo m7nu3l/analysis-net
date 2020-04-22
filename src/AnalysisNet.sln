@@ -21,13 +21,13 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TacAnalyses", "TacAnalyses\
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "CodeGenerators", "CodeGenerators", "{75DD3061-FE5E-4EE5-AD76-DB3F1C7EF02A}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CecilCodeGenerator", "CecilBackend\CecilCodeGenerator.csproj", "{2B03C2B4-ED29-442A-B07E-06B17A1C1974}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CciCodeLoader", "CodeLoaders\CCIProvider\CciCodeLoader.csproj", "{D19D0C62-FB8C-427D-B6A4-8433EF3DB6A5}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CecilCodeLoader", "CodeLoaders\CecilProvider\CecilCodeLoader.csproj", "{30915DE9-C44C-40F1-9C50-BD6150AE4393}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MetadataCodeLoader", "CodeLoaders\MetadataProvider\MetadataCodeLoader.csproj", "{7D94DAAC-E703-430D-BCEB-D10E4C565FF8}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CecilCodeGenerator", "CecilCodeGenerator\CecilCodeGenerator.csproj", "{33457DB2-D55D-45FF-8C18-F4DA864A813D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -111,18 +111,6 @@ Global
 		{46FCF487-FBB4-4FC8-B940-6990B3E4D6B8}.Release|Mixed Platforms.Build.0 = Release|Any CPU
 		{46FCF487-FBB4-4FC8-B940-6990B3E4D6B8}.Release|x86.ActiveCfg = Release|Any CPU
 		{46FCF487-FBB4-4FC8-B940-6990B3E4D6B8}.Release|x86.Build.0 = Release|Any CPU
-		{2B03C2B4-ED29-442A-B07E-06B17A1C1974}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{2B03C2B4-ED29-442A-B07E-06B17A1C1974}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{2B03C2B4-ED29-442A-B07E-06B17A1C1974}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
-		{2B03C2B4-ED29-442A-B07E-06B17A1C1974}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
-		{2B03C2B4-ED29-442A-B07E-06B17A1C1974}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{2B03C2B4-ED29-442A-B07E-06B17A1C1974}.Debug|x86.Build.0 = Debug|Any CPU
-		{2B03C2B4-ED29-442A-B07E-06B17A1C1974}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{2B03C2B4-ED29-442A-B07E-06B17A1C1974}.Release|Any CPU.Build.0 = Release|Any CPU
-		{2B03C2B4-ED29-442A-B07E-06B17A1C1974}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
-		{2B03C2B4-ED29-442A-B07E-06B17A1C1974}.Release|Mixed Platforms.Build.0 = Release|Any CPU
-		{2B03C2B4-ED29-442A-B07E-06B17A1C1974}.Release|x86.ActiveCfg = Release|Any CPU
-		{2B03C2B4-ED29-442A-B07E-06B17A1C1974}.Release|x86.Build.0 = Release|Any CPU
 		{D19D0C62-FB8C-427D-B6A4-8433EF3DB6A5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{D19D0C62-FB8C-427D-B6A4-8433EF3DB6A5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D19D0C62-FB8C-427D-B6A4-8433EF3DB6A5}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
@@ -159,6 +147,18 @@ Global
 		{7D94DAAC-E703-430D-BCEB-D10E4C565FF8}.Release|Mixed Platforms.Build.0 = Release|Any CPU
 		{7D94DAAC-E703-430D-BCEB-D10E4C565FF8}.Release|x86.ActiveCfg = Release|Any CPU
 		{7D94DAAC-E703-430D-BCEB-D10E4C565FF8}.Release|x86.Build.0 = Release|Any CPU
+		{33457DB2-D55D-45FF-8C18-F4DA864A813D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{33457DB2-D55D-45FF-8C18-F4DA864A813D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{33457DB2-D55D-45FF-8C18-F4DA864A813D}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
+		{33457DB2-D55D-45FF-8C18-F4DA864A813D}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
+		{33457DB2-D55D-45FF-8C18-F4DA864A813D}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{33457DB2-D55D-45FF-8C18-F4DA864A813D}.Debug|x86.Build.0 = Debug|Any CPU
+		{33457DB2-D55D-45FF-8C18-F4DA864A813D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{33457DB2-D55D-45FF-8C18-F4DA864A813D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{33457DB2-D55D-45FF-8C18-F4DA864A813D}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
+		{33457DB2-D55D-45FF-8C18-F4DA864A813D}.Release|Mixed Platforms.Build.0 = Release|Any CPU
+		{33457DB2-D55D-45FF-8C18-F4DA864A813D}.Release|x86.ActiveCfg = Release|Any CPU
+		{33457DB2-D55D-45FF-8C18-F4DA864A813D}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -166,10 +166,10 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{C836D6AD-2A48-4FFF-A958-023C48A65478} = {D9D57446-4BC8-4BDD-91D6-88DACA303536}
 		{A7EFFB71-0EE7-413C-85C8-5C74C8D4CDB0} = {D9D57446-4BC8-4BDD-91D6-88DACA303536}
-		{2B03C2B4-ED29-442A-B07E-06B17A1C1974} = {75DD3061-FE5E-4EE5-AD76-DB3F1C7EF02A}
 		{D19D0C62-FB8C-427D-B6A4-8433EF3DB6A5} = {73906DC1-ABBF-4E45-B88D-46E25C9BC4AF}
 		{30915DE9-C44C-40F1-9C50-BD6150AE4393} = {73906DC1-ABBF-4E45-B88D-46E25C9BC4AF}
 		{7D94DAAC-E703-430D-BCEB-D10E4C565FF8} = {73906DC1-ABBF-4E45-B88D-46E25C9BC4AF}
+		{33457DB2-D55D-45FF-8C18-F4DA864A813D} = {75DD3061-FE5E-4EE5-AD76-DB3F1C7EF02A}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {8D44E32B-6443-426E-9104-AE7782DDD017}
