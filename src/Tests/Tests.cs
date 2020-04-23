@@ -391,5 +391,63 @@ namespace Tests
                 TestContext.Out.WriteLine(instruction);
             }
         }
+        [Test]
+        public void ComputeCallGraph()
+        {
+            var assemblyPath = CompileExample();
+            // Simply put, a host is a collection of loaded assemblies.
+            var host = new Model.Host();
+            // A loader is the frontend of the framework.
+            // It is able to load a .net assembly and transform it into
+            // analyses-net representations.
+            // All loaded assemblies are added to the host.
+            var loader = new CecilCodeLoader.Loader(host);
+            // This assembly variable holds an analysis-net's object modeling the original .net assembly.
+            var assembly = loader.LoadAssembly(assemblyPath);
+
+            // This doesn't includes nested types
+            var method = (from types in assembly.RootNamespace.Types
+                          from m in types.Methods
+                          where m.Name.Equals("Fibonacci")
+                          select m).Single();
+
+            // Transform the simplified bytecode to the three-address code (not typed yet)
+            var disassembler = new TacAnalyses.Transformations.Disassembler(method);
+            var methodBody = disassembler.Execute();
+            method.Body = methodBody;
+
+            // Required for next transformations
+            var cfAnalysis = new TacAnalyses.Analyses.ControlFlowAnalysis(method.Body);
+            TacAnalyses.Model.ControlFlowGraph cfg = cfAnalysis.GenerateExceptionalControlFlow();
+
+            // It differentiates unrelated def-uses of the same variable (improves readability)
+            var splitter = new TacAnalyses.Analyses.WebAnalysis(cfg);
+            splitter.Analyze();
+            splitter.Transform();
+
+            methodBody.UpdateVariables();
+
+            // TypeInferenceAnalysis types each register (aka. variable) of the three-address code
+            var typeAnalysis = new TacAnalyses.Analyses.TypeInferenceAnalysis(cfg, method.ReturnType);
+            typeAnalysis.Analyze();
+
+            // call graph based on hierarchy information (to solve virtual calls)
+            var cha = new TacAnalyses.Analyses.ClassHierarchyAnalysis();
+            var callGraph = cha.Analyze(host);
+            // one element per each call site to 'method'
+            var invocationInfos = callGraph.GetInvocations(method);
+
+            foreach (var invocationInfo in invocationInfos)
+                TestContext.Out.WriteLine(invocationInfo);
+
+            // call graph based on points to analysis (to solve virtual calls)
+            var programAnalysisInfo = new TacAnalyses.Utils.ProgramAnalysisInfo();
+            var pts = new TacAnalyses.Analyses.InterPointsToAnalysis(programAnalysisInfo);
+            callGraph = pts.Analyze(method);
+            invocationInfos = callGraph.GetInvocations(method);
+
+            foreach (var invocationInfo in invocationInfos)
+                TestContext.Out.WriteLine(invocationInfo);
+        }
     }
 }
