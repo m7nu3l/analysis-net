@@ -76,6 +76,25 @@ namespace Model.Types
             return Name.GetHashCode();
         }
 
+        // This is not implemented as an extension as it is for BasicType because
+        // PlatformType's constructor is private
+        public IBasicType Instantiate(IEnumerable<IType> genericArguments)
+        {
+            var result = new PlatformType(this.Name, this.TypeKind)
+            {
+                ContainingAssembly = this.ContainingAssembly,
+                ContainingNamespace = this.ContainingNamespace,
+                ContainingType = this.ContainingType,
+                GenericParameterCount = this.GenericParameterCount,
+                GenericType = this
+            };
+
+            result.GenericArguments.AddRange(genericArguments);
+            // A platform type can't be resolved
+            // You should call ToImplementation after Instantiate
+            // result.Resolve(() => this.ResolvedType);
+            return result;
+        }
         public BasicType ToImplementation(string coreLibrary)
         {
             // the user must do result.Resolve(host) so it can be resolvable!
@@ -220,7 +239,8 @@ namespace Model.Types
 		IList<IType> GenericArguments { get; }
         IBasicType GenericType { get; }
 		TypeDefinition ResolvedType { get; }
-	}
+        IBasicType Instantiate(IEnumerable<IType> genericArguments);
+    }
 
 	public class BasicType : IBasicType
 	{
@@ -337,7 +357,23 @@ namespace Model.Types
 
 			return result;
 		}
-	}
+
+        public IBasicType Instantiate(IEnumerable<IType> genericArguments)
+        {
+            var result = new BasicType(this.Name, this.TypeKind)
+            {
+                ContainingAssembly = this.ContainingAssembly,
+                ContainingNamespace = this.ContainingNamespace,
+                ContainingType = this.ContainingType,
+                GenericParameterCount = this.GenericParameterCount,
+                GenericType = this
+            };
+
+            result.GenericArguments.AddRange(genericArguments);
+            result.Resolve(() => this.ResolvedType);
+            return result;
+        }
+    }
 
 	#region class IBasicType
 

@@ -233,25 +233,9 @@ namespace Model
 			result = definitionType.Equals(referenceType);
 			return result;
 		}
-		public static BasicType Instantiate(this IBasicType type, params IType[] genericArguments)
+		public static IBasicType Instantiate(this IBasicType type, params IType[] genericArguments)
 		{
 			return type.Instantiate(genericArguments.AsEnumerable());
-		}
-
-		public static BasicType Instantiate(this IBasicType type, IEnumerable<IType> genericArguments)
-		{
-			var result = new BasicType(type.Name, type.TypeKind)
-			{
-				ContainingAssembly = type.ContainingAssembly,
-				ContainingNamespace = type.ContainingNamespace,
-				ContainingType = type.ContainingType,
-				GenericParameterCount = type.GenericParameterCount,
-				GenericType = type
-			};
-
-			result.GenericArguments.AddRange(genericArguments);
-			result.Resolve(() => type.ResolvedType);
-			return result;
 		}
 
 		public static MethodReference Instantiate(this IMethodReference method, params IType[] genericArguments)

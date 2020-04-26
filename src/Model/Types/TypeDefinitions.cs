@@ -781,11 +781,28 @@ namespace Model.Types
 			get { return this.GenericParameters.Count; }
 		}
 
-		#endregion
+        #endregion
 
-		#region IBasicType members
+        #region IBasicType members
 
-		IAssemblyReference IBasicType.ContainingAssembly
+        IBasicType IBasicType.Instantiate(IEnumerable<IType> genericArguments)
+        {
+            IBasicType type = this;
+            var result = new BasicType(type.Name, type.TypeKind)
+            {
+                ContainingAssembly = type.ContainingAssembly,
+                ContainingNamespace = type.ContainingNamespace,
+                ContainingType = type.ContainingType,
+                GenericParameterCount = type.GenericParameterCount,
+                GenericType = type
+            };
+
+            result.GenericArguments.AddRange(genericArguments);
+            result.Resolve(() => this);
+            return result;
+        }
+
+        IAssemblyReference IBasicType.ContainingAssembly
 		{
 			get { return this.ContainingAssembly; }
 		}

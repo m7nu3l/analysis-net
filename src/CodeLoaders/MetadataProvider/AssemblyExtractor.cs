@@ -78,7 +78,12 @@ namespace MetadataCodeLoader
 			{
 				get { return null; }
 			}
-		}
+
+            public IBasicType Instantiate(IEnumerable<IType> genericArguments)
+            {
+                throw new NotImplementedException();
+            }
+        }
 
 		#endregion
 

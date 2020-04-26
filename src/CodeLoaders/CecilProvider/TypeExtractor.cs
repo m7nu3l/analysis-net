@@ -596,8 +596,16 @@ namespace CecilCodeLoader
         {
             AnalysisNet.Types.BasicType genericTyperef = (AnalysisNet.Types.BasicType)ExtractType(typeref.ElementType);
             AnalysisNet.Types.IType[] arguments = typeref.GenericArguments.Select(argumentref => ExtractType(argumentref)).ToArray();
-            AnalysisNet.Types.BasicType instancedType = AnalysisNet.Extensions.Instantiate(genericTyperef, arguments);
-            instancedType.Resolve(host);
+            AnalysisNet.Types.IBasicType instancedType = AnalysisNet.Extensions.Instantiate(genericTyperef, arguments);
+
+            if (instancedType is AnalysisNet.Types.BasicType basicType)
+            {
+                basicType.Resolve(host);
+            }
+            else
+                // not sure if this can happen
+                throw new NotSupportedException();
+
 
             return instancedType;
         }

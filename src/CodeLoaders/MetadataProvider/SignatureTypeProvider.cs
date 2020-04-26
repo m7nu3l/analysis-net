@@ -171,7 +171,7 @@ namespace MetadataCodeLoader
 		public virtual IType GetGenericInstantiation(IType genericType, ImmutableArray<IType> genericArguments)
 		{
 			var result = genericType as IBasicType;
-			var instantiated = result.Instantiate(genericArguments);
+            var instantiated = result.Instantiate(genericArguments) as BasicType;
             instantiated.Resolve(extractor.Host);
 			return instantiated;
 		}

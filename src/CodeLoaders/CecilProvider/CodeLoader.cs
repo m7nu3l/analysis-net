@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Model.Types;
 using AnalysisNet = Model;
 using AnalysisNetBytecode = Model.Bytecode;
 using AnalysisNetTac = Model.ThreeAddressCode;
@@ -38,6 +39,11 @@ namespace CecilCodeLoader
         public int GenericParameterCount => 0;
 
         public AnalysisNet.Types.IBasicType ContainingType => null;
+
+        public IBasicType Instantiate(IEnumerable<IType> genericArguments)
+        {
+            throw new NotImplementedException();
+        }
     }
 
     internal class CodeLoader
