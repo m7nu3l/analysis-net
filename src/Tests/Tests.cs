@@ -1,8 +1,10 @@
-﻿using NUnit.Framework;
+﻿using Model.Types;
+using NUnit.Framework;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Tac2Sil.Assembler;
 
 namespace Tests
 {
@@ -101,9 +103,9 @@ namespace Tests
                     yield return new TestCaseData(new TestCaseOptions("ArrayList.cs", "Test.Program", "Test10")); // 46
                     yield return new TestCaseData(new TestCaseOptions("ArrayList.cs", "Test.Program", "Test11")); // 47
 
-                    yield return new TestCaseData(new TestCaseOptions("Delegates.cs", "Test.Program", "Test0")).Ignore("issues with function pointer types"); // 48
-                    yield return new TestCaseData(new TestCaseOptions("Delegates.cs", "Test.Program", "Test1")).Ignore("issues with function pointer types"); // 49
-                    yield return new TestCaseData(new TestCaseOptions("Delegates.cs", "Test.Program", "Test2")).Ignore("issues with function pointer types"); // 50
+                    yield return new TestCaseData(new TestCaseOptions("Delegates.cs", "Test.Program", "Test0")); // 48
+                    yield return new TestCaseData(new TestCaseOptions("Delegates.cs", "Test.Program", "Test1")); // 49
+                    yield return new TestCaseData(new TestCaseOptions("Delegates.cs", "Test.Program", "Test2")); // 50
 
                     yield return new TestCaseData(new TestCaseOptions("Switch.cs", "Test.Program", "Test",1)); // 51
                     yield return new TestCaseData(new TestCaseOptions("Switch.cs", "Test.Program", "Test",2)); // 52
@@ -115,7 +117,7 @@ namespace Tests
                     yield return new TestCaseData(new TestCaseOptions("InOutParameters2.cs", "Test.Program", "Test2")); // 56
                     yield return new TestCaseData(new TestCaseOptions("InOutParameters2.cs", "Test.Program", "Test3")); // 57
 
-                    yield return new TestCaseData(new TestCaseOptions("Arrays2.cs", "Test.Program", "Test")).Ignore("issues with function pointer types"); // 58
+                    yield return new TestCaseData(new TestCaseOptions("Arrays2.cs", "Test.Program", "Test")); // 58
 
                     yield return new TestCaseData(new TestCaseOptions("IfConditionals2.cs", "Test.Program", "Test", 5)); // 59
                     yield return new TestCaseData(new TestCaseOptions("Loop2.cs", "Test.Program", "Test", 5)); // 60
@@ -146,6 +148,68 @@ namespace Tests
         public void Tac2Cil(TestCaseOptions options)
         {
             TestSourceCodeByReturnValue("Tests.Resources." + options.File, options.ClassName, options.MethodName, options.Parameter, ProviderType.CECIL, true);
+        }
+
+        [Test]
+        public void DSA_Tac2Sil()
+        {
+            Model.Host host = new Model.Host();
+            Model.ILoader provider = new CecilCodeLoader.Loader(host);
+            string buildDir =
+                Path.GetDirectoryName(System.Reflection.Assembly.GetAssembly(typeof(CecilCodeLoader.Loader))
+                    .Location);
+
+            // create temporary directory where we place generated dlls
+            string tempDir = Utils.GetTemporaryDirectory();
+
+            // sanity check for needed libraries
+            // resourceDSALibrary is the library that is going to be processed
+            // resourceDSANUnit has test cases for the DSA library
+            string resourceDSALibrary = Path.Combine(buildDir, "Resources/DSA/Library/DSA.dll");
+            string resourceDSANUnit = Path.Combine(buildDir, "Resources/DSA/NUnit/DSANUnitTests.dll");
+            if (!File.Exists(resourceDSALibrary) || !File.Exists((resourceDSANUnit)))
+            {
+                throw new FileNotFoundException();
+            }
+
+            // read the DSA library and re compile it using our framework
+            provider.LoadAssembly(resourceDSALibrary);
+            CecilCodeGenerator.CecilCodeGenerator exporter = new CecilCodeGenerator.CecilCodeGenerator(host);
+
+            IEnumerable<MethodDefinition> allDefinedMethods = from a in host.Assemblies
+                                                              from t in a.RootNamespace.GetAllTypes()
+                                                              from m in t.Members.OfType<MethodDefinition>()
+                                                              where m.HasBody
+                                                              select m;
+
+            foreach (MethodDefinition definedMethod in allDefinedMethods)
+            {
+                MethodDefinition mainMethod = definedMethod;
+                MethodBody originalBytecodeBody = mainMethod.Body;
+                Utils.TransformToTac(mainMethod);
+                originalBytecodeBody.Kind = MethodBodyKind.ThreeAddressCode;
+
+                Assembler assembler = new Assembler(mainMethod.Body);
+                MethodBody bytecodeBody = assembler.Execute();
+                mainMethod.Body = bytecodeBody;
+                mainMethod.Body.Kind = MethodBodyKind.Bytecode;
+            }
+
+            exporter.WriteAssemblies(tempDir);
+
+            // copy nunit test library to temp dir
+            string dsaNUnit = Path.Combine(tempDir, "DSANUnitTests.dll");
+            File.Copy(resourceDSANUnit, dsaNUnit);
+
+            // execute nunit test suite
+            NUnitLite.AutoRun autoRun = new NUnitLite.AutoRun(System.Reflection.Assembly.LoadFrom(dsaNUnit));
+            string outputTxt = Path.Combine(tempDir, "output.txt");
+            string outputCmd = "--out=" + outputTxt;
+            autoRun.Execute(new string[1] { outputCmd });
+
+            // check results
+            string output = File.ReadAllText(outputTxt);
+            Assert.IsTrue(output.Contains("Test Count: 618, Passed: 618"));
         }
 
         [Test]

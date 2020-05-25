@@ -32,14 +32,10 @@ namespace Tests
             TypeInferenceAnalysis typeAnalysis = new TypeInferenceAnalysis(cfg, method.ReturnType);
             typeAnalysis.Analyze();
 
-            // Copy Propagation
-            ForwardCopyPropagationAnalysis forwardCopyAnalysis = new ForwardCopyPropagationAnalysis(cfg);
-            forwardCopyAnalysis.Analyze();
-            forwardCopyAnalysis.Transform(methodBody);
+            methodBody.UpdateVariables();
 
-            BackwardCopyPropagationAnalysis backwardCopyAnalysis = new BackwardCopyPropagationAnalysis(cfg);
-            backwardCopyAnalysis.Analyze();
-            backwardCopyAnalysis.Transform(methodBody);
+            CopyPropagationTransformation copyPropagation = new CopyPropagationTransformation(cfg);
+            copyPropagation.Transform(methodBody);
 
             methodBody.UpdateVariables();
 

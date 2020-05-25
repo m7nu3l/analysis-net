@@ -25,6 +25,7 @@ namespace Tac2Sil.Assembler
 
         public MethodBody Execute()
         {
+            _tacBody.RemoveUnusedLabels();
             MethodBody bytecodeBody = new MethodBody(MethodBodyKind.Bytecode);
 
             bytecodeBody.Parameters.AddRange(_tacBody.Parameters);
@@ -181,7 +182,8 @@ namespace Tac2Sil.Assembler
             //private readonly OperandStack _stack;
             private void AddWithLabel(IEnumerable<Bytecode.Instruction> instructions, string label)
             {
-                instructions.First().Label = label;
+                if (instructions.Count() > 0)
+                    instructions.First().Label = label;
                 Result.AddRange(instructions);
             }
 
@@ -218,7 +220,26 @@ namespace Tac2Sil.Assembler
             {
                 // skip 'this'
                 var args = instruction.MethodCallInstruction.Arguments.Skip(1);
-                var instructions = args.Select(arg => Push(arg)).ToList();
+                List<Bytecode.Instruction> instructions;
+                var lastArgument = instruction.MethodCallInstruction.Arguments.Last();
+
+                if (!(lastArgument.Type is FunctionPointerType))
+                {
+                    instructions = args.Select(arg => Push(arg)).ToList();
+                }
+                else
+                {
+                    instructions = args.Select(arg => Push(arg)).ToList();
+                    instructions.RemoveAt(instructions.Count() - 1);
+
+                    if (loadedFunction is StaticMethodReference staticMethodRef)
+                        instructions.AddRange(ProcessLoad(staticMethodRef));
+                    else if (loadedFunction is VirtualMethodReference virtualMethodRef)
+                    {
+                        instructions.AddRange(ProcessLoad(virtualMethodRef));
+                    }
+                }
+
                 instructions.Add(new Bytecode.CreateObjectInstruction(0, instruction.MethodCallInstruction.Method));
                 instructions.Add(Pop(instruction.CreateObjectInstruction.Result));
                 AddWithLabel(instructions, instruction.CreateObjectInstruction.Label);
@@ -299,19 +320,17 @@ namespace Tac2Sil.Assembler
                 instructions.Add(Pop(result));
                 return instructions;
             }
-            public IList<Bytecode.Instruction> ProcessLoad(IVariable result, VirtualMethodReference virtualMethodRef)
+            public IList<Bytecode.Instruction> ProcessLoad(VirtualMethodReference virtualMethodRef)
             {
                 var instructions = new List<Bytecode.Instruction>();
                 instructions.Add(Push(virtualMethodRef.Instance));
                 instructions.Add(new Bytecode.LoadMethodAddressInstruction(0, Bytecode.LoadMethodAddressOperation.Virtual, virtualMethodRef.Method));
-                instructions.Add(Pop(result));
                 return instructions;
             }
-            public IList<Bytecode.Instruction> ProcessLoad(IVariable result, StaticMethodReference staticMethodRef)
+            public IList<Bytecode.Instruction> ProcessLoad(StaticMethodReference staticMethodRef)
             {
                 var instructions = new List<Bytecode.Instruction>();
                 instructions.Add(new Bytecode.LoadMethodAddressInstruction(0, Bytecode.LoadMethodAddressOperation.Static, staticMethodRef.Method));
-                instructions.Add(Pop(result));
                 return instructions;
             }
             public IList<Bytecode.Instruction> ProcessLoad(IVariable result, Dereference dereference)
@@ -361,17 +380,34 @@ namespace Tac2Sil.Assembler
                 }
                 else if (operand is StaticMethodReference staticMethodRef)
                 {
-                    instructions = ProcessLoad(result, staticMethodRef);
+                    // we are asumming that this is only used for delegate creation.
+                    loadedFunction = staticMethodRef;
+                    instructions = new List<Bytecode.Instruction>()
+                    {
+                        // preserve any branch target
+                        new Bytecode.BasicInstruction(0, Bytecode.BasicOperation.Nop)
+                    };
+                    //instructions = ProcessLoad(result, staticMethodRef);
                 }
                 else if (operand is VirtualMethodReference virtualMethodRef)
                 {
-                    instructions = ProcessLoad(result, virtualMethodRef);
+                    // we are asumming that this is only used for delegate creation.
+                    loadedFunction = virtualMethodRef;
+                    instructions = new List<Bytecode.Instruction>()
+                    {
+                        // preserve any branch target
+                        new Bytecode.BasicInstruction(0, Bytecode.BasicOperation.Nop)
+                    };
+                    //instructions = ProcessLoad(result, virtualMethodRef);
                 }
                 else
                     throw new NotImplementedException();
 
                 return instructions;
             }
+
+            // used for delegate handling
+            IFunctionReference loadedFunction;
 
             public override void Visit(LoadInstruction instruction)
             {
@@ -436,17 +472,17 @@ namespace Tac2Sil.Assembler
 
             public override void Visit(TryInstruction instruction)
             {
-                //throw new NotImplementedException();
+                Result.Add(new Bytecode.BasicInstruction(0, Bytecode.BasicOperation.Nop) { Label = instruction.Label });
             }
 
             public override void Visit(FaultInstruction instruction)
             {
-                //throw new NotImplementedException();
+                Result.Add(new Bytecode.BasicInstruction(0, Bytecode.BasicOperation.Nop) { Label = instruction.Label });
             }
 
             public override void Visit(FinallyInstruction instruction)
             {
-                //throw new NotImplementedException();
+                Result.Add(new Bytecode.BasicInstruction(0, Bytecode.BasicOperation.Nop) { Label = instruction.Label });
             }
 
             //public override void Visit(FilterInstruction instruction)
@@ -456,7 +492,7 @@ namespace Tac2Sil.Assembler
 
             public override void Visit(CatchInstruction instruction)
             {
-                //throw new NotImplementedException();
+                Result.Add(new Bytecode.BasicInstruction(0, Bytecode.BasicOperation.Nop) { Label = instruction.Label });
             }
 
             public override void Visit(ConvertInstruction instruction)

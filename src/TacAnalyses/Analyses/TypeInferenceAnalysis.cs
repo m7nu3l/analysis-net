@@ -79,27 +79,13 @@ namespace TacAnalyses.Analyses
                     } 
                     else if (instruction.Method.ReturnType is IBasicType basicType && basicType.GenericArguments.Count > 0)
                     {
-                        // we need to resolve generic parameter references if there is any
-                        IList<IType> solvedArguments = new List<IType>();
-
-                        foreach (var arg in basicType.GenericArguments)
-                        {
-                            IType solvedArg = null;
-                            if (arg is IGenericParameterReference genericParam)
-                            {
-                                IList<IType> container = genericParam.Kind == GenericParameterKind.Method ? instruction.Method.GenericArguments : instruction.Method.ContainingType.GenericArguments;
-                                solvedArg = container.ElementAt(genericParam.Index);
-                            }
-                            else
-                            {
-                                solvedArg = arg;
-                            }
-                            solvedArguments.Add(solvedArg);
-                        }
-
-                        var newType = basicType.Instantiate(solvedArguments);
+                        IBasicType newType = SolveGenericParameterReferences(instruction, basicType);
                         instruction.Result.Type = newType;
-                    } else
+                    } else if (instruction.Method.ReturnType is ArrayType arrayType)
+                    {
+                        instruction.Result.Type = SolveGenericParameterReferencesInArrayType(instruction, arrayType);
+                    }
+                    else
                         instruction.Result.Type = instruction.Method.ReturnType;
 				}
 
@@ -120,7 +106,51 @@ namespace TacAnalyses.Analyses
 				}
 			}
 
-			public override void Visit(IndirectMethodCallInstruction instruction)
+            private static IType SolveGenericParameterReferencesInArrayType(MethodCallInstruction instruction, ArrayType array)
+            {
+                if (array.ElementsType is IBasicType basicElementsType)
+                {
+                    // should we consider other implementations of IGenericReference as base case?
+                    var solved = SolveGenericParameterReferences(instruction, basicElementsType);
+                    var ret = new ArrayType(solved, array.Rank);
+                    ret.Attributes.AddRange(array.Attributes);
+                    return ret;
+                }
+                else if (array.ElementsType is ArrayType arrayElementsType)
+                {
+                    // I think we should recurse on its ElementsType using this function
+                    // I prefer to wait to have a failing example before coding it.
+                    throw new NotSupportedException();
+                } else
+                {
+                    throw new NotSupportedException();
+                }
+            }
+
+            private static IBasicType SolveGenericParameterReferences(MethodCallInstruction instruction, IBasicType basicType)
+            {
+                // we need to resolve generic parameter references if there is any
+                IList<IType> solvedArguments = new List<IType>();
+                foreach (var arg in basicType.GenericArguments)
+                {
+                    IType solvedArg = null;
+                    if (arg is IGenericParameterReference genericParam)
+                    {
+                        IList<IType> container = genericParam.Kind == GenericParameterKind.Method ? instruction.Method.GenericArguments : instruction.Method.ContainingType.GenericArguments;
+                        solvedArg = container.ElementAt(genericParam.Index);
+                    }
+                    else
+                    {
+                        solvedArg = arg;
+                    }
+                    solvedArguments.Add(solvedArg);
+                }
+
+                var newType = basicType.Instantiate(solvedArguments);
+                return newType;
+            }
+
+            public override void Visit(IndirectMethodCallInstruction instruction)
 			{
 				if (instruction.HasResult)
 				{

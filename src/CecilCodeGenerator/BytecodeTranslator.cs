@@ -17,19 +17,7 @@ namespace CecilCodeGenerator
 
         public Model.Bytecode.Instruction GetTarget(string target)
         {
-            uint offset = ParseTarget(target);
-            return translated.Where(kv => ParseTarget(kv.Label) == offset).Single();
-        }
-
-        private uint ParseTarget(string target)
-        {
-            bool success = uint.TryParse(target.Replace("L_", ""), System.Globalization.NumberStyles.HexNumber, null, out uint targetOffset);
-            if (!success)
-            {
-                throw new Exception();
-            }
-
-            return targetOffset;
+            return translated.Where(kv => kv.Label != null && kv.Label.Equals(target)).Single();
         }
 
         private readonly ICollection<Model.Bytecode.Instruction> translated;

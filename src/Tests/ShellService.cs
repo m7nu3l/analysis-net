@@ -87,6 +87,7 @@ class ShellService
     static string WinSdkTool(string tool)
     {
         var sdks = new[] {
+                @"Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.8 Tools",
                 @"Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.7.2 Tools",
                 @"Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.7 Tools",
                 @"Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.6.2 Tools",
