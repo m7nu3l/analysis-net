@@ -73,11 +73,14 @@ namespace Tests
                                                                   where m.HasBody
                                                                   select m;
 
+                var classHierarchy = new TacAnalyses.Model.ClassHierarchy();
+                classHierarchy.Analyze(host);
+
                 foreach (MethodDefinition definedMethod in allDefinedMethods)
                 {
                     MethodDefinition mainMethod = definedMethod;
                     MethodBody originalBytecodeBody = mainMethod.Body;
-                    Utils.TransformToTac(mainMethod);
+                    Utils.TransformToTac(mainMethod, classHierarchy);
                     originalBytecodeBody.Kind = MethodBodyKind.ThreeAddressCode;
 
                     Assembler assembler = new Assembler(mainMethod.Body);

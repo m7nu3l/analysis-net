@@ -1,10 +1,16 @@
-﻿using Model.Types;
+﻿using Model;
+using Model.Types;
 using NUnit.Framework;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using Tac2Sil.Assembler;
+using TacAnalyses.Analyses;
+using TacAnalyses.Model;
+using TacAnalyses.Utils;
 
 namespace Tests
 {
@@ -121,6 +127,8 @@ namespace Tests
 
                     yield return new TestCaseData(new TestCaseOptions("IfConditionals2.cs", "Test.Program", "Test", 5)); // 59
                     yield return new TestCaseData(new TestCaseOptions("Loop2.cs", "Test.Program", "Test", 5)); // 60
+
+                    yield return new TestCaseData(new TestCaseOptions("Branches.cs", "Test.Program", "Test0")); // 61
                 }
             }
         }
@@ -150,7 +158,7 @@ namespace Tests
             TestSourceCodeByReturnValue("Tests.Resources." + options.File, options.ClassName, options.MethodName, options.Parameter, ProviderType.CECIL, true);
         }
 
-        [Test]
+        [Test, Ignore("")]
         public void DSA_Tac2Sil()
         {
             Model.Host host = new Model.Host();
@@ -182,11 +190,14 @@ namespace Tests
                                                               where m.HasBody
                                                               select m;
 
+            ClassHierarchy classHierarchy = new ClassHierarchy();
+            classHierarchy.Analyze(host);
+
             foreach (MethodDefinition definedMethod in allDefinedMethods)
             {
                 MethodDefinition mainMethod = definedMethod;
                 MethodBody originalBytecodeBody = mainMethod.Body;
-                Utils.TransformToTac(mainMethod);
+                Utils.TransformToTac(mainMethod, classHierarchy);
                 originalBytecodeBody.Kind = MethodBodyKind.ThreeAddressCode;
 
                 Assembler assembler = new Assembler(mainMethod.Body);
@@ -252,6 +263,40 @@ namespace Tests
             // check results
             string output = File.ReadAllText(outputTxt);
             Assert.IsTrue(output.Contains("Test Count: 618, Passed: 618"));
+        }
+
+        [Test]
+        public void TestClassHierarchyAnalysis()
+        {
+            var source = Tests.GetResourceAsString("Tests.Resources.ClassHierarchyGenerics.cs");
+            var compiler = new Compiler();
+            string assembly = compiler.CompileSource(source);
+
+            Model.Host host = new Model.Host();
+            Model.ILoader provider = new CecilCodeLoader.Loader(host);
+            var a = provider.LoadAssembly(assembly);
+
+            var classHierarchyAnalysis = new ClassHierarchyAnalysis();
+            classHierarchyAnalysis.Analyze(host);
+
+            var ch = new ClassHierarchy();
+            ch.Analyze(host);
+
+            Func<String, TypeDefinition> getTypeDef = name => {
+                return a.RootNamespace.GetAllTypes().Where(t => t.Name.Contains(name)).Single();
+            };
+
+            var exampleClass = getTypeDef("Example");
+            var exampleClassAncestors = ch.GetAncestors(exampleClass);
+            Assert.AreEqual(exampleClassAncestors.Count(), 5);
+            var exampleClassAllAncestors = ch.GetAllAncestors(exampleClass);
+            // this assert may fail if data structures are not deterministic
+            Assert.AreEqual(String.Join(",", exampleClassAllAncestors), "ClassC<!0>,ClassB<!0>,ClassA<!0>,Object,InterfaceA<!0>,InterfaceB<Int32>,InterfaceD<!0>,InterfaceC<!0>");
+            var boolExample = exampleClass.Instantiate(new IType[] { PlatformType.Boolean });
+            
+            var boolExampleAllAncestors = ch.GetAllAncestors(boolExample);
+            // this assert may fail if data structures are not deterministic
+            Assert.AreEqual(String.Join(",", boolExampleAllAncestors), "ClassC<Boolean>,ClassB<Boolean>,ClassA<Boolean>,Object,InterfaceA<Boolean>,InterfaceB<Int32>,InterfaceD<Boolean>,InterfaceC<Boolean>");
         }
     }
 
@@ -340,9 +385,14 @@ namespace Tests
 
                         methodBody.UpdateVariables();
 
-                        // TypeInferenceAnalysis types each register (aka. variable) of the three-address code
-                        var typeAnalysis = new TacAnalyses.Analyses.TypeInferenceAnalysis(cfg, method.ReturnType);
+                        // Used by the type inference analysis
+                        ClassHierarchy classHierarchy = new ClassHierarchy();
+                        classHierarchy.Analyze(host);
+                        // It types each register (aka. variable) of the three-address code.
+                        // This transformation may change the method body, if it is the case the previous calculated cfg may is outdated.
+                        var typeAnalysis = new TacAnalyses.Analyses.LocalTypeInferenceAnalysis(method, methodBody, classHierarchy);
                         typeAnalysis.Analyze();
+                        typeAnalysis.Transform();
 
                         // Optionally you can also call to ForwardCopyPropagation and BackwardCopyPropagation to improve readability
                         // After that, you must call methodBody.UpdateVariables()
@@ -389,9 +439,16 @@ namespace Tests
 
             methodBody.UpdateVariables();
 
-            // TypeInferenceAnalysis types each register (aka. variable) of the three-address code
-            var typeAnalysis = new TacAnalyses.Analyses.TypeInferenceAnalysis(cfg, method.ReturnType);
+            // Used by the type inference analysis
+            ClassHierarchy classHierarchy = new ClassHierarchy();
+            classHierarchy.Analyze(host);
+            // It types each register (aka. variable) of the three-address code.
+            var typeAnalysis = new TacAnalyses.Analyses.LocalTypeInferenceAnalysis(method, methodBody, classHierarchy);
             typeAnalysis.Analyze();
+            typeAnalysis.Transform();
+
+            // Update the control flow graph (in case new instructions were added).
+            cfg = cfAnalysis.GenerateExceptionalControlFlow();
 
             var dotRepresentation = TacAnalyses.Serialization.DOTSerializer.Serialize(cfg);
 
@@ -434,9 +491,15 @@ namespace Tests
 
             methodBody.UpdateVariables();
 
-            // TypeInferenceAnalysis types each register (aka. variable) of the three-address code
-            var typeAnalysis = new TacAnalyses.Analyses.TypeInferenceAnalysis(cfg, method.ReturnType);
+            // Used by the type inference analysis
+            ClassHierarchy classHierarchy = new ClassHierarchy();
+            classHierarchy.Analyze(host);
+            // It types each register (aka. variable) of the three-address code.
+            var typeAnalysis = new TacAnalyses.Analyses.LocalTypeInferenceAnalysis(method, methodBody, classHierarchy);
             typeAnalysis.Analyze();
+            typeAnalysis.Transform();
+            // the type inference analysis may add new instructions
+            cfg = cfAnalysis.GenerateExceptionalControlFlow();
 
             var visitor = new ExampleVisitor();
             visitor.Visit(methodBody);
@@ -491,10 +554,15 @@ namespace Tests
 
             methodBody.UpdateVariables();
 
-            // TypeInferenceAnalysis types each register (aka. variable) of the three-address code
-            var typeAnalysis = new TacAnalyses.Analyses.TypeInferenceAnalysis(cfg, method.ReturnType);
+            // Used by the type inference analysis
+            ClassHierarchy classHierarchy = new ClassHierarchy();
+            classHierarchy.Analyze(host);
+            // It types each register (aka. variable) of the three-address code.
+            // This transformation may change the method body, if it is the case the previous calculated cfg may is outdated.
+            var typeAnalysis = new TacAnalyses.Analyses.LocalTypeInferenceAnalysis(method, methodBody, classHierarchy);
             typeAnalysis.Analyze();
-
+            typeAnalysis.Transform();
+            
             // call graph based on hierarchy information (to solve virtual calls)
             var cha = new TacAnalyses.Analyses.ClassHierarchyAnalysis();
             var callGraph = cha.Analyze(host);

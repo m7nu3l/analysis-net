@@ -35,8 +35,8 @@ namespace Model
 
 		public override bool Equals(object obj)
 		{
-			var other = obj as AssemblyReference;
 
+			var other = obj as IAssemblyReference;
 			var result = other != null &&
 						 this.Name == other.Name;
 
@@ -74,8 +74,7 @@ namespace Model
 
 		public override bool Equals(object obj)
 		{
-			var other = obj as Assembly;
-
+			var other = obj as IAssemblyReference;
 			var result = other != null &&
 						 this.Name == other.Name;
 

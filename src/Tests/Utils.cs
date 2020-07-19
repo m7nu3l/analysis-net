@@ -14,7 +14,7 @@ namespace Tests
             return tempDirectory;
         }
 
-        public static TacAnalyses.Model.ControlFlowGraph TransformToTac(MethodDefinition method)
+        public static TacAnalyses.Model.ControlFlowGraph TransformToTac(MethodDefinition method, TacAnalyses.Model.ClassHierarchy classHierarchy = null)
         {
             Disassembler disassembler = new Disassembler(method);
             MethodBody methodBody = disassembler.Execute();
@@ -29,13 +29,18 @@ namespace Tests
 
             methodBody.UpdateVariables();
 
-            TypeInferenceAnalysis typeAnalysis = new TypeInferenceAnalysis(cfg, method.ReturnType);
-            typeAnalysis.Analyze();
+            // The method body can be altered so we need to re compute the control flow graph. 
+            CopyPropagationTransformation copyPropagation = new CopyPropagationTransformation(cfg);
+            copyPropagation.Transform(methodBody);
 
             methodBody.UpdateVariables();
 
-            CopyPropagationTransformation copyPropagation = new CopyPropagationTransformation(cfg);
-            copyPropagation.Transform(methodBody);
+            // The method body can be altered so we need to re compute the control flow graph.
+            var typeAnalysis = new LocalTypeInferenceAnalysis(method, methodBody, classHierarchy);
+            typeAnalysis.Analyze();
+            typeAnalysis.Transform();
+
+            cfg = cfAnalysis.GenerateExceptionalControlFlow();
 
             methodBody.UpdateVariables();
 

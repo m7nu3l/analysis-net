@@ -308,7 +308,7 @@ namespace TacAnalyses.Transformations
 			private void ProcessInitializeObject(Bytecode.InitObjInstruction op)
 			{
 				var targetAddress = stack.Pop();
-				var instruction = new Tac.InitializeObjectInstruction(op.Offset, targetAddress);
+				var instruction = new Tac.InitializeObjectInstruction(op.Offset, op.Type, targetAddress);
 				body.Instructions.Add(instruction);
 			}
 

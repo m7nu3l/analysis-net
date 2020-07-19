@@ -43,12 +43,12 @@ namespace TacAnalyses.Utils
 			switch (operation)
 			{
 				case Bytecode.BranchOperation.False:
-				case Bytecode.BranchOperation.True:
 				case Bytecode.BranchOperation.Eq: return Tac.BranchOperation.Eq;
 				case Bytecode.BranchOperation.Ge: return Tac.BranchOperation.Ge;
 				case Bytecode.BranchOperation.Gt: return Tac.BranchOperation.Gt;
 				case Bytecode.BranchOperation.Le: return Tac.BranchOperation.Le;
 				case Bytecode.BranchOperation.Lt: return Tac.BranchOperation.Lt;
+				case Bytecode.BranchOperation.True:
 				case Bytecode.BranchOperation.Neq: return Tac.BranchOperation.Neq;
 
 				default: throw operation.ToUnknownValueException();
@@ -88,12 +88,12 @@ namespace TacAnalyses.Utils
 			}
 		}
 
-		public static bool GetUnaryConditionalBranchValue(Bytecode.BranchOperation operation)
+		public static int GetUnaryConditionalBranchValue(Bytecode.BranchOperation operation)
 		{
 			switch (operation)
 			{
-				case Bytecode.BranchOperation.False: return false;
-				case Bytecode.BranchOperation.True:  return true;
+				case Bytecode.BranchOperation.False: return 0;
+				case Bytecode.BranchOperation.True:  return 0;
 
 				default: throw operation.ToUnknownValueException();
 			}

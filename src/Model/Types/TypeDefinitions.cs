@@ -960,5 +960,10 @@ namespace Model.Types
 
 			return result.ToString();
 		}
-	}
+
+        public InstructionInserter GetInstructionInserter()
+        {
+            return new InstructionInserter(this);
+        }
+    }
 }

@@ -498,7 +498,7 @@ namespace Tac2Sil.Assembler
             public override void Visit(ConvertInstruction instruction)
             {
                 var instructions = new List<Bytecode.Instruction>();
-
+                
                 var operation = instruction.Operation.ToConvertOperation();
                 instructions.Add(Push(instruction.Operand));
                 instructions.Add(new Bytecode.ConvertInstruction(0, operation, instruction.ConversionType));
@@ -506,7 +506,6 @@ namespace Tac2Sil.Assembler
 
                 AddWithLabel(instructions, instruction.Label);
             }
-
             public override void Visit(ReturnInstruction instruction)
             {
                 var instructions = new List<Bytecode.Instruction>();
@@ -691,7 +690,7 @@ namespace Tac2Sil.Assembler
                 {
                     Push(instruction.TargetAddress, false),
                     // not sure if TargetAddress returns ptr<type> or type
-                    new Bytecode.InitObjInstruction(0, (instruction.TargetAddress.Type as PointerType).TargetType),
+                    new Bytecode.InitObjInstruction(0, instruction.ObjectType),
                 };
                 AddWithLabel(instructions, instruction.Label);
             }

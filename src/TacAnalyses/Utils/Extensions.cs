@@ -1015,5 +1015,82 @@ namespace TacAnalyses.Utils
 
 			return escapeInfo;
 		}
+
+		public static IBasicType SolveGenericParameterReferences(this IBasicType basicType, MethodCallInstruction instruction)
+		{
+			// This function is similar to IBasicType SolveGenericParameterReferences(this IBasicType target, IBasicType source)
+			// Here we assume that if there is any generic parameter reference in basicType can be resolved in the scope of the instruction.
+			// ie. basicType is the return type of the called method.
+
+			IList<IType> solvedArguments = new List<IType>();
+			foreach (var arg in basicType.GenericArguments)
+			{
+				IType solvedArg;
+				if (arg is IGenericParameterReference genericParam)
+				{
+					IList<IType> container = genericParam.Kind == GenericParameterKind.Method ? instruction.Method.GenericArguments : instruction.Method.ContainingType.GenericArguments;
+					solvedArg = container.ElementAt(genericParam.Index);
+				}
+				else
+				{
+					solvedArg = arg;
+				}
+				solvedArguments.Add(solvedArg);
+			}
+
+			var newType = basicType.Instantiate(solvedArguments);
+			return newType;
+		}
+
+		public static IType SolveGenericParameterReferencesInArrayType(this ArrayType array, MethodCallInstruction instruction)
+		{
+			if (array.ElementsType is IBasicType basicElementsType)
+			{
+				// should we consider other implementations of IGenericReference as base case?
+				var solved = basicElementsType.SolveGenericParameterReferences(instruction);
+				var ret = new ArrayType(solved, array.Rank);
+				ret.Attributes.AddRange(array.Attributes);
+				return ret;
+			}
+			else if (array.ElementsType is ArrayType arrayElementsType)
+			{
+				// I think we should recurse on its ElementsType using this function
+				// I prefer to wait to have a failing example before coding it.
+				throw new NotSupportedException();
+			}
+			else
+			{
+				throw new NotSupportedException();
+			}
+		}
+
+		public static IBasicType SolveGenericParameterReferences(this IBasicType target, IBasicType source)
+		{
+			// Is there any generic parameter reference in target that points to any generic argument in source?
+			// class ArrayList<T> : IList<T> (this is our definition in C#).
+			// In CIL, IList<T> is IList<!0> where !0 points to the first T in ArrayList<T>
+			// If we are manipulating ArrayList<int>, we would need to solve IList<!0> as IList<int>.
+			
+			if (target.GenericArguments.Count == 0)
+				return target;
+
+			IList<IType> genericArguments = new List<IType>();
+			foreach (var ga in target.GenericArguments)
+			{
+				if (ga is IGenericParameterReference gp)
+				{
+					if (gp.GenericContainer.Equals(source.GenericType))
+					{
+						genericArguments.Add(source.GenericArguments.ElementAt(gp.Index));
+					}
+				}
+				else
+				{
+					genericArguments.Add(ga);
+				}
+			}
+
+			return target.GenericType.Instantiate(genericArguments);
+		}
 	}
 }

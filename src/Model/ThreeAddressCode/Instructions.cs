@@ -1213,12 +1213,14 @@ namespace Model.ThreeAddressCode.Instructions
 
 	public class InitializeObjectInstruction : Instruction
 	{
+        public IType ObjectType { get; set; }
 		public IVariable TargetAddress { get; set; }
 
-		public InitializeObjectInstruction(uint offset, IVariable target)
+		public InitializeObjectInstruction(uint offset, IType objectType, IVariable target)
 			: base(offset)
 		{
 			this.TargetAddress = target;
+            this.ObjectType = objectType;
 		}
 
 		public override ISet<IVariable> UsedVariables
@@ -1239,7 +1241,7 @@ namespace Model.ThreeAddressCode.Instructions
 
 		public override string ToString()
 		{
-			return this.ToString("init object at {0}", this.TargetAddress);
+			return this.ToString("init object {0} at {1}", this.ObjectType, this.TargetAddress);
 		}
 	}
 
